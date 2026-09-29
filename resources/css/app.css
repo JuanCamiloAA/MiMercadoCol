@@ -1,0 +1,302 @@
+@import 'tailwindcss';
+
+/* Los dos temas comparten los mismos tokens: solo cambian los valores. */
+:root,
+[data-theme='light'] {
+    --bg: #f4f4f1;
+    --surface: #ffffff;
+    --surface-2: #ecece7;
+    --surface-3: #e3e3dc;
+    --line: #d8d8d0;
+    --line-2: #c3c3b9;
+    --text: #14171a;
+    --muted: #565e64;
+    --accent: #0e6e4e;
+    --accent-ink: #ffffff;
+    --accent-soft: #dcede4;
+    --warn: #8f4705;
+    --warn-soft: #f7e8d8;
+    --danger: #a81f16;
+    --danger-soft: #f7e0de;
+    /* El acento crudo de la marca y su letra: el menu del color de la marca los usa porque
+       adentro `--accent` se redefine y no puede apuntar a si mismo. */
+    --brand-accent: #0e6e4e;
+    --brand-ink: #ffffff;
+    --brand-muted: #cfe2dc;
+    --brand-mark-ink: #ffffff;
+}
+
+[data-theme='dark'] {
+    --bg: #0c1012;
+    --surface: #151a1d;
+    --surface-2: #1d2428;
+    --surface-3: #273035;
+    --line: #2b3439;
+    --line-2: #3c484e;
+    --text: #edf0ef;
+    --muted: #a3aeb3;
+    --accent: #2fbe7e;
+    --accent-ink: #052018;
+    --accent-soft: #123029;
+    --warn: #e9a55e;
+    --warn-soft: #33260f;
+    --danger: #f27a70;
+    --danger-soft: #3a1c19;
+    --brand-accent: #2fbe7e;
+    --brand-ink: #052018;
+    --brand-muted: #0d402c;
+    --brand-mark-ink: #ffffff;
+}
+
+/*
+ * Lo que la empresa puede cambiar en Ajustes. Estos son los valores de fabrica: si nadie toco
+ * nada, `#brand-theme` sale vacio y manda esto.
+ */
+:root {
+    --brand-font-body: 'IBM Plex Sans';
+    --brand-font-display: 'Bricolage Grotesque';
+    --brand-font-numeric: 'IBM Plex Mono';
+    --r-chip: 8px;
+    --r-control: 10px;
+    --r-card: 14px;
+    --r-sheet: 20px;
+    --density: 1;
+    --content-max: 75.125rem;
+    --ui-scale: 1;
+}
+
+/* La caja ignora la densidad: nada que se toque con el dedo baja de 44 px. */
+html[data-surface='pos'] {
+    --density: 1;
+}
+
+/* Menu del color de la marca: se reescriben los tokens del subarbol, no los componentes. */
+[data-sidebar='brand'] {
+    --surface: var(--brand-accent);
+    --surface-2: color-mix(in srgb, var(--brand-ink) 14%, var(--brand-accent));
+    --surface-3: color-mix(in srgb, var(--brand-ink) 22%, var(--brand-accent));
+    --line: color-mix(in srgb, var(--brand-ink) 22%, var(--brand-accent));
+    --text: var(--brand-ink);
+    --muted: var(--brand-muted);
+    --accent: var(--brand-ink);
+    --accent-ink: var(--brand-accent);
+    --accent-soft: color-mix(in srgb, var(--brand-ink) 18%, var(--brand-accent));
+    --brand-mark-ink: var(--brand-accent);
+}
+
+@theme inline {
+    --color-bg: var(--bg);
+    --color-surface: var(--surface);
+    --color-surface-2: var(--surface-2);
+    --color-surface-3: var(--surface-3);
+    --color-line: var(--line);
+    --color-line-2: var(--line-2);
+    --color-text: var(--text);
+    --color-muted: var(--muted);
+    --color-accent: var(--accent);
+    --color-accent-ink: var(--accent-ink);
+    --color-accent-soft: var(--accent-soft);
+    --color-warn: var(--warn);
+    --color-warn-soft: var(--warn-soft);
+    --color-danger: var(--danger);
+    --color-danger-soft: var(--danger-soft);
+
+    --font-sans: var(--brand-font-body), ui-sans-serif, system-ui, sans-serif;
+    --font-display: var(--brand-font-display), var(--brand-font-body), sans-serif;
+    --font-mono: var(--brand-font-numeric), ui-monospace, monospace;
+
+    --radius-chip: var(--r-chip);
+    --radius-control: var(--r-control);
+    --radius-card: var(--r-card);
+    --radius-sheet: var(--r-sheet);
+}
+
+@layer base {
+    * {
+        border-color: var(--line);
+    }
+
+    html {
+        background-color: var(--bg);
+        -webkit-text-size-adjust: 100%;
+        /* La escala mueve todo lo que esta en rem; los cortes md:/lg: no, porque en una media
+           query el rem es el del navegador. */
+        font-size: calc(100% * var(--ui-scale));
+    }
+
+    /* Las tipografias van directo a las variables de marca: no se depende de que
+       `@theme inline` emita `--font-sans` en :root. */
+    body {
+        background-color: var(--bg);
+        color: var(--text);
+        font-family: var(--brand-font-body), ui-sans-serif, system-ui, sans-serif;
+        font-feature-settings: 'cv05', 'cv08';
+    }
+
+    h1,
+    h2,
+    h3 {
+        font-family: var(--brand-font-display), var(--brand-font-body), sans-serif;
+        font-weight: 700;
+        letter-spacing: -0.015em;
+    }
+
+    /* Todas las cifras con ancho fijo: las columnas de precios no bailan al actualizarse. */
+    .tabular,
+    .font-mono {
+        font-family: var(--brand-font-numeric), ui-monospace, monospace;
+        font-variant-numeric: tabular-nums;
+    }
+
+    input,
+    select,
+    textarea,
+    button {
+        font-family: inherit;
+    }
+
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--line-2);
+        border-radius: 999px;
+        border: 3px solid transparent;
+        background-clip: content-box;
+    }
+}
+
+@layer components {
+    .focus-ring {
+        outline: 2px solid transparent;
+        outline-offset: 2px;
+    }
+
+    .focus-ring:focus-visible {
+        outline-color: var(--accent);
+    }
+}
+
+@utility card {
+    background-color: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+}
+
+@keyframes canasta-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.animate-fade-in {
+    animation: canasta-fade-in 0.18s ease-out;
+}
+
+/* La tienda en linea: sus titulos van con la fuente que eligio la sede, no con la del panel. */
+[data-store-shell] :is(h1, h2, h3) {
+    font-family: var(--store-display);
+    font-weight: var(--store-display-weight, 800);
+    letter-spacing: -0.012em;
+}
+
+/* Filas que se deslizan de lado sin barra: el gesto ya dice que hay mas. */
+@utility scrollbar-none {
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+@keyframes store-sheet-in {
+    from {
+        transform: translateY(16px);
+        opacity: 0;
+    }
+    to {
+        transform: none;
+        opacity: 1;
+    }
+}
+
+@keyframes store-drawer-in {
+    from {
+        transform: translateX(24px);
+        opacity: 0;
+    }
+    to {
+        transform: none;
+        opacity: 1;
+    }
+}
+
+.animate-sheet-in {
+    animation: store-sheet-in 0.2s ease-out;
+}
+
+.animate-drawer-in {
+    animation: store-drawer-in 0.2s ease-out;
+}
+
+/*
+ * Diálogo de la tienda (`StoreDialog`): en el celular sube desde abajo, en el computador aparece
+ * al centro. Va con transición y no con animación para que la salida arranque desde donde la
+ * dejó el dedo al arrastrarla. La duración de salida es `EXIT_MS` en el componente.
+ */
+.store-dialog {
+    transform: translateY(100%);
+    transition: transform 0.34s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.store-dialog[data-state='open'] {
+    transform: none;
+}
+
+.store-dialog-backdrop {
+    opacity: 0;
+    transition: opacity 0.28s ease;
+}
+
+.store-dialog-backdrop[data-state='open'] {
+    opacity: 1;
+}
+
+@media (min-width: 48rem) {
+    .store-dialog {
+        opacity: 0;
+        transform: translateY(12px) scale(0.97);
+        transition:
+            transform 0.22s ease-out,
+            opacity 0.22s ease-out;
+    }
+
+    .store-dialog[data-state='open'] {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .animate-sheet-in,
+    .animate-drawer-in,
+    .animate-fade-in {
+        animation: none;
+    }
+
+    .store-dialog,
+    .store-dialog-backdrop {
+        transition-duration: 0.01ms;
+    }
+}

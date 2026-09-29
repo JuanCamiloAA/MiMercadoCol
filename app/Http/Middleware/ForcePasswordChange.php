@@ -1,0 +1,32 @@
+<?php
+
+namespace App\Http\Middleware;
+
+use Closure;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
+
+class ForcePasswordChange
+{
+    public function handle(Request $request, Closure $next): Response
+    {
+        $user = $request->user();
+
+        if (! $user || ! $user->password_change_required) {
+            return $next($request);
+        }
+
+        $allowedRoutes = ['password.change.show', 'password.change.update', 'logout'];
+
+        if (in_array($request->route()?->getName(), $allowedRoutes, true)) {
+            return $next($request);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Debes cambiar tu contrasena temporal antes de continuar.'], 403);
+        }
+
+        return redirect()->route('password.change.show')
+            ->with('warning', 'Debes cambiar tu contrasena temporal antes de continuar.');
+    }
+}

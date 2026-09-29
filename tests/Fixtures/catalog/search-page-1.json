@@ -1,0 +1,37 @@
+{
+  "count": 3,
+  "page": 1,
+  "page_size": 100,
+  "products": [
+    {
+      "code": "7702001139415",
+      "product_name": "Yogurt Original",
+      "generic_name": "Yogurt con dulce",
+      "brands": "Alpina, Alpina S.A.",
+      "quantity": "1 L",
+      "categories_tags": ["en:dairies", "en:yogurts"],
+      "countries_tags": ["en:colombia"],
+      "image_front_small_url": "https://images.openfoodfacts.org/images/products/770/200/113/9415/front_es.4.200.jpg"
+    },
+    {
+      "code": "7702354001001",
+      "product_name": "Café Molido Tradicional",
+      "generic_name": "",
+      "brands": "Juan Valdez",
+      "quantity": "500 g",
+      "categories_tags": ["en:coffees"],
+      "countries_tags": ["en:colombia"],
+      "image_front_small_url": "https://images.openfoodfacts.org/images/products/770/235/400/1007/front_es.4.200.jpg"
+    },
+    {
+      "code": "7702084000015",
+      "product_name": "Panela Pulverizada",
+      "generic_name": "Panela de caña",
+      "brands": "Doña Panela",
+      "quantity": "1 kg",
+      "categories_tags": ["en:sweeteners"],
+      "countries_tags": ["en:colombia"],
+      "image_front_small_url": ""
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "count": 4,
+  "page": 1,
+  "page_size": 100,
+  "products": [
+    {
+      "code": "7702001139415",
+      "product_name": "Yogurt Original",
+      "brands": "Alpina",
+      "quantity": "1 L",
+      "categories_tags": ["en:dairies"],
+      "image_front_small_url": "https://images.openfoodfacts.org/images/products/front.jpg"
+    },
+    {
+      "code": "7702001139416",
+      "product_name": "Yogurt con el código malo",
+      "brands": "Alpina",
+      "quantity": "1 L",
+      "categories_tags": ["en:dairies"],
+      "image_front_small_url": ""
+    },
+    {
+      "code": "7702354001001",
+      "product_name": "   ",
+      "generic_name": "",
+      "brands": "Juan Valdez",
+      "quantity": "500 g",
+      "categories_tags": ["en:coffees"],
+      "image_front_small_url": ""
+    },
+    {
+      "code": "7702001139415",
+      "product_name": "Yogurt Original repetido entre páginas",
+      "brands": "Alpina",
+      "quantity": "1 L",
+      "categories_tags": ["en:dairies"],
+      "image_front_small_url": ""
+    }
+  ]
+}
