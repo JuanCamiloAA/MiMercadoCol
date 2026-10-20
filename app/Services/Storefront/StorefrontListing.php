@@ -37,7 +37,7 @@ class StorefrontListing
 
     /**
      * @param  array{category_ids?: list<int>, deals?: bool, search?: string}  $scope
-     * @param  array<string, mixed>  $input  Lo que pidio el cliente: sub, brands, attr, min, max, deals, in_stock, sort, page.
+     * @param  array<string, mixed>  $input  Lo que pidio el cliente: sub, brands, attr, min, max, deals, sort, page.
      * @param  array<string, mixed>  $settings  Los ajustes publicados de la sede.
      * @return array<string, mixed>
      */
@@ -87,7 +87,7 @@ class StorefrontListing
                 return false;
             }
 
-            return ! (in_array('in_stock', $allowedFilters, true) && ! empty($input['in_stock']) && ! $entry['in_stock']);
+            return true;
         });
 
         $sorted = $this->sort($filtered, $sort, $store, $terms)->values();
@@ -146,7 +146,6 @@ class StorefrontListing
                 'price' => $price,
                 'deal' => $promo !== null && (int) $promo['compare_at'] > $price,
                 'featured' => (bool) $row->is_featured,
-                'in_stock' => $row->allow_negative_stock || ((float) $row->stock_quantity - (float) $row->reserved_quantity) > 0,
                 'row' => $row,
                 'promo' => $promo,
             ];
@@ -159,14 +158,14 @@ class StorefrontListing
             return $entries->filter(fn (array $entry) => $entry['deal'])->values();
         }
 
-        // Los servicios entran como siempre: en su categoria y en la busqueda.
-        $services = $this->services->query($store)
+        // Los servicios entran como siempre: en su categoria y en la busqueda, si alcanzan para una unidad.
+        $services = $this->services->onlyAvailable($this->services->query($store)
             ->when(! empty($scope['category_ids']), fn (Builder $inner) => $inner->whereIn('services.category_id', $scope['category_ids']))
             ->when($search !== '', fn (Builder $inner) => $inner->where(fn (Builder $words) => $words
                 ->where('services.name', 'like', '%'.$search.'%')
                 ->orWhere('services.description', 'like', '%'.$search.'%')))
             ->limit(60)
-            ->get()
+            ->get(), $store)
             ->map(fn (Service $service) => [
                 'kind' => 'service',
                 'id' => $service->id,
@@ -179,7 +178,6 @@ class StorefrontListing
                 'price' => $this->pricing->priceFor($service, PromotionService::CHANNEL_ONLINE),
                 'deal' => false,
                 'featured' => (bool) $service->is_featured,
-                'in_stock' => true,
                 'row' => $service,
                 'promo' => null,
             ]);
@@ -209,7 +207,6 @@ class StorefrontListing
             $entry['kind'] === 'product' ? $this->rankOf($entry, $rank) : 100000,
             $terms !== [] && str_starts_with($entry['key'], $terms[0]) ? 0 : 1,
             $entry['featured'] ? 0 : 1,
-            $entry['in_stock'] ? 0 : 1,
             $entry['name'],
         ])->values();
 
@@ -222,8 +219,9 @@ class StorefrontListing
 
     /**
      * Un articulo con subarticulos entra una sola vez a la lista: con el nombre del principal, el
-     * menor precio vigente de sus presentaciones (el que la tarjeta dice «Desde»), en oferta si
-     * alguna lo esta y disponible si alguna lo esta. Ese precio es el que ordena y filtra.
+     * menor precio vigente de sus presentaciones (el que la tarjeta dice «Desde») y en oferta si
+     * alguna lo esta. Ese precio es el que ordena y filtra. Solo llegan las que tienen disponible:
+     * una familia sin ninguna no entra.
      *
      * @param  Collection<int, array<string, mixed>>  $entries
      * @return Collection<int, array<string, mixed>>
@@ -263,8 +261,8 @@ class StorefrontListing
 
             $done[$familyId] = true;
             $group = $entries->where('family_id', $familyId);
-            $pool = $group->where('in_stock', true)->isNotEmpty() ? $group->where('in_stock', true) : $group;
-            $representative = $pool->sortBy('price')->first();
+            // Todas tienen disponible (`query()` ya dejo afuera las que no): la mas barata representa.
+            $representative = $group->sortBy('price')->first();
             $family = $families->get($familyId);
 
             $collapsed[] = array_merge($representative, [
@@ -274,11 +272,9 @@ class StorefrontListing
                 'brand' => $family->brand ?: $representative['brand'],
                 'deal' => $group->contains('deal', true),
                 'featured' => (bool) $family->is_featured || $group->contains('featured', true),
-                'in_stock' => $group->contains('in_stock', true),
                 'variants' => $group->map(fn (array $variant) => [
                     'v1' => $variant['row']->variant_value_1_id ? (int) $variant['row']->variant_value_1_id : null,
                     'v2' => $variant['row']->variant_value_2_id ? (int) $variant['row']->variant_value_2_id : null,
-                    'in_stock' => $variant['in_stock'],
                 ])->values()->all(),
             ]);
         }
@@ -317,10 +313,6 @@ class StorefrontListing
     protected function matchesAttributes(array $entry, array $filter): bool
     {
         foreach ($entry['variants'] ?? [] as $variant) {
-            if (! $variant['in_stock']) {
-                continue;
-            }
-
             $values = array_filter([$variant['v1'], $variant['v2']]);
             $ok = true;
 
@@ -356,7 +348,7 @@ class StorefrontListing
 
             foreach ($entry['variants'] ?? [] as $variant) {
                 foreach (array_filter([$variant['v1'], $variant['v2']]) as $valueId) {
-                    if ($variant['in_stock'] && ! isset($seen[$valueId])) {
+                    if (! isset($seen[$valueId])) {
                         $seen[$valueId] = true;
                         $counts[$valueId] = ($counts[$valueId] ?? 0) + 1;
                     }
@@ -528,11 +520,10 @@ class StorefrontListing
                 return $entries->sortBy(fn (array $entry) => [$entry['kind'] === 'product' ? $this->rankOf($entry, $rank) : 100001, $entry['name']]);
             })(),
             // Relevancia: en una busqueda, lo que empieza por la palabra va primero; despues lo
-            // destacado, lo que hay y el nombre.
+            // destacado y el nombre.
             default => $entries->sortBy(fn (array $entry) => [
                 $terms !== [] && str_starts_with($entry['key'], $terms[0]) ? 0 : 1,
                 $entry['featured'] ? 0 : 1,
-                $entry['in_stock'] ? 0 : 1,
                 $entry['name'],
             ]),
         };

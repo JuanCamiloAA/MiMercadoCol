@@ -83,9 +83,16 @@ class User extends Authenticatable
     /** @var list<string>|null */
     protected ?array $effectivePermissionNamesCache = null;
 
+    /**
+     * La peticion para la que se calculo. Los permisos dependen del plan de la empresa, que puede
+     * cambiar entre una peticion y otra aunque el objeto del usuario sea el mismo.
+     */
+    protected ?object $effectivePermissionNamesRequest = null;
+
     public function flushEffectivePermissionCache(): void
     {
         $this->effectivePermissionNamesCache = null;
+        $this->effectivePermissionNamesRequest = null;
     }
 
     /**
@@ -93,8 +100,11 @@ class User extends Authenticatable
      */
     public function getEffectivePermissionNames(): array
     {
-        if ($this->effectivePermissionNamesCache === null) {
+        $request = app()->bound('request') ? request() : null;
+
+        if ($this->effectivePermissionNamesCache === null || $this->effectivePermissionNamesRequest !== $request) {
             $this->effectivePermissionNamesCache = app(EffectivePermissionService::class)->getEffectivePermissionNames($this);
+            $this->effectivePermissionNamesRequest = $request;
         }
 
         return $this->effectivePermissionNamesCache;

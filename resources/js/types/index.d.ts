@@ -204,6 +204,8 @@ export interface PageProps {
     activeStore: ActiveStore | null;
     storesForSelector: StoreOption[];
     permissionMatrix: PermissionCatalogueModule[] | null;
+    /** Cuantas funciones del catalogo no trae el plan de la empresa (la nota al pie del asignador). */
+    permissionMatrixHidden: number;
     flash: FlashMessages;
     ziggy: ZiggyConfig & { location: string };
     errors: Record<string, string>;

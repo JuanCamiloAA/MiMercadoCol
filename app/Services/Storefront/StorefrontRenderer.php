@@ -13,8 +13,14 @@ use App\Models\Storefront;
 use App\Models\StorefrontBlock;
 use App\Models\StorefrontTemplate;
 use App\Services\PromotionService;
+use App\Storefront\BlockCatalogue;
 use App\Storefront\Blocks\BlockData;
+use App\Storefront\Blocks\DealCountdownBlockData;
+use App\Storefront\Blocks\LookBlockData;
 use App\Storefront\Targets;
+use App\Support\MediaVariants;
+use App\Support\SectionAppearance;
+use App\Support\Uploads;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -195,18 +201,24 @@ class StorefrontRenderer
             'whatsapp' => Targets::whatsappNumber($structure['footer']['contact']['whatsapp'] ?? null) ?? Targets::whatsappNumber($store->phone),
         ];
 
-        $blocks = $rows->map(fn (array $block) => [
-            'uuid' => $block['uuid'] ?? '',
-            'type' => $block['type'],
-            'page' => $block['page'] ?? StorefrontBlock::PAGE_HOME,
-            'devices' => $block['devices'] ?? 'all',
-            'is_visible' => (bool) ($block['is_visible'] ?? true),
-            'scheduled' => ! $this->isLive($block, $now),
-            'data' => $this->withHrefs(
-                $this->resolve($block['type'], $block['payload'] ?? [], $store, $structure, $draft),
-                $links
-            ),
-        ])->all();
+        $blocks = $rows->map(function (array $block) use ($now, $store, $structure, $draft, $links) {
+            // Un retrato de antes del diseño de seccion trae el fondo viejo: se convierte al vuelo.
+            $payload = BlockData::upgradeBackground($block['payload'] ?? []);
+
+            return [
+                'uuid' => $block['uuid'] ?? '',
+                'type' => $block['type'],
+                'page' => $block['page'] ?? StorefrontBlock::PAGE_HOME,
+                'devices' => $block['devices'] ?? 'all',
+                'is_visible' => (bool) ($block['is_visible'] ?? true),
+                'scheduled' => ! $this->isLive($block, $now),
+                'data' => $this->withHrefs(
+                    $this->resolve($block['type'], $payload, $store, $structure, $draft),
+                    $links
+                ),
+                'appearance' => $this->appearance($block['type'], $payload),
+            ];
+        })->all();
 
         return [
             'theme' => $snapshot['theme'] ?? [],
@@ -214,6 +226,25 @@ class StorefrontRenderer
             'settings' => $structure,
             'store' => $this->storePayload($store, $snapshot['settings'] ?? []),
         ];
+    }
+
+    /**
+     * Si el encabezado va transparente sobre la portada: lo pidió la sede (`header.overlay` o el
+     * estilo `overlay`) y el primer bloque es un banner principal de borde a borde. Si no, va
+     * sólido: transparente sobre un estante, el menú no se leería.
+     *
+     * @param  array<string, mixed>  $header
+     * @param  list<array<string, mixed>>  $blocks  Los de la portada, en orden.
+     */
+    public static function headerOverlay(array $header, array $blocks): bool
+    {
+        if (! ($header['overlay'] ?? false) && ($header['style'] ?? null) !== 'overlay') {
+            return false;
+        }
+
+        $first = $blocks[0] ?? null;
+
+        return is_array($first) && ($first['type'] ?? null) === 'hero' && (($first['appearance']['frame'] ?? null) === 'bleed');
     }
 
     /**
@@ -252,11 +283,20 @@ class StorefrontRenderer
                 }
 
                 if ($block['type'] === 'deal_countdown' && ! $draft) {
-                    $ends = $block['data']['promotion']['ends_at'] ?? null;
+                    if (($block['data']['style'] ?? 'flash') === 'drop') {
+                        // Lo pintado vive diez minutos en la cache: un lanzamiento que ya salió no se cuenta.
+                        $starts = $block['data']['drop']['starts_at'] ?? null;
 
-                    if ($ends === null || CarbonImmutable::parse($ends)->lte($now)) {
-                        $block['data']['products'] = [];
-                        $block['data']['promotion'] = null;
+                        if ($starts === null || CarbonImmutable::parse($starts)->lte($now)) {
+                            $block['data']['drop'] = null;
+                        }
+                    } else {
+                        $ends = $block['data']['promotion']['ends_at'] ?? null;
+
+                        if ($ends === null || CarbonImmutable::parse($ends)->lte($now)) {
+                            $block['data']['products'] = [];
+                            $block['data']['promotion'] = null;
+                        }
                     }
                 }
 
@@ -277,9 +317,15 @@ class StorefrontRenderer
     protected function isBlank(array $block): bool
     {
         return match ($block['type']) {
-            'deal_countdown' => ($block['data']['promotion'] ?? null) === null || ($block['data']['products'] ?? []) === [],
+            'deal_countdown' => ($block['data']['style'] ?? 'flash') === 'drop'
+                ? ($block['data']['drop'] ?? null) === null
+                : ($block['data']['promotion'] ?? null) === null || ($block['data']['products'] ?? []) === [],
             'product_grid' => ($block['data']['source'] ?? null) === 'buy_again' && ($block['data']['products'] ?? []) === [],
             'hero', 'promo_carousel' => ($block['data']['slides'] ?? []) === [],
+            'image_text' => ($block['data']['media'] ?? null) === null,
+            'look' => ($block['data']['media'] ?? null) === null || ($block['data']['items'] ?? []) === [],
+            'brand_logos' => ($block['data']['items'] ?? []) === [],
+            'ticker' => collect($block['data']['items'] ?? [])->filter(fn ($item) => trim((string) ($item['text'] ?? '')) !== '')->isEmpty(),
             default => false,
         };
     }
@@ -316,27 +362,58 @@ class StorefrontRenderer
         return match ($type) {
             'hero' => array_merge($payload, [
                 'slides' => $this->slides($payload['slides'] ?? [], $draft),
-                'side' => collect($payload['side'] ?? [])->map(fn (array $side) => array_merge($side, [
-                    'media' => $this->mediaPayload($side['media_id'] ?? null),
-                ]))->values()->all(),
+                'side' => collect($payload['side'] ?? [])->map(fn (array $side) => array_merge($side, $this->variants($side, 'media_id', 'media')))->values()->all(),
             ]),
             'promo_carousel' => array_merge($payload, ['slides' => $this->slides($payload['slides'] ?? [], $draft)]),
+            'video', 'video_showcase' => array_merge($payload, $this->variants($payload, 'video_media_id', 'video', video: true), $this->variants($payload, 'poster_media_id', 'poster')),
+            'media_carousel' => array_merge($payload, [
+                'slides' => collect($payload['slides'] ?? [])->map(fn (array $slide) => array_merge(
+                    $slide,
+                    $this->variants($slide, 'media_id', 'media'),
+                    $this->variants($slide, 'video_media_id', 'video', video: true),
+                ))->filter(fn (array $slide) => $slide['media'] !== null || $slide['video'] !== null)->values()->all(),
+            ]),
             'banner_grid' => array_merge($payload, [
-                'tiles' => collect($payload['tiles'] ?? [])->map(fn (array $tile) => array_merge($tile, [
-                    'media' => $this->mediaPayload($tile['media_id'] ?? null),
-                    'media_mobile' => $this->mediaPayload($tile['media_mobile_id'] ?? null),
-                ]))->values()->all(),
+                'tiles' => collect($payload['tiles'] ?? [])->map(fn (array $tile) => array_merge($tile, $this->variants($tile, 'media_id', 'media')))->values()->all(),
             ]),
             'categories' => array_merge($payload, ['items' => $this->categories($payload, $store)]),
-            'product_grid' => array_merge($payload, [
-                'products' => ($payload['source'] ?? null) === 'buy_again' ? [] : $this->products($payload, $store, $card, $perUnit && (bool) ($payload['show_price_per_unit'] ?? true)),
-                'see_all_href' => $this->seeAll($payload, $store),
-                'layout' => $payload['layout'] ?? 'carousel',
+            'image_text' => array_merge($payload, $this->variants($payload, 'media_id', 'media')),
+            'brand_logos' => array_merge($payload, [
+                'items' => collect($payload['items'] ?? [])
+                    ->filter(fn ($item) => is_array($item))
+                    ->map(fn (array $item) => array_merge($item, $this->variants($item, 'media_id', 'media')))
+                    ->filter(fn (array $item) => $item['media'] !== null || trim((string) ($item['text'] ?? '')) !== '')
+                    ->values()
+                    ->all(),
             ]),
+            'look' => array_merge($payload, $this->look($payload, $store, $card, $perUnit)),
+            'product_grid' => $this->productGrid($payload, $store, $card, $perUnit && (bool) ($payload['show_price_per_unit'] ?? true), $draft),
             'deal_countdown' => array_merge($payload, $this->dealCountdown($payload, $store, $card, $perUnit)),
             'store_info' => array_merge($payload, ['store' => $this->storePayload($store, [])]),
             default => $payload,
         };
+    }
+
+    /**
+     * Un estante con sus articulos. En la vista previa, si quedo vacio solo porque sus articulos
+     * no tienen disponible, lo dice (`out_of_stock_only`): quien edita no pensaria que el bloque
+     * se rompio, y el cliente igual no ve el estante.
+     *
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $card
+     * @return array<string, mixed>
+     */
+    protected function productGrid(array $payload, Store $store, array $card, bool $perUnit, bool $draft): array
+    {
+        $buyAgain = ($payload['source'] ?? null) === 'buy_again';
+        $products = $buyAgain ? [] : $this->products($payload, $store, $card, $perUnit);
+
+        return array_merge($payload, [
+            'products' => $products,
+            'out_of_stock_only' => $draft && ! $buyAgain && $products === [] && $this->products($payload, $store, $card, $perUnit, onlyAvailable: false) !== [],
+            'see_all_href' => $this->seeAll($payload, $store),
+            'layout' => $payload['layout'] ?? 'carousel',
+        ]);
     }
 
     /**
@@ -348,11 +425,10 @@ class StorefrontRenderer
     protected function slides(array $slides, bool $draft): array
     {
         return collect($slides)
-            ->map(fn (array $slide) => array_merge($slide, [
+            ->map(fn (array $slide) => array_merge($slide, $this->variants($slide, 'media_id', 'media'), [
                 'is_live' => BlockData::itemIsLive($slide),
                 'media' => $this->mediaPayload($slide['media_id'] ?? null)
-                    ?? (! empty($slide['legacy_image']) ? ['url' => '/storage/'.$slide['legacy_image'], 'srcset' => null, 'alt' => $slide['title'] ?? '', 'focal_x' => 0.5, 'focal_y' => 0.5, 'variants' => []] : null),
-                'media_mobile' => $this->mediaPayload($slide['media_mobile_id'] ?? null),
+                    ?? (! empty($slide['legacy_image']) ? ['url' => Uploads::url($slide['legacy_image']), 'srcset' => null, 'alt' => $slide['title'] ?? '', 'focal_x' => 0.5, 'focal_y' => 0.5, 'variants' => []] : null),
             ]))
             ->filter(fn (array $slide) => $draft || ($slide['is_live'] && $slide['media'] !== null))
             ->values()
@@ -391,11 +467,76 @@ class StorefrontRenderer
     }
 
     /**
+     * El diseño de la seccion ya resuelto: el defecto del tipo con lo que alguien cambio encima, y
+     * los archivos de fondo con su direccion. Lo pinta `SectionShell.tsx`.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    protected function appearance(string $type, array $payload): array
+    {
+        $defaults = BlockCatalogue::has($type) ? BlockCatalogue::for($type)->appearanceDefaults() : [];
+        $resolved = array_merge(
+            SectionAppearance::defaults($defaults, SectionAppearance::SURFACE_STORE),
+            SectionAppearance::normalize($payload['appearance'] ?? null, $defaults, SectionAppearance::SURFACE_STORE),
+        );
+
+        $files = fn (array $values) => [
+            'bg_media' => $this->mediaPayload($values['bg_media_id'] ?? null),
+            'bg_media_mobile' => $this->mediaPayload($values['bg_media_mobile_id'] ?? null),
+            'bg_video' => $this->videoPayload($values['bg_video_media_id'] ?? null),
+            'bg_video_mobile' => $this->videoPayload($values['bg_video_media_mobile_id'] ?? null),
+        ];
+
+        // Modo oscuro: lo de claro con lo propio de oscuro encima, ya con sus archivos. Sin nada
+        // propio no viaja, y el front usa el de modo claro.
+        $dark = SectionAppearance::resolveDark($resolved, $resolved);
+
+        return array_merge(array_diff_key($resolved, [SectionAppearance::DARK_KEY => true]), $files($resolved), [
+            SectionAppearance::DARK_KEY => $dark === null ? null : array_merge($dark, $files($dark)),
+        ]);
+    }
+
+    /**
+     * Las cuatro versiones de una imagen o un video (`MediaVariants`), con el nombre que lee el
+     * front: `media`, `media_mobile`, `media_dark` y `media_mobile_dark` (o `video_*`, `poster_*`).
+     *
+     * @param  array<string, mixed>  $item
+     * @return array<string, array<string, mixed>|null>
+     */
+    protected function variants(array $item, string $key, string $name, bool $video = false): array
+    {
+        $payload = fn (mixed $id) => $video ? $this->videoPayload($id) : $this->mediaPayload($id);
+        $out = [$name => $payload($item[$key] ?? null)];
+
+        foreach (MediaVariants::ALL as $variant) {
+            $out[$name.'_'.$variant] = $payload($item[MediaVariants::storeKey($key, $variant)] ?? null);
+        }
+
+        return $out;
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     protected function mediaPayload(mixed $id): ?array
     {
-        if (! is_numeric($id) || ! isset($this->media[(int) $id])) {
+        // Un campo de imagen no pinta un video aunque alguien le haya puesto su id.
+        if (! is_numeric($id) || ! isset($this->media[(int) $id]) || $this->media[(int) $id]->isVideo()) {
+            return null;
+        }
+
+        return $this->media[(int) $id]->toPayload();
+    }
+
+    /**
+     * El video de un campo de video (`video_media_id`). Una imagen ahi no es un video.
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function videoPayload(mixed $id): ?array
+    {
+        if (! is_numeric($id) || ! isset($this->media[(int) $id]) || ! $this->media[(int) $id]->isVideo()) {
             return null;
         }
 
@@ -444,7 +585,8 @@ class StorefrontRenderer
             default => $all->whereNull('parent_id')->keys()->all(),
         };
 
-        return collect($ids)
+        $style = $payload['style'] ?? 'icon_circles';
+        $items = collect($ids)
             ->map(fn (int $id) => $all->get($id))
             ->filter()
             ->take($limit)
@@ -455,8 +597,89 @@ class StorefrontRenderer
                 'image' => $category['image'],
                 'href' => $category['href'],
             ])
-            ->values()
+            ->values();
+
+        // «Nombres grandes»: cuántos artículos se pueden comprar en cada una (con sus subcategorías).
+        if ($style === 'text_list') {
+            $counts = $this->sellableCounts($store, $all);
+            $items = $items->map(fn (array $item) => array_merge($item, ['count' => $counts[$item['category_id']] ?? 0]));
+        }
+
+        // Las que viven de la foto: si a la categoría le falta, la de ejemplo de la plantilla en ese
+        // orden; si tampoco hay, la de su artículo destacado o más reciente con foto, y si la tienda
+        // tiene más categorías que fotos de ejemplo, esas se repiten en orden antes que dejar el
+        // ícono suelto. Los mosaicos de siempre siguen mostrando el ícono.
+        if (in_array($style, ['tall_cards', 'photo_circles'], true)) {
+            $previews = array_values(array_filter(array_map(fn ($row) => is_array($row) ? $this->mediaPayload($row['media_id'] ?? null) : null, $payload['preview_media'] ?? [])));
+            $url = fn (array $media) => $media['variants']['large'] ?? $media['url'];
+            $items = $items->map(function (array $item, int $index) use ($previews, $store, $all, $url) {
+                if ($item['image']) {
+                    return $item;
+                }
+
+                $item['image'] = isset($previews[$index])
+                    ? $url($previews[$index])
+                    : ($this->categoryCover($store, $item['category_id'], $all) ?? ($previews !== [] ? $url($previews[$index % count($previews)]) : null));
+
+                return $item;
+            });
+        }
+
+        return $items->all();
+    }
+
+    /**
+     * Cuántos articulos se pueden comprar hoy en cada categoria, sumando los de sus
+     * subcategorias. Un articulo con subarticulos cuenta una vez.
+     *
+     * @param  Collection<int, array<string, mixed>>  $all
+     * @return array<int, int>
+     */
+    protected function sellableCounts(Store $store, Collection $all): array
+    {
+        $own = $this->products->query($store)
+            ->whereNotNull('products.category_id')
+            ->reorder()
+            ->select('products.category_id')
+            ->selectRaw("COUNT(DISTINCT COALESCE(CONCAT('f', products.product_family_id), CONCAT('p', products.id))) as total")
+            ->groupBy('products.category_id')
+            ->pluck('total', 'category_id')
+            ->map(fn ($total) => (int) $total)
             ->all();
+
+        $counts = [];
+
+        foreach ($own as $categoryId => $total) {
+            $parent = $all->get((int) $categoryId)['parent_id'] ?? null;
+            $counts[(int) $categoryId] = ($counts[(int) $categoryId] ?? 0) + $total;
+
+            if ($parent) {
+                $counts[(int) $parent] = ($counts[(int) $parent] ?? 0) + $total;
+            }
+        }
+
+        return $counts;
+    }
+
+    /**
+     * La foto de respaldo de una categoria sin foto: la de su articulo destacado (o el mas
+     * reciente) que se pueda comprar y tenga foto, contando sus subcategorias.
+     *
+     * @param  Collection<int, array<string, mixed>>  $all
+     */
+    protected function categoryCover(Store $store, int $categoryId, Collection $all): ?string
+    {
+        $ids = [$categoryId, ...$all->where('parent_id', $categoryId)->keys()->map(fn ($id) => (int) $id)->all()];
+
+        $row = $this->products->query($store)
+            ->whereIn('products.category_id', $ids)
+            ->where(fn ($query) => $query->whereNotNull('products.image_path')->orWhereNotNull('products.image_url'))
+            ->reorder()
+            ->orderByDesc('products.is_featured')
+            ->orderByDesc('products.id')
+            ->first();
+
+        return $row ? StorefrontProducts::image($row->image_path, $row->image_url)['url'] : null;
     }
 
     /**
@@ -495,11 +718,11 @@ class StorefrontRenderer
      * @param  array<string, mixed>  $card
      * @return list<array<string, mixed>>
      */
-    protected function products(array $payload, Store $store, array $card, bool $perUnit): array
+    protected function products(array $payload, Store $store, array $card, bool $perUnit, bool $onlyAvailable = true): array
     {
         $limit = max(2, min(24, (int) ($payload['limit'] ?? 8)));
         $source = (string) ($payload['source'] ?? 'featured');
-        $query = $this->products->query($store);
+        $query = $this->products->query($store, [], $onlyAvailable);
         $ids = [];
 
         match ($source) {
@@ -557,6 +780,52 @@ class StorefrontRenderer
     }
 
     /**
+     * Las prendas de «Compra el look», en el orden de los puntos, y de cada una las presentaciones
+     * que se pueden comprar (la talla). El carrito va siempre por subarticulo: de un articulo con
+     * subarticulos se ofrece escoger cual, con la de por defecto ya elegida.
+     *
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $card
+     * @return array{media: array<string, mixed>|null, items: list<array<string, mixed>>}
+     */
+    protected function look(array $payload, Store $store, array $card, bool $perUnit): array
+    {
+        $count = max(1, min(LookBlockData::MAX_ITEMS, (int) ($payload['count'] ?? 3)));
+        $source = $payload['source'] ?? 'best_sellers';
+        $cards = $this->products(
+            ['source' => $source, 'product_ids' => array_slice($payload['product_ids'] ?? [], 0, LookBlockData::MAX_ITEMS), 'limit' => $source === 'manual' ? LookBlockData::MAX_ITEMS : $count],
+            $store,
+            $card,
+            $perUnit,
+        );
+
+        $familyIds = collect($cards)->where('kind', 'family')->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $variants = $familyIds === [] ? collect() : $this->products->query($store)
+            ->whereIn('products.product_family_id', $familyIds)
+            ->reorder()
+            ->orderBy('products.variant_sort')
+            ->orderBy('products.id')
+            ->get();
+        $prices = $this->promotions->unitPrices($variants, $store->company_id, PromotionService::CHANNEL_ONLINE);
+
+        $items = collect($cards)->take($source === 'manual' ? LookBlockData::MAX_ITEMS : $count)->map(function (array $product) use ($variants, $prices) {
+            $options = $product['kind'] === 'family'
+                ? $variants->where('product_family_id', $product['id'])->map(fn ($row) => [
+                    'key' => 'p:'.$row->id,
+                    'id' => (int) $row->id,
+                    'label' => $row->variant_label ?: $row->name,
+                    'price' => (int) ($prices[(int) $row->id]['price'] ?? ((int) $row->online_price > 0 ? $row->online_price : $row->price)),
+                    'step' => $row->sold_by_weight ? 0.5 : 1,
+                ])->values()->all()
+                : [];
+
+            return ['product' => $product, 'options' => $options];
+        })->values()->all();
+
+        return [...$this->variants($payload, 'media_id', 'media'), 'items' => $items];
+    }
+
+    /**
      * Lo que ya compro este cliente en esta empresa, lo mas reciente primero. Sin sesion o sin
      * compras, nada: el bloque no se pinta.
      *
@@ -606,6 +875,21 @@ class StorefrontRenderer
      */
     protected function dealCountdown(array $payload, Store $store, array $card, bool $perUnit): array
     {
+        // El lanzamiento no depende de una promocion: cuenta hasta su fecha y «Avísame» abre el
+        // WhatsApp de la sede con el mensaje armado (la direccion la pone `withHrefs`).
+        if (($payload['style'] ?? 'flash') === 'drop') {
+            $ahead = DealCountdownBlockData::dropIsAhead($payload);
+
+            return [
+                'promotion' => null,
+                'products' => [],
+                'drop' => $ahead ? [
+                    'starts_at' => CarbonImmutable::parse((string) $payload['starts_at'], 'America/Bogota')->toIso8601String(),
+                    'notify' => ['kind' => Targets::KIND_WHATSAPP, 'value' => 'Hola, quiero que me avisen cuando salga «'.(trim((string) ($payload['title'] ?? '')) ?: 'el lanzamiento').'».'],
+                ] : null,
+            ];
+        }
+
         $now = now();
         $query = Promotion::query()
             ->withoutGlobalScopes()

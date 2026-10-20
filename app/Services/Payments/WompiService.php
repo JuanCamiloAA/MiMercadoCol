@@ -2,7 +2,6 @@
 
 namespace App\Services\Payments;
 
-use App\Models\PaymentGatewayCredential;
 use App\Models\PaymentGatewaySetting;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
@@ -12,6 +11,9 @@ use Throwable;
 
 /**
  * Integracion con Wompi (Colombia). El contrato verificado esta en `config/wompi.php`.
+ *
+ * El mismo cliente sirve a la plataforma (cobrar membresias con sus llaves) y a cada empresa
+ * (cobrar sus ventas con las suyas): lo que cambia son las credenciales (`WompiCredentials`).
  *
  * Tres cosas que no se negocian:
  *
@@ -33,37 +35,34 @@ class WompiService
 
     public const STATUS_PENDING = 'PENDING';
 
-    public function __construct(
-        protected PaymentGatewaySetting $settings,
-        protected PaymentGatewayCredential $credential,
-    ) {}
+    public function __construct(protected WompiCredentials $credentials) {}
 
-    public function settings(): PaymentGatewaySetting
+    public function credentials(): WompiCredentials
     {
-        return $this->settings;
+        return $this->credentials;
     }
 
     public function environment(): string
     {
-        return $this->settings->environment;
+        return $this->credentials->environment;
     }
 
     /** Cobros encendidos y con las cuatro llaves del entorno en uso. */
     public function isUsable(): bool
     {
-        return (bool) $this->settings->is_enabled && $this->credential->isComplete();
+        return $this->credentials->enabled && $this->credentials->isComplete();
     }
 
     public function publicKey(): string
     {
-        return (string) $this->credential->public_key;
+        return (string) $this->credentials->publicKey;
     }
 
     public function apiBase(): string
     {
         $hosts = config('wompi.hosts');
 
-        return $hosts[$this->settings->environment] ?? $hosts[PaymentGatewaySetting::ENV_SANDBOX];
+        return $hosts[$this->credentials->environment] ?? $hosts[PaymentGatewaySetting::ENV_SANDBOX];
     }
 
     /**
@@ -71,7 +70,7 @@ class WompiService
      */
     public function integritySignature(string $reference, int $amountInCents, string $currency, ?string $expiresAt = null): string
     {
-        $secret = (string) $this->credential->integrity_secret;
+        $secret = (string) $this->credentials->integritySecret;
 
         if ($secret === '') {
             throw new RuntimeException('Falta el secreto de integridad de la pasarela.');
@@ -119,7 +118,7 @@ class WompiService
      */
     public function verifyEventSignature(array $payload, ?string $headerChecksum = null): bool
     {
-        $secret = (string) $this->credential->events_secret;
+        $secret = (string) $this->credentials->eventsSecret;
         $checksum = $payload['signature']['checksum'] ?? $headerChecksum;
         $properties = $payload['signature']['properties'] ?? null;
         $timestamp = $payload['timestamp'] ?? null;
@@ -377,7 +376,7 @@ class WompiService
      */
     public function testConnection(): array
     {
-        if (! filled($this->credential->public_key)) {
+        if (! filled($this->credentials->publicKey)) {
             return ['ok' => false, 'message' => 'Falta la llave pública de este entorno.'];
         }
 
@@ -425,7 +424,7 @@ class WompiService
 
     protected function private(): PendingRequest
     {
-        $key = (string) $this->credential->private_key;
+        $key = (string) $this->credentials->privateKey;
 
         if ($key === '') {
             throw new RuntimeException('Falta la llave privada de la pasarela.');

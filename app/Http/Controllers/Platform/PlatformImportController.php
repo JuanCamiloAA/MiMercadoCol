@@ -125,7 +125,7 @@ class PlatformImportController extends Controller
             return redirect()->route('platform.imports.index')->with('error', 'Solo se descarta una carga que no se ha procesado.');
         }
 
-        Storage::disk(PlatformImportService::DISK)->delete($batch->stored_path);
+        Storage::disk(PlatformImportService::disk())->delete($batch->stored_path);
         $batch->delete();
 
         return redirect()->route('platform.imports.index')->with('success', 'La carga quedó descartada.');
@@ -133,16 +133,16 @@ class PlatformImportController extends Controller
 
     public function original(PlatformImportBatch $batch): StreamedResponse
     {
-        abort_unless(Storage::disk(PlatformImportService::DISK)->exists($batch->stored_path), 404);
+        abort_unless(Storage::disk(PlatformImportService::disk())->exists($batch->stored_path), 404);
 
-        return Storage::disk(PlatformImportService::DISK)->download($batch->stored_path, $batch->original_filename);
+        return Storage::disk(PlatformImportService::disk())->download($batch->stored_path, $batch->original_filename);
     }
 
     public function errors(PlatformImportBatch $batch): StreamedResponse
     {
-        abort_unless($batch->error_report_path && Storage::disk(PlatformImportService::DISK)->exists($batch->error_report_path), 404);
+        abort_unless($batch->error_report_path && Storage::disk(PlatformImportService::disk())->exists($batch->error_report_path), 404);
 
-        return Storage::disk(PlatformImportService::DISK)->download($batch->error_report_path, "errores-carga-{$batch->id}.csv");
+        return Storage::disk(PlatformImportService::disk())->download($batch->error_report_path, "errores-carga-{$batch->id}.csv");
     }
 
     public function template(string $type): \Illuminate\Http\Response

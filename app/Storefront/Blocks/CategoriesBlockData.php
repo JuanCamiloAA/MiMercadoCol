@@ -47,7 +47,14 @@ class CategoriesBlockData extends BlockData
             'style' => [
                 'type' => 'select',
                 'label' => 'Cómo se ven',
-                'options' => self::options(['icon_circles' => 'Círculos con ícono', 'image_tiles' => 'Mosaicos con foto', 'chips' => 'Etiquetas']),
+                'options' => self::options([
+                    'icon_circles' => 'Círculos con ícono',
+                    'photo_circles' => 'Círculos con foto',
+                    'image_tiles' => 'Mosaicos con foto',
+                    'tall_cards' => 'Tarjetas altas con foto',
+                    'text_list' => 'Nombres grandes en una línea',
+                    'chips' => 'Etiquetas',
+                ]),
             ],
             'source' => ['type' => 'select', 'label' => 'Cuáles se muestran', 'options' => self::options($sources)],
             'category_ids' => [
@@ -56,10 +63,31 @@ class CategoriesBlockData extends BlockData
                 'show_if' => ['field' => 'source', 'value' => 'manual'],
             ],
             'limit' => ['type' => 'number', 'label' => 'Cuántas', 'min' => 2, 'max' => 24],
+            'title_position' => [
+                'type' => 'select',
+                'label' => 'El nombre va',
+                'options' => self::options(['bottom' => 'Abajo', 'center' => 'En el centro', 'top' => 'Arriba']),
+                'show_if' => ['field' => 'style', 'value' => 'tall_cards'],
+            ],
+            'button_label' => ['type' => 'text', 'label' => 'Texto del botón', 'max' => 24, 'help' => 'Opcional, por ejemplo «Ver».', 'show_if' => ['field' => 'style', 'value' => 'tall_cards']],
         ];
 
         if ($context === self::CONTEXT_TEMPLATE) {
             unset($fields['category_ids']);
+
+            // La plantilla no conoce las categorías de nadie: muestra fotos de ejemplo, y en una
+            // tienda se usan como respaldo, por orden, cuando a su categoría le falta foto.
+            $fields['preview_media'] = [
+                'type' => 'repeater',
+                'label' => 'Fotos de ejemplo',
+                'singular' => 'foto',
+                'max_items' => 12,
+                'help' => 'Solo en la plantilla. En cada tienda salen sus categorías; estas fotos cubren las que no tienen.',
+                'item' => [
+                    'label' => ['type' => 'text', 'label' => 'Nombre de ejemplo', 'max' => 30],
+                    'media_id' => ['type' => 'media', 'label' => 'Foto'],
+                ],
+            ];
         }
 
         return $fields;
@@ -67,7 +95,16 @@ class CategoriesBlockData extends BlockData
 
     public function defaults(): array
     {
-        return ['title' => 'Compra por categoría', 'style' => 'icon_circles', 'source' => 'all', 'category_ids' => [], 'limit' => 12];
+        return [
+            'title' => 'Compra por categoría',
+            'style' => 'icon_circles',
+            'source' => 'all',
+            'category_ids' => [],
+            'limit' => 12,
+            'title_position' => 'bottom',
+            'button_label' => null,
+            'preview_media' => [],
+        ];
     }
 
     protected function ownViolations(array $payload): array

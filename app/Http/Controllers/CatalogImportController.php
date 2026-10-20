@@ -14,6 +14,7 @@ use App\Services\Catalog\CatalogSourceException;
 use App\Services\Catalog\OpenFoodFactsClient;
 use App\Services\Catalog\ProductNormalizer;
 use App\Support\TenantContext;
+use App\Support\Uploads;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -199,7 +200,7 @@ class CatalogImportController extends Controller
 
         if ($request->isCsv()) {
             // Se guarda en el disco privado: quien la corra lo lee y lo borra al terminar.
-            $path = $request->file('file')->store('catalog-imports', 'local');
+            $path = $request->file('file')->store('catalog-imports', Uploads::privateDiskName());
             // Tambien en los criterios: si no hay cola, el boton de ejecutar necesita saber
             // donde quedo el archivo.
             $criteria['csv_path'] = $path;

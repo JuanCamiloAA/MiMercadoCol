@@ -20,6 +20,7 @@ interface Lead {
     company_name: string | null;
     tax_id: string | null;
     city: string | null;
+    category: string | null;
     contact_name: string;
     email: string;
     phone: string | null;
@@ -137,6 +138,7 @@ function LeadDetail({ lead, statusOptions, canManage, canCreateCompany }: { lead
                 {lead.phone && <Row label="Teléfono" value={<a className="inline-flex items-center gap-1 text-[var(--accent)] hover:underline" href={`tel:${lead.phone}`}><PhoneIcon size={14} />{lead.phone}</a>} />}
                 {lead.tax_id && <Row label="NIT" value={lead.tax_id} />}
                 {lead.city && <Row label="Ciudad" value={lead.city} />}
+                {lead.category && <Row label="Clasificación" value={lead.category} />}
                 {lead.estimated_stores && <Row label="Sedes" value={String(lead.estimated_stores)} />}
                 {lead.plan && <Row label="Plan" value={`${lead.plan}${lead.cycle ? ` · ${lead.cycle}` : ''}`} />}
                 {lead.handled_by && <Row label="Atendió" value={lead.handled_by} />}

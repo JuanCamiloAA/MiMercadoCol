@@ -19,6 +19,7 @@ use App\Models\Store;
 use App\Models\Supplier;
 use App\Models\SupplierReturnSettlement;
 use App\Models\User;
+use App\Models\Warehouse;
 use App\Services\CreditService;
 use App\Services\NumberSequenceService;
 use App\Services\OrderService;
@@ -29,6 +30,7 @@ use App\Services\Storefront\StorefrontConfig;
 use App\Services\SupplierReturnService;
 use App\Services\WarehouseService;
 use Carbon\CarbonImmutable;
+use Database\Seeders\Support\StorefrontShowcase;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -86,6 +88,22 @@ class DemoOperationSeeder extends Seeder
         $this->seedCreditPayments();
         $this->markOverdueCustomer();
         $this->seedSupplierReturns();
+        $this->seedStorefrontShowcase();
+    }
+
+    /**
+     * Un deposito en la sede principal (sin banderas: la tienda y la caja siguen en la bodega
+     * principal) y los casos de «Tienda en linea»: publicado agotado, agotado que el deposito si
+     * tiene, compra en camino y uno sin publicar que se vende en caja.
+     */
+    protected function seedStorefrontShowcase(): void
+    {
+        $depot = Warehouse::query()->withoutGlobalScopes()->firstOrCreate(
+            ['store_id' => $this->mainStore->id, 'code' => 'DEPOSITO'],
+            ['company_id' => $this->company->id, 'name' => 'Depósito', 'type' => Warehouse::TYPE_STORAGE, 'is_active' => true],
+        );
+
+        app(StorefrontShowcase::class)->seed($this->mainStore, $this->admin, $depot);
     }
 
     /**

@@ -39,7 +39,7 @@ export function usePermission() {
 
 /**
  * Si el plan de la empresa activa incluye una funcion. Lo que el plan no incluye no se pinta; el
- * servidor igual lo rechaza (`EnsurePlanFeatures`).
+ * servidor igual lo rechaza (`EntitlementService`).
  */
 export function useFeature() {
     const company = usePage<PageProps>().props.activeCompany;

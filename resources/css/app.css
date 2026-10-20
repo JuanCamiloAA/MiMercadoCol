@@ -1,4 +1,18 @@
-@import 'tailwindcss';
+/*
+ * Tailwind solo busca clases en el código. Sin esto escaneaba todo el proyecto, también las notas de
+ * `context/`, y un ejemplo escrito ahí (`rounded-[${x}px]`) salía como regla inválida y dejaba la
+ * hoja sin compilar en desarrollo.
+ */
+@import 'tailwindcss' source(none);
+@source '../../resources';
+@source '../../app';
+@source '../../config';
+@source '../../routes';
+@source '../../database';
+/* El diseño de sección (tamaño, fondo, animación) de la tienda y de la landing: `SectionShell`. */
+@import './sections.css';
+/* Lo del tema de la tienda que no cabe en una variable: fondo, títulos, ancho (`StoreTheme`). */
+@import './storefront.css';
 
 /* Los dos temas comparten los mismos tokens: solo cambian los valores. */
 :root,
@@ -187,6 +201,107 @@ html[data-surface='pos'] {
     background-color: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--r-card);
+}
+
+/*
+ * Listados en tarjetas (`Table` con la vista «Tarjetas»). Es la misma tabla: cada fila se vuelve
+ * una tarjeta y cada celda muestra el titulo de su columna, que `Table` le pone en `data-label`.
+ * Lo estructural va sin capa para ganarles a las utilidades que las pantallas ponen en sus
+ * celdas (relleno, alineacion, anchos). El fondo de la tarjeta va en `components`: una fila que
+ * la pantalla resalta con su propio color lo conserva. Los selectores van por hijos directos para
+ * no tocar una tabla metida dentro de una celda.
+ */
+.data-table[data-view='cards'] > .data-table-body > table {
+    display: block;
+    width: auto;
+    min-width: 0;
+}
+
+.data-table[data-view='cards'] > .data-table-body > table > thead {
+    display: none;
+}
+
+.data-table[data-view='cards'] > .data-table-body > table > tbody {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background-color: var(--bg);
+}
+
+.data-table[data-view='cards'] > .data-table-body > table > tbody > tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    gap: 0.625rem 0.75rem;
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+}
+
+.data-table[data-view='cards'] > .data-table-body > table > tbody > tr[data-card-row='full'] {
+    display: block;
+    grid-column: 1 / -1;
+}
+
+.data-table[data-view='cards'] > .data-table-body > table > tbody > tr > :is(td, th) {
+    display: block;
+    min-width: 0;
+    width: auto !important;
+    padding: 0;
+    border: 0;
+    text-align: left;
+    white-space: normal;
+}
+
+.data-table[data-view='cards'] > .data-table-body > table > tbody > tr > :is(td, th):not([data-label=''])::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.125rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.data-table[data-view='cards'] > .data-table-body > table > tbody > tr > [data-card='title'] {
+    grid-column: 1 / -1;
+    order: -1;
+}
+
+.data-table[data-view='cards'] > .data-table-body > table > tbody > tr > [data-card='lead'] {
+    grid-column: 1 / -1;
+    order: -2;
+}
+
+/* Las columnas sin titulo (botones, casillas) van de lado a lado; si cierran la fila, al pie. */
+.data-table[data-view='cards'] > .data-table-body > table > tbody > tr > [data-card='bare'] {
+    grid-column: 1 / -1;
+}
+
+.data-table[data-view='cards'] > .data-table-body > table > tbody > tr > [data-card='bare']:last-child {
+    padding-top: 0.625rem;
+    border-top: 1px solid var(--line);
+}
+
+.data-table[data-view='cards'] > .data-table-body > table > tbody > tr > [data-card='full'] {
+    text-align: center;
+}
+
+.data-table[data-view='cards'] > .data-table-body > table > tbody > tr > [data-card='empty'] {
+    display: none;
+}
+
+/* Un campo con ancho fijo (codigo de barras, cantidad) no se sale de su media tarjeta. */
+.data-table[data-view='cards'] > .data-table-body > table > tbody > tr > :is(td, th) :is(input, select, textarea) {
+    max-width: 100%;
+}
+
+@layer components {
+    .data-table[data-view='cards'] > .data-table-body > table > tbody > tr {
+        background-color: var(--surface);
+    }
 }
 
 @keyframes canasta-fade-in {

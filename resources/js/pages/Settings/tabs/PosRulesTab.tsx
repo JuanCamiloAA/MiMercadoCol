@@ -3,7 +3,14 @@ import { SaveBar, TabHeader } from '../SettingField';
 import { useSettingsForm } from '../form';
 import type { SettingKey, TabProps } from '../types';
 
-export const POS_RULES_KEYS = ['pos.allow_discount_percent', 'pos.cash_rounding', 'returns.max_days', 'returns.store_credit_days'] as const satisfies readonly SettingKey[];
+export const POS_RULES_KEYS = [
+    'pos.allow_discount_percent',
+    'pos.cash_rounding',
+    'returns.max_days',
+    'returns.store_credit_days',
+    'payments.online_hold_minutes',
+    'payments.pos_link_minutes',
+] as const satisfies readonly SettingKey[];
 
 /**
  * Ajustes > Reglas de caja: cuanto descuento da el cajero sin supervisor, a cuanto se redondea
@@ -73,6 +80,39 @@ export function PosRulesTab({ settings, defaults, readOnly, onDirtyChange, optio
                 error={errors['returns.store_credit_days']}
                 suffix="días"
                 hint="Cuánto dura el saldo que se le da al cliente por una devolución. 0: no vence."
+            />
+
+            <div className="border-t border-[var(--line)] pt-4">
+                <p className="text-[0.875rem] font-semibold">Pagos por pasarela</p>
+                <p className="text-[0.78125rem] text-[var(--muted)]">Los medios y las cuentas se configuran en Medios de pago.</p>
+            </div>
+
+            <Input
+                label="Espera del pago en línea"
+                type="number"
+                min={5}
+                max={1440}
+                required
+                disabled={readOnly}
+                value={data['payments.online_hold_minutes']}
+                onChange={(event) => set('payments.online_hold_minutes', Number(event.target.value))}
+                error={errors['payments.online_hold_minutes']}
+                suffix="minutos"
+                hint="Mientras el cliente paga en la pasarela, el pedido aparta la mercancía y el saldo a favor. Si no paga en este tiempo, el pedido se cancela y se libera."
+            />
+
+            <Input
+                label="Vigencia del QR o link de la caja"
+                type="number"
+                min={2}
+                max={120}
+                required
+                disabled={readOnly}
+                value={data['payments.pos_link_minutes']}
+                onChange={(event) => set('payments.pos_link_minutes', Number(event.target.value))}
+                error={errors['payments.pos_link_minutes']}
+                suffix="minutos"
+                hint="Después de este tiempo el cobro vence y la caja vuelve al tiquete."
             />
 
             {!readOnly && (

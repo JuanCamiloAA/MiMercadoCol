@@ -230,7 +230,7 @@ class UserController extends Controller
             'permissions.*' => ['string'],
         ]);
 
-        $this->permissions->sync($user, $validated['permissions'] ?? [], $request->user());
+        $this->permissions->syncWithinPlan($user, $validated['permissions'] ?? [], $request->user());
 
         return redirect()->route('users.index')->with('success', 'Los permisos quedaron guardados.');
     }

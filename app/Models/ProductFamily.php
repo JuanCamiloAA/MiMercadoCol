@@ -28,6 +28,16 @@ class ProductFamily extends Model
         'attribute_1_id', 'attribute_2_id', 'default_variant_id', 'is_active', 'is_online_visible', 'is_featured',
     ];
 
+    /**
+     * Los mismos defectos de la base. Sin ellos, una familia recien creada sin decir si esta
+     * activa llega en nulo a `ProductFamilyService::settle()` y queda apagada (pasaba al importar).
+     */
+    protected $attributes = [
+        'is_active' => true,
+        'is_online_visible' => true,
+        'is_featured' => false,
+    ];
+
     protected static function booted(): void
     {
         static::saving(function (ProductFamily $family) {

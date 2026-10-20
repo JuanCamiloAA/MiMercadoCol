@@ -15,10 +15,10 @@ use App\Models\Store;
 use App\Models\StoreCreditMovement;
 use App\Models\User;
 use App\Notifications\CustomerReturnUpdated;
+use App\Support\Uploads;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -330,7 +330,7 @@ class CustomerReturnService
                 $paths[] = $photo->storeAs(
                     "customer-returns/{$sale->company_id}",
                     Str::uuid().'.'.($photo->guessExtension() ?: 'jpg'),
-                    'local',
+                    Uploads::privateDiskName(),
                 );
             }
 
@@ -1040,6 +1040,6 @@ class CustomerReturnService
     {
         $path = ($return->photos ?? [])[$index] ?? null;
 
-        return $path && Storage::disk('local')->exists($path) ? $path : null;
+        return $path && Uploads::privateDisk()->exists($path) ? $path : null;
     }
 }

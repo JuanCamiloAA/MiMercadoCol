@@ -11,12 +11,16 @@ import {
 } from '@phosphor-icons/react';
 import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import type { DesignCatalogue } from '@/components/sections/DesignPanel';
+import { type EditorScheme, EditorSchemeContext } from '@/components/sections/editor-scheme';
+import { GroupChips, useGroupFilter } from '@/components/storefront/template-gallery';
 import { Button } from '@/components/ui/Button';
 import { Checkbox, Input, Select } from '@/components/ui/Field';
 import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Misc';
 import AppLayout from '@/layouts/AppLayout';
 import { cn } from '@/lib/cn';
+import { isHex, mix, normalize } from '@/lib/color';
 import { dateTime, time } from '@/lib/format';
 import type { PageProps } from '@/types';
 import { AppearanceTab } from './AppearanceTab';
@@ -49,6 +53,7 @@ interface EditorProps {
     storefront: StorefrontRow;
     blocks: BlockRow[];
     catalogue: CatalogueEntry[];
+    appearanceCatalogue: DesignCatalogue;
     theme: ThemeRow;
     settings: SettingsRow;
     zones: ZoneRow[];
@@ -63,7 +68,7 @@ interface EditorProps {
     template: TemplateInfo;
     endpoints: Endpoints;
     permissions: EditorPermissions;
-    media: { max_kb: number; accept: string };
+    media: { max_kb: number; accept: string; video_max_kb: number; video_accept: string };
 }
 
 const TABS: { key: EditorTab; label: string }[] = [
@@ -84,6 +89,7 @@ export default function StorefrontEditor({
     storefront,
     blocks,
     catalogue,
+    appearanceCatalogue,
     theme,
     settings,
     zones,
@@ -122,6 +128,9 @@ export default function StorefrontEditor({
     const [label, setLabel] = useState('');
     const [versions, setVersions] = useState<VersionRow[]>([]);
     const [savedAt, setSavedAt] = useState<string | null>(storefront.last_saved_at);
+    // El modo que se revisa (Claro | Oscuro): arranca en el de la tienda si es fijo oscuro.
+    const [scheme, setScheme] = useState<EditorScheme>(theme.scheme === 'dark' ? 'dark' : 'light');
+    const schemeContext = useMemo(() => ({ scheme, setScheme }), [scheme]);
 
     // Cada guardado cambia esta firma, y con ella se recarga la vista previa.
     const previewVersion = useMemo(
@@ -188,7 +197,7 @@ export default function StorefrontEditor({
         () => ({
             icons,
             fieldOptions,
-            media: { ...media, index: endpoints.media_index, store: endpoints.media_store },
+            media: { ...media, index: endpoints.media_index, store: endpoints.media_store, video_store: endpoints.media_video_store },
             pages: structureOptions.pages,
             targetKinds: structureOptions.target_kinds,
             productsUrl: endpoints.products,
@@ -215,12 +224,28 @@ export default function StorefrontEditor({
         />
     );
 
+    // Los colores con nombre de la pestaña «Diseño», con los de esta sede (los mismos tonos que `StoreTheme`).
+    const swatches = useMemo(() => {
+        const accent = isHex(theme.accent) ? normalize(theme.accent) : '#0E6E4E';
+
+        return {
+            page: theme.scheme === 'dark' ? '#101418' : '#F6F7F5',
+            soft: mix('#FFFFFF', accent, 0.12),
+            brand: accent,
+            brand_dark: mix(accent, '#000000', 0.38),
+            deal: isHex(theme.deal_color) ? normalize(theme.deal_color) : '#D92D20',
+            dark: '#14171A',
+            light: '#FFFFFF',
+        };
+    }, [theme.accent, theme.deal_color, theme.scheme]);
+
     const blocked = checks.blocking.length > 0;
     const title = isTemplate ? `Plantilla «${storefront.store.name}»` : 'Editor de la tienda';
 
     return (
         <AppLayout title={title}>
             <EditorEnvContext.Provider value={env}>
+            <EditorSchemeContext.Provider value={schemeContext}>
                 {/* Barra del editor: siempre a la vista, en computador y en celular. */}
                 <div className="mb-4 flex flex-col gap-3 rounded-[14px] border border-[var(--line)] bg-[var(--surface)] p-3">
                     <div className="flex flex-wrap items-center gap-2">
@@ -352,6 +377,9 @@ export default function StorefrontEditor({
                         context={context}
                         blocks={blocks}
                         catalogue={catalogue}
+                        appearanceCatalogue={appearanceCatalogue}
+                        canDesign={permissions.appearance}
+                        swatches={swatches}
                         page={page}
                         onPage={choosePage}
                         settings={settings}
@@ -380,6 +408,7 @@ export default function StorefrontEditor({
                         onSaved={onSaved}
                         preview={preview}
                         errors={errors}
+                        suggestion={!isTemplate && template.palette ? { template: template.name, palette: template.palette } : null}
                     />
                 )}
 
@@ -514,55 +543,148 @@ export default function StorefrontEditor({
                     </p>
                 </Modal>
 
-                <ReattachDialog open={showReattach} onClose={() => setShowReattach(false)} template={template} endpoint={endpoints.reattach} />
+                <ReattachDialog
+                    open={showReattach}
+                    onClose={() => setShowReattach(false)}
+                    template={template}
+                    endpoint={endpoints.reattach}
+                    themeEndpoint={endpoints.theme}
+                    canColor={permissions.appearance}
+                />
 
                 {!isTemplate && <CopyDialog open={showCopy} onClose={() => setShowCopy(false)} stores={stores} storeName={storefront.store.name} />}
+            </EditorSchemeContext.Provider>
             </EditorEnvContext.Provider>
         </AppLayout>
     );
 }
 
-function ReattachDialog({ open, onClose, template, endpoint }: { open: boolean; onClose: () => void; template: TemplateInfo; endpoint: string }) {
+/**
+ * Elegir plantilla: la galería del catálogo (miniatura, nombre, para quién), filtrable por tipo
+ * de comercio. Aplicar reemplaza el diseño, nunca la marca ni la operación. Los colores que
+ * sugiere la plantilla solo se aplican si se marca la casilla, con la misma regla de contraste
+ * de Aspecto.
+ */
+function ReattachDialog({
+    open,
+    onClose,
+    template,
+    endpoint,
+    themeEndpoint,
+    canColor,
+}: {
+    open: boolean;
+    onClose: () => void;
+    template: TemplateInfo;
+    endpoint: string;
+    themeEndpoint: string;
+    canColor: boolean;
+}) {
     const initial = template.id ?? template.available.find((item) => item.is_default)?.id ?? template.available[0]?.id ?? null;
-    const [chosen, setChosen] = useState<string>(initial ? String(initial) : '');
+    const [chosen, setChosen] = useState<number | null>(initial);
+    const [useColors, setUseColors] = useState(false);
     const [saving, setSaving] = useState(false);
+    const filter = useGroupFilter(template.available);
+    const selected = template.available.find((item) => item.id === chosen) ?? null;
+    const current = template.follows && selected?.id === template.id;
+    const palette = canColor && selected?.palette && (selected.palette.accent || selected.palette.deal_color) ? selected.palette : null;
+
+    const apply = () => {
+        if (!selected) {
+            return;
+        }
+
+        setSaving(true);
+        router.post(
+            endpoint,
+            { template_id: selected.id },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    if (palette && useColors) {
+                        router.patch(themeEndpoint, { ...palette }, {
+                            preserveScroll: true,
+                            onSuccess: () => toast.success('También quedaron sus colores sugeridos.'),
+                            onError: (problems) => toast.error(Object.values(problems)[0] ?? 'No se pudieron aplicar los colores.'),
+                        });
+                    }
+                    onClose();
+                },
+                onFinish: () => setSaving(false),
+            },
+        );
+    };
 
     return (
         <Modal
             open={open}
             onClose={onClose}
             title={template.follows ? 'Aplicar otra plantilla' : 'Volver a una plantilla'}
-            size="md"
+            description="Elige el diseño. Tus productos, tu marca y tus datos se quedan como están."
+            size="xl"
             footer={
                 <>
                     <Button variant="secondary" onClick={onClose}>
                         Cancelar
                     </Button>
-                    <Button
-                        loading={saving}
-                        disabled={chosen === ''}
-                        onClick={() => {
-                            setSaving(true);
-                            router.post(endpoint, { template_id: Number(chosen) }, { preserveScroll: true, onSuccess: onClose, onFinish: () => setSaving(false) });
-                        }}
-                    >
-                        Usar esta plantilla
+                    <Button loading={saving} disabled={!selected || current} onClick={apply}>
+                        {current ? 'Ya usas esta plantilla' : 'Usar esta plantilla'}
                     </Button>
                 </>
             }
         >
             <div className="flex flex-col gap-3">
-                <Select
-                    label="Plantilla"
-                    options={template.available.map((item) => ({ value: String(item.id), label: `${item.name}${item.is_default ? ' (por defecto)' : ''}` }))}
-                    value={chosen}
-                    onChange={(event) => setChosen(event.target.value)}
-                />
-                {template.available.find((item) => String(item.id) === chosen)?.description && (
-                    <p className="text-[12.5px] text-[var(--muted)]">{template.available.find((item) => String(item.id) === chosen)?.description}</p>
+                <GroupChips items={template.available} groups={filter.groups} value={filter.group} onChange={filter.setGroup} />
+
+                <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {filter.visible.map((item) => (
+                        <li key={item.id}>
+                            <button
+                                type="button"
+                                aria-pressed={item.id === chosen}
+                                onClick={() => setChosen(item.id)}
+                                className={cn(
+                                    'flex h-full w-full flex-col overflow-hidden rounded-[12px] border-2 text-left transition-colors',
+                                    item.id === chosen ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'border-[var(--line)] hover:border-[var(--line-2)]',
+                                )}
+                            >
+                                <span className="grid aspect-[3/2] w-full place-items-center overflow-hidden bg-[var(--surface-2)] text-[var(--muted)]">
+                                    {item.preview ? <img src={item.preview} alt="" loading="lazy" className="h-full w-full object-cover" /> : <PaintBrushIcon size={28} />}
+                                </span>
+                                <span className="flex flex-col gap-0.5 px-3 py-2.5">
+                                    <span className="flex flex-wrap items-center gap-1.5">
+                                        <span className="text-[14px] font-semibold">{item.name}</span>
+                                        {item.is_default && <Badge tone="neutral">Por defecto</Badge>}
+                                        {template.follows && item.id === template.id && <Badge tone="accent">La que usas</Badge>}
+                                    </span>
+                                    {item.audience && <span className="text-[12px] text-[var(--muted)]">{item.audience}</span>}
+                                </span>
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+
+                {selected?.description && <p className="text-[12.5px] text-[var(--muted)]">{selected.description}</p>}
+
+                {palette && !current && (
+                    <div className="flex flex-wrap items-center gap-3 rounded-[10px] border border-[var(--line)] px-3 py-2.5">
+                        <Checkbox
+                            checked={useColors}
+                            onChange={(event) => setUseColors(event.target.checked)}
+                            label="Usar también sus colores sugeridos"
+                            hint="Cambia el color de tu marca y el de las ofertas. Lo puedes deshacer en Aspecto."
+                        />
+                        <span className="ml-auto flex items-center gap-1.5">
+                            {[palette.accent, palette.deal_color].filter(Boolean).map((color) => (
+                                <span key={color} title={color} className="size-6 rounded-full border border-[var(--line)]" style={{ backgroundColor: color }} />
+                            ))}
+                        </span>
+                    </div>
                 )}
+
                 <p className="rounded-[10px] bg-[var(--warn-soft)] px-3 py-2 text-[13px] font-medium text-[var(--warn)]">
-                    Perderás tu diseño propio; tus datos de domicilio, pagos y marca se conservan. Tu diseño actual queda guardado en el historial por si quieres volver.
+                    Reemplaza el diseño de tu tienda: bloques, tipografía, formas y estructura. Nunca cambia tu marca, tus colores (salvo que lo marques arriba), el domicilio, los pagos ni el
+                    contacto. Tu diseño actual queda en el historial por si quieres volver.
                 </p>
             </div>
         </Modal>

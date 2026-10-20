@@ -1,5 +1,6 @@
 import { ArrowSquareOutIcon, DesktopIcon, DeviceMobileIcon } from '@phosphor-icons/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { SchemeSwitch, useEditorScheme } from '@/components/sections/editor-scheme';
 import { Select } from '@/components/ui/Field';
 import { cn } from '@/lib/cn';
 import type { Option, StructureKey } from './types';
@@ -67,6 +68,8 @@ export function PreviewFrame({
     onStore,
 }: PreviewFrameProps) {
     const [device, setDevice] = useState<'mobile' | 'desktop'>('desktop');
+    // El modo que se revisa (Claro | Oscuro): el mismo del conmutador de «Diseño».
+    const { scheme } = useEditorScheme();
     const [scale, setScale] = useState(1);
     const box = useRef<HTMLDivElement>(null);
     const frame = useRef<HTMLIFrameElement>(null);
@@ -82,6 +85,7 @@ export function PreviewFrame({
         const target = new URL(url, window.location.origin);
         target.searchParams.set('page', view.page);
         target.searchParams.set('device', device);
+        target.searchParams.set('scheme', scheme);
         target.searchParams.set('v', hash(version));
 
         if (view.page === 'category' && view.category) {
@@ -97,7 +101,7 @@ export function PreviewFrame({
         }
 
         return target.toString();
-    }, [url, view, device, version, store]);
+    }, [url, view, device, scheme, version, store]);
 
     useEffect(() => {
         const fit = () => {
@@ -189,6 +193,7 @@ export function PreviewFrame({
                 </div>
 
                 <div className="flex items-center gap-1.5">
+                    <SchemeSwitch compact />
                     <div className="flex items-center gap-0.5 rounded-[8px] bg-[var(--surface-2)] p-0.5">
                         <button
                             type="button"

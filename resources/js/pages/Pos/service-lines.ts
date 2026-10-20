@@ -46,6 +46,8 @@ export interface PosService {
     barcode: string | null;
     name: string;
     thumb: string | null;
+    /** La foto, ya resuelta por el servidor (Firebase o local). */
+    thumb_url?: string | null;
     /** El valor del servicio en sí. En uno cerrado es todo el precio. */
     price: number;
     /** Lo que cobra una unidad tal cual el maestro. */

@@ -74,7 +74,53 @@ class PromotionController extends Controller
                 ->get(['id', 'name'])
                 ->map(fn (Category $category) => ['value' => $category->id, 'label' => $category->name])
                 ->all(),
+            'prefill' => $this->prefill($request, $companyId),
         ]);
+    }
+
+    /**
+     * Una promocion nueva ya armada con unos articulos (desde «Tienda en linea», para mover un
+     * lote por vencer). Solo propone: guardar pasa por la validacion de siempre.
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function prefill(Request $request, int $companyId): ?array
+    {
+        if (! $request->boolean('create') || ! $request->user()->can('promotions.index.create')) {
+            return null;
+        }
+
+        $ids = collect((array) $request->query('products', []))
+            ->filter(fn ($id) => ctype_digit((string) $id))
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->take(50)
+            ->values()
+            ->all();
+
+        $products = Product::query()
+            ->where('company_id', $companyId)
+            ->where('is_active', true)
+            ->whereIn('id', $ids)
+            ->get(['id', 'name', 'price', 'online_price'])
+            ->sortBy(fn (Product $product) => array_search($product->id, $ids, true))
+            ->values();
+
+        if ($products->isEmpty()) {
+            return null;
+        }
+
+        return [
+            'name' => $products->count() === 1 ? 'Oferta · '.$products->first()->name : 'Oferta de '.$products->count().' artículos',
+            'targets' => $products->map(fn (Product $product) => [
+                'target_type' => PromotionTarget::TYPE_PRODUCT,
+                'target_id' => $product->id,
+                'value' => null,
+                'quantity' => 1,
+                'label' => $product->name,
+                'price' => (int) ($product->online_price ?: $product->price),
+            ])->all(),
+        ];
     }
 
     /**

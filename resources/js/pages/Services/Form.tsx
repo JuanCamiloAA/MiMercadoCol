@@ -2,10 +2,12 @@ import { router, usePage } from '@inertiajs/react';
 import { ArrowDownIcon, ArrowLeftIcon, ArrowUpIcon, MagnifyingGlassIcon, TrashIcon, WarningCircleIcon } from '@phosphor-icons/react';
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { ImageGalleryField } from '@/components/catalog/ImageGalleryField';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Checkbox, Input, Select, Textarea } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/Misc';
+import { Table } from '@/components/ui/Table';
 import AppLayout from '@/layouts/AppLayout';
 import { money, number, percent, UNIT_SHORT } from '@/lib/format';
 import type { PageProps } from '@/types';
@@ -19,6 +21,8 @@ interface ServiceFormProps {
     taxRates: ServiceOption[];
     canViewCost: boolean;
     canEditPrice: boolean;
+    /** Cuántas fotos se le montan a cada servicio (Ajustes > Catálogo). */
+    imageLimit: number;
 }
 
 const SEARCH_MS = 250;
@@ -30,7 +34,7 @@ const SEARCH_MS = 250;
  * artículos van incluidos) o servicio + artículos (cada uno a su precio vigente en caja, o al
  * que se le fije aquí). El precio final que se ve abajo es el mismo que calcula la caja.
  */
-export default function ServiceForm({ mode, service, categories, pricingModes, taxRates, canViewCost, canEditPrice }: ServiceFormProps) {
+export default function ServiceForm({ mode, service, categories, pricingModes, taxRates, canViewCost, canEditPrice, imageLimit }: ServiceFormProps) {
     const errors = (usePage<PageProps>().props.errors ?? {}) as Record<string, string>;
 
     const [form, setForm] = useState({
@@ -51,7 +55,7 @@ export default function ServiceForm({ mode, service, categories, pricingModes, t
         sort_order: service?.sort_order ?? 0,
     });
     const [components, setComponents] = useState<ComponentLine[]>(service?.components ?? []);
-    const [image, setImage] = useState<File | null>(null);
+    const [images, setImages] = useState<File[]>([]);
     const [processing, setProcessing] = useState(false);
 
     const [search, setSearch] = useState('');
@@ -151,11 +155,11 @@ export default function ServiceForm({ mode, service, categories, pricingModes, t
             delete payload.cost;
         }
 
-        if (image) {
-            payload.image = image;
+        if (images.length > 0) {
+            payload.images = images;
         }
 
-        const options = { forceFormData: image !== null, preserveScroll: true, onFinish: () => setProcessing(false) };
+        const options = { forceFormData: images.length > 0, preserveScroll: true, onSuccess: () => setImages([]), onFinish: () => setProcessing(false) };
 
         if (mode === 'create') {
             router.post(route('services.store'), payload as never, options);
@@ -211,18 +215,29 @@ export default function ServiceForm({ mode, service, categories, pricingModes, t
                                 error={errors.description}
                                 className="sm:col-span-2"
                             />
-                            <div className="flex items-center gap-3 sm:col-span-2">
-                                {service?.image_path && !image && <img src={`/storage/${service.image_path}`} alt="" className="size-14 rounded-control object-cover" />}
-                                <Input
-                                    label="Imagen"
-                                    type="file"
-                                    accept="image/jpeg,image/png,image/webp"
-                                    onChange={(event) => setImage(event.target.files?.[0] ?? null)}
-                                    error={errors.image}
-                                    containerClassName="flex-1"
-                                />
-                            </div>
                         </div>
+                    </Card>
+
+                    <Card>
+                        <CardHeader title="Fotos" description="La portada se ve en el listado, en la caja y en la tarjeta de la tienda." />
+                        <ImageGalleryField
+                            images={service?.images ?? []}
+                            files={images}
+                            limit={imageLimit}
+                            onAddFiles={(picked) => setImages([...images, ...picked])}
+                            onRemoveFile={(index) => setImages(images.filter((_, position) => position !== index))}
+                            onRemove={
+                                service
+                                    ? (image) => router.delete(route('services.images.destroy', [service.id, image.id]), { preserveScroll: true, preserveState: true })
+                                    : undefined
+                            }
+                            onMakeCover={
+                                service
+                                    ? (image) => router.patch(route('services.images.cover', [service.id, image.id]), {}, { preserveScroll: true, preserveState: true })
+                                    : undefined
+                            }
+                            error={errors.images ?? errors['images.0'] ?? errors.image}
+                        />
                     </Card>
 
                     <Card>
@@ -332,145 +347,143 @@ export default function ServiceForm({ mode, service, categories, pricingModes, t
                     </div>
 
                     {components.length > 0 && (
-                        <div className="overflow-x-auto">
-                            <table className="w-full border-collapse text-sm">
-                                <thead className="bg-[var(--surface-2)] text-left">
-                                    <tr className="text-[0.75rem] uppercase tracking-wide text-[var(--muted)]">
-                                        <th className="px-4 py-2.5 font-semibold">Artículo</th>
-                                        <th className="px-4 py-2.5 text-right font-semibold">Cantidad</th>
-                                        <th className="px-4 py-2.5 font-semibold">Si se devuelve</th>
-                                        {canViewCost && <th className="px-4 py-2.5 text-right font-semibold">Costo</th>}
-                                        {itemized && <th className="px-4 py-2.5 text-right font-semibold">Precio c/u en el servicio</th>}
-                                        <th className="px-4 py-2.5" />
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {components.map((line, index) => (
-                                        <tr key={line.product_id} className="border-t border-[var(--line)]">
-                                            <td className="px-4 py-2.5">
-                                                <p className="text-[0.8125rem] font-medium">{line.family && line.family_name ? line.family_name : line.name}</p>
-                                                <p className="font-mono text-[0.71875rem] text-[var(--muted)]">{line.sku}</p>
-                                                {line.family_id && (
-                                                    <div className="mt-1">
-                                                        <Checkbox
-                                                            label={`Cualquier presentación de ${line.family_name ?? 'este artículo'}`}
-                                                            hint={
-                                                                line.family
-                                                                    ? `Por defecto: ${line.variant_label ?? line.name}. En caja y en la tienda se cambia por otra sin pedir autorización.`
-                                                                    : 'Marca si da igual cuál: en la venta se escoge.'
-                                                            }
-                                                            checked={Boolean(line.family)}
-                                                            onChange={(event) => updateComponent(index, { family: event.target.checked, custom_price: event.target.checked ? null : line.custom_price })}
-                                                        />
-                                                    </div>
-                                                )}
-                                                {!line.is_active && (
-                                                    <p className="flex items-center gap-1 text-[0.71875rem] font-medium text-[var(--danger)]">
-                                                        <WarningCircleIcon size={12} weight="fill" /> Inactivo o eliminado: quítalo o actívalo
-                                                    </p>
-                                                )}
-                                                {componentError(index) && <p className="text-[0.71875rem] font-medium text-[var(--danger)]">{componentError(index)}</p>}
+                        <Table className="rounded-none border-x-0 border-b-0">
+                            <thead className="bg-[var(--surface-2)] text-left">
+                                <tr className="text-[0.75rem] uppercase tracking-wide text-[var(--muted)]">
+                                    <th className="px-4 py-2.5 font-semibold">Artículo</th>
+                                    <th className="px-4 py-2.5 text-right font-semibold">Cantidad</th>
+                                    <th className="px-4 py-2.5 font-semibold">Si se devuelve</th>
+                                    {canViewCost && <th className="px-4 py-2.5 text-right font-semibold">Costo</th>}
+                                    {itemized && <th className="px-4 py-2.5 text-right font-semibold">Precio c/u en el servicio</th>}
+                                    <th className="px-4 py-2.5" />
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {components.map((line, index) => (
+                                    <tr key={line.product_id} className="border-t border-[var(--line)]">
+                                        <td className="px-4 py-2.5">
+                                            <p className="text-[0.8125rem] font-medium">{line.family && line.family_name ? line.family_name : line.name}</p>
+                                            <p className="font-mono text-[0.71875rem] text-[var(--muted)]">{line.sku}</p>
+                                            {line.family_id && (
+                                                <div className="mt-1">
+                                                    <Checkbox
+                                                        label={`Cualquier presentación de ${line.family_name ?? 'este artículo'}`}
+                                                        hint={
+                                                            line.family
+                                                                ? `Por defecto: ${line.variant_label ?? line.name}. En caja y en la tienda se cambia por otra sin pedir autorización.`
+                                                                : 'Marca si da igual cuál: en la venta se escoge.'
+                                                        }
+                                                        checked={Boolean(line.family)}
+                                                        onChange={(event) => updateComponent(index, { family: event.target.checked, custom_price: event.target.checked ? null : line.custom_price })}
+                                                    />
+                                                </div>
+                                            )}
+                                            {!line.is_active && (
+                                                <p className="flex items-center gap-1 text-[0.71875rem] font-medium text-[var(--danger)]">
+                                                    <WarningCircleIcon size={12} weight="fill" /> Inactivo o eliminado: quítalo o actívalo
+                                                </p>
+                                            )}
+                                            {componentError(index) && <p className="text-[0.71875rem] font-medium text-[var(--danger)]">{componentError(index)}</p>}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-right">
+                                            <span className="inline-flex items-center gap-1.5">
+                                                <input
+                                                    type="number"
+                                                    min={0}
+                                                    step={line.sold_by_weight ? '0.001' : '1'}
+                                                    aria-label={`Cantidad de ${line.name}`}
+                                                    value={line.quantity}
+                                                    onChange={(event) => updateComponent(index, { quantity: Math.max(0, Math.round((Number(event.target.value) || 0) * 1000) / 1000) })}
+                                                    className="h-9 w-20 rounded-control border border-[var(--line)] bg-[var(--surface)] px-2 text-right font-mono text-[0.8125rem] tabular focus:border-[var(--accent)] focus:outline-none"
+                                                />
+                                                <span className="text-[0.75rem] text-[var(--muted)]">{UNIT_SHORT[line.unit ?? 'unit'] ?? ''}</span>
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-2.5">
+                                            <Checkbox
+                                                label="Vuelve al inventario"
+                                                checked={line.returnable_by_default}
+                                                onChange={(event) => updateComponent(index, { returnable_by_default: event.target.checked })}
+                                            />
+                                        </td>
+                                        {canViewCost && (
+                                            <td className="px-4 py-2.5 text-right font-mono text-[0.8125rem] tabular">
+                                                {money(Math.round(line.quantity * (line.unit_cost ?? 0)))}
+                                                <span className="block text-[0.6875rem] text-[var(--muted)]">{money(line.unit_cost ?? 0)} c/u</span>
                                             </td>
+                                        )}
+                                        {itemized && line.family && (
+                                            <td className="px-4 py-2.5 text-right text-[0.75rem] text-[var(--muted)]">
+                                                Se cobra la presentación que se elija
+                                                <span className="block font-mono tabular">desde {money(line.unit_price ?? 0)}</span>
+                                            </td>
+                                        )}
+                                        {itemized && !line.family && (
                                             <td className="px-4 py-2.5 text-right">
-                                                <span className="inline-flex items-center gap-1.5">
+                                                <span className="inline-flex flex-col items-end gap-1">
                                                     <input
                                                         type="number"
                                                         min={0}
-                                                        step={line.sold_by_weight ? '0.001' : '1'}
-                                                        aria-label={`Cantidad de ${line.name}`}
-                                                        value={line.quantity}
-                                                        onChange={(event) => updateComponent(index, { quantity: Math.max(0, Math.round((Number(event.target.value) || 0) * 1000) / 1000) })}
-                                                        className="h-9 w-20 rounded-control border border-[var(--line)] bg-[var(--surface)] px-2 text-right font-mono text-[0.8125rem] tabular focus:border-[var(--accent)] focus:outline-none"
+                                                        step="1"
+                                                        inputMode="numeric"
+                                                        aria-label={`Precio de ${line.name} en el servicio`}
+                                                        placeholder={String(line.unit_price ?? 0)}
+                                                        disabled={priceLocked}
+                                                        value={line.custom_price ?? ''}
+                                                        onChange={(event) =>
+                                                            updateComponent(index, {
+                                                                custom_price: event.target.value === '' ? null : Math.max(0, Math.round(Number(event.target.value) || 0)),
+                                                            })
+                                                        }
+                                                        className="h-9 w-28 rounded-control border border-[var(--line)] bg-[var(--surface)] px-2 text-right font-mono text-[0.8125rem] tabular placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:outline-none disabled:opacity-60"
                                                     />
-                                                    <span className="text-[0.75rem] text-[var(--muted)]">{UNIT_SHORT[line.unit ?? 'unit'] ?? ''}</span>
+                                                    {line.custom_price === null || line.custom_price === undefined ? (
+                                                        <span className="text-[0.6875rem] text-[var(--muted)]">Precio del artículo</span>
+                                                    ) : (
+                                                        <span className="text-[0.6875rem] text-[var(--muted)]">
+                                                            Artículo {money(line.unit_price ?? 0)}
+                                                            {!priceLocked && (
+                                                                <>
+                                                                    {' · '}
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => updateComponent(index, { custom_price: null })}
+                                                                        className="font-medium text-[var(--accent)] hover:underline"
+                                                                    >
+                                                                        Usar ese
+                                                                    </button>
+                                                                </>
+                                                            )}
+                                                        </span>
+                                                    )}
+                                                    <span className="font-mono text-[0.75rem] font-semibold tabular">{money(Math.round(line.quantity * priceOf(line)))}</span>
                                                 </span>
                                             </td>
-                                            <td className="px-4 py-2.5">
-                                                <Checkbox
-                                                    label="Vuelve al inventario"
-                                                    checked={line.returnable_by_default}
-                                                    onChange={(event) => updateComponent(index, { returnable_by_default: event.target.checked })}
+                                        )}
+                                        <td className="px-4 py-2.5 text-right">
+                                            <span className="inline-flex gap-1">
+                                                <Button size="sm" variant="ghost" aria-label="Subir" icon={<ArrowUpIcon size={14} />} disabled={index === 0} onClick={() => move(index, -1)} />
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    aria-label="Bajar"
+                                                    icon={<ArrowDownIcon size={14} />}
+                                                    disabled={index === components.length - 1}
+                                                    onClick={() => move(index, 1)}
                                                 />
-                                            </td>
-                                            {canViewCost && (
-                                                <td className="px-4 py-2.5 text-right font-mono text-[0.8125rem] tabular">
-                                                    {money(Math.round(line.quantity * (line.unit_cost ?? 0)))}
-                                                    <span className="block text-[0.6875rem] text-[var(--muted)]">{money(line.unit_cost ?? 0)} c/u</span>
-                                                </td>
-                                            )}
-                                            {itemized && line.family && (
-                                                <td className="px-4 py-2.5 text-right text-[0.75rem] text-[var(--muted)]">
-                                                    Se cobra la presentación que se elija
-                                                    <span className="block font-mono tabular">desde {money(line.unit_price ?? 0)}</span>
-                                                </td>
-                                            )}
-                                            {itemized && !line.family && (
-                                                <td className="px-4 py-2.5 text-right">
-                                                    <span className="inline-flex flex-col items-end gap-1">
-                                                        <input
-                                                            type="number"
-                                                            min={0}
-                                                            step="1"
-                                                            inputMode="numeric"
-                                                            aria-label={`Precio de ${line.name} en el servicio`}
-                                                            placeholder={String(line.unit_price ?? 0)}
-                                                            disabled={priceLocked}
-                                                            value={line.custom_price ?? ''}
-                                                            onChange={(event) =>
-                                                                updateComponent(index, {
-                                                                    custom_price: event.target.value === '' ? null : Math.max(0, Math.round(Number(event.target.value) || 0)),
-                                                                })
-                                                            }
-                                                            className="h-9 w-28 rounded-control border border-[var(--line)] bg-[var(--surface)] px-2 text-right font-mono text-[0.8125rem] tabular placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:outline-none disabled:opacity-60"
-                                                        />
-                                                        {line.custom_price === null || line.custom_price === undefined ? (
-                                                            <span className="text-[0.6875rem] text-[var(--muted)]">Precio del artículo</span>
-                                                        ) : (
-                                                            <span className="text-[0.6875rem] text-[var(--muted)]">
-                                                                Artículo {money(line.unit_price ?? 0)}
-                                                                {!priceLocked && (
-                                                                    <>
-                                                                        {' · '}
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => updateComponent(index, { custom_price: null })}
-                                                                            className="font-medium text-[var(--accent)] hover:underline"
-                                                                        >
-                                                                            Usar ese
-                                                                        </button>
-                                                                    </>
-                                                                )}
-                                                            </span>
-                                                        )}
-                                                        <span className="font-mono text-[0.75rem] font-semibold tabular">{money(Math.round(line.quantity * priceOf(line)))}</span>
-                                                    </span>
-                                                </td>
-                                            )}
-                                            <td className="px-4 py-2.5 text-right">
-                                                <span className="inline-flex gap-1">
-                                                    <Button size="sm" variant="ghost" aria-label="Subir" icon={<ArrowUpIcon size={14} />} disabled={index === 0} onClick={() => move(index, -1)} />
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        aria-label="Bajar"
-                                                        icon={<ArrowDownIcon size={14} />}
-                                                        disabled={index === components.length - 1}
-                                                        onClick={() => move(index, 1)}
-                                                    />
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        aria-label={`Quitar ${line.name}`}
-                                                        icon={<TrashIcon size={14} />}
-                                                        onClick={() => setComponents((current) => current.filter((_, position) => position !== index))}
-                                                    />
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    aria-label={`Quitar ${line.name}`}
+                                                    icon={<TrashIcon size={14} />}
+                                                    onClick={() => setComponents((current) => current.filter((_, position) => position !== index))}
+                                                />
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </Table>
                     )}
 
                     <dl className="grid grid-cols-2 gap-4 border-t border-[var(--line)] p-5 text-[0.8125rem] sm:grid-cols-3">

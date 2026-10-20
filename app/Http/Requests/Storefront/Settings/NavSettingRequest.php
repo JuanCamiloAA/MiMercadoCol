@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Storefront\Settings;
 
+use App\Services\Storefront\StorefrontStructure;
 use Illuminate\Validation\Rule;
 
 /** Menu de categorias: chip de ofertas, items y menu grande. */
@@ -18,8 +19,11 @@ class NavSettingRequest extends StorefrontSettingRequest
             'value.items.*.icon' => ['nullable', Rule::in(config('storefront_icons'))],
             'value.items.*.target' => $this->targetRule(required: true, whatsapp: false),
             'value.items.*.highlight' => ['boolean'],
+            'value.items.*.opens_menu' => ['sometimes', 'boolean'],
             'value.show_all_categories' => ['required', 'boolean'],
             'value.mega_menu' => ['required', 'boolean'],
+            'value.style' => ['sometimes', Rule::in(array_keys(StorefrontStructure::CHOICES['nav_style']))],
+            'value.active_style' => ['sometimes', Rule::in(array_keys(StorefrontStructure::CHOICES['nav_active_style']))],
         ];
     }
 
@@ -31,6 +35,7 @@ class NavSettingRequest extends StorefrontSettingRequest
             'icon' => $item['icon'] ?? null,
             'target' => $this->target($item['target'] ?? null, false),
             'highlight' => (bool) ($item['highlight'] ?? false),
+            'opens_menu' => (bool) ($item['opens_menu'] ?? false),
         ], $value['items'] ?? []), fn (array $item) => $item['target'] !== null));
 
         return $value;

@@ -14,6 +14,7 @@ use App\Settings\SettingsOptions;
 use App\Settings\SettingsSchema;
 use App\Support\HomeResolver;
 use App\Support\TenantContext;
+use App\Support\Uploads;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -34,6 +35,7 @@ class SettingController extends Controller
         SettingsSchema::TAB_POS_RULES => 'settings.index.edit',
         SettingsSchema::TAB_RECEIPT => 'settings.index.pos_layout',
         SettingsSchema::TAB_CREDIT => 'settings.index.edit',
+        SettingsSchema::TAB_CATALOG => 'settings.index.edit',
         // Esta no guarda ajustes: el permiso es el de verla. Pagar pide `manage_payment`.
         'membership' => 'settings.membership.view',
     ];
@@ -115,7 +117,7 @@ class SettingController extends Controller
     protected function brandAssets(array $settings): array
     {
         $url = fn (string $key) => is_array($settings[$key] ?? null) && is_string($settings[$key]['path'] ?? null)
-            ? '/storage/'.$settings[$key]['path']
+            ? Uploads::url($settings[$key]['path'])
             : null;
 
         return [

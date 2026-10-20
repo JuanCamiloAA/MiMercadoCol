@@ -3,11 +3,13 @@
 namespace App\Storefront\Blocks;
 
 use App\Models\StorefrontBlock;
+use Carbon\CarbonImmutable;
 
 /**
  * Oferta relampago: una promocion, su cuenta regresiva hasta que vence y sus articulos.
  *
  * Se va sola al vencer. Una promocion sin fecha de fin no tiene cuenta que llevar: no se pinta.
+ * El estilo «Lanzamiento» (`drop`) cuenta hasta su propia fecha y ofrece «Avísame» por WhatsApp.
  */
 class DealCountdownBlockData extends BlockData
 {
@@ -45,6 +47,21 @@ class DealCountdownBlockData extends BlockData
     public function fields(string $context = self::CONTEXT_STORE): array
     {
         $fields = [
+            'style' => [
+                'type' => 'select',
+                'label' => 'Estilo',
+                'options' => self::options([
+                    'flash' => 'Oferta relámpago: la promoción que vence, con sus artículos',
+                    'drop' => 'Lanzamiento: cuenta regresiva grande hasta una fecha',
+                ]),
+            ],
+            'starts_at' => [
+                'type' => 'datetime',
+                'label' => 'Sale el',
+                'help' => 'La fecha del lanzamiento. Cuando pasa, el bloque se va solo.',
+                'show_if' => ['field' => 'style', 'value' => 'drop'],
+            ],
+            'text' => ['type' => 'text', 'label' => 'Texto', 'max' => 120, 'show_if' => ['field' => 'style', 'value' => 'drop']],
             'title' => ['type' => 'text', 'label' => 'Título', 'max' => 40, 'help' => 'Vacío: el nombre de la promoción.'],
             'source' => [
                 'type' => 'select',
@@ -70,7 +87,7 @@ class DealCountdownBlockData extends BlockData
 
     public function defaults(): array
     {
-        return ['title' => null, 'source' => 'next_ending', 'promotion_id' => null, 'limit' => 8];
+        return ['title' => null, 'source' => 'next_ending', 'promotion_id' => null, 'limit' => 8, 'style' => 'flash', 'starts_at' => null, 'text' => null];
     }
 
     protected function ownViolations(array $payload): array
@@ -84,11 +101,34 @@ class DealCountdownBlockData extends BlockData
     {
         $title = $this->short($payload['title'] ?? '', 28);
 
+        if (($payload['style'] ?? 'flash') === 'drop') {
+            return 'Lanzamiento — '.($title !== '' ? $title : 'cuenta regresiva');
+        }
+
         return 'Oferta relámpago — '.($title !== '' ? $title : mb_strtolower(self::SOURCES[$payload['source'] ?? 'next_ending'] ?? ''));
     }
 
     public function isEmpty(array $payload): bool
     {
+        // Un lanzamiento sin fecha por venir no tiene nada que contar.
+        if (($payload['style'] ?? 'flash') === 'drop') {
+            return ! self::dropIsAhead($payload);
+        }
+
         return ($payload['source'] ?? '') === 'promotion' && empty($payload['promotion_id']);
+    }
+
+    /** Si el lanzamiento tiene su fecha en el futuro. */
+    public static function dropIsAhead(array $payload, ?CarbonImmutable $now = null): bool
+    {
+        if (empty($payload['starts_at'])) {
+            return false;
+        }
+
+        try {
+            return CarbonImmutable::parse((string) $payload['starts_at'], 'America/Bogota')->isAfter($now ?? CarbonImmutable::now());
+        } catch (\Throwable) {
+            return false;
+        }
     }
 }

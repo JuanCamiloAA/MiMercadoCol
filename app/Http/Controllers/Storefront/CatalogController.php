@@ -63,6 +63,7 @@ class CatalogController extends Controller
             // La portada la arma el editor. Sin bloques publicados, la tienda no queda en blanco:
             // salen las ofertas y los destacados.
             'blocks' => $blocks,
+            'headerOverlay' => StorefrontRenderer::headerOverlay($this->renderer->shell($store)['settings']['header'] ?? [], $blocks),
             'fallback' => $blocks === [] ? [
                 'deals' => $this->listing->list($store, ['deals' => true], ['sort' => 'price_asc'], $settings)['items'],
                 'featured' => $this->featured($store, $settings),
@@ -232,6 +233,8 @@ class CatalogController extends Controller
             'product' => array_merge($presented, [
                 'description' => ($page['show_description'] ?? true) ? $product->description : null,
                 'tax_rate' => (float) $product->tax_rate,
+                // Todas sus fotos, para el carrusel de la ficha; la tarjeta sigue con la portada.
+                'images' => $this->products->gallery($product),
             ]),
             'breadcrumbs' => array_values(array_filter([
                 $parent ? ['label' => $parent['name'], 'href' => $parent['href']] : null,
@@ -321,6 +324,7 @@ class CatalogController extends Controller
                 'category' => $found->category ? ['label' => $found->category->name, 'href' => '/tienda/categoria/'.$found->category->slug] : null,
                 'tax_rate' => (float) $found->tax_rate,
                 'pricing_mode' => $found->pricing_mode,
+                'images' => $this->products->serviceGallery($found),
             ],
             'blocks' => $this->renderer->published($store, StorefrontBlock::PAGE_PRODUCT, $this->context())['blocks'],
         ]);
@@ -354,7 +358,6 @@ class CatalogController extends Controller
             'min' => $request->filled('min') ? $request->integer('min') : null,
             'max' => $request->filled('max') ? $request->integer('max') : null,
             'deals' => $request->boolean('deals'),
-            'in_stock' => $request->boolean('in_stock'),
             'sort' => $request->string('sort')->toString() ?: null,
             'page' => max(1, $request->integer('page', 1)),
         ];

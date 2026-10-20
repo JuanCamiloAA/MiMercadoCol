@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'user_agent' => env('CATALOG_OFF_USER_AGENT', 'miMercadoCol/1.0 (contacto@lacanasta.co)'),
+    'user_agent' => env('CATALOG_OFF_USER_AGENT', 'AgoraShop/1.0 (contacto@lacanasta.co)'),
 
     'openfoodfacts' => [
         'base_url' => env('CATALOG_OFF_BASE_URL', 'https://world.openfoodfacts.org'),

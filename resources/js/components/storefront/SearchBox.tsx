@@ -26,6 +26,7 @@ export function SearchBox({
     suggestions: enabled,
     initial = '',
     tone = 'light',
+    variant = 'pill',
     autoFocus = false,
     className,
 }: {
@@ -33,9 +34,12 @@ export function SearchBox({
     suggestions: boolean;
     initial?: string;
     tone?: 'light' | 'onColor';
+    /** `underline`: una línea debajo, sin caja ni botón (el de las tiendas de moda). */
+    variant?: 'pill' | 'underline';
     autoFocus?: boolean;
     className?: string;
 }) {
+    const underline = variant === 'underline';
     const { interactive } = usePreviewMode();
     const [query, setQuery] = useState(initial);
     const [open, setOpen] = useState(false);
@@ -133,7 +137,11 @@ export function SearchBox({
                 <MagnifyingGlassIcon
                     size={19}
                     weight="bold"
-                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)]"
+                    className={cn(
+                        'pointer-events-none absolute top-1/2 -translate-y-1/2',
+                        underline ? 'left-0' : 'left-3.5',
+                        underline && tone === 'onColor' ? 'opacity-80' : 'text-[var(--muted)]',
+                    )}
                 />
                 <input
                     ref={input}
@@ -166,10 +174,20 @@ export function SearchBox({
                         }
                     }}
                     className={cn(
-                        'h-12 w-full rounded-full border-2 pl-11 pr-24 text-[15px] font-medium outline-none transition-colors placeholder:font-normal placeholder:text-[var(--muted)] [&::-webkit-search-cancel-button]:hidden',
-                        tone === 'onColor'
-                            ? 'border-transparent bg-[var(--surface)] text-[var(--text)] focus:border-[var(--surface)]'
-                            : 'border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] focus:border-[var(--accent)] focus:bg-[var(--surface)]',
+                        'w-full text-[15px] font-medium outline-none transition-colors placeholder:font-normal [&::-webkit-search-cancel-button]:hidden',
+                        underline
+                            ? cn(
+                                  'h-10 border-b bg-transparent pl-7 pr-9',
+                                  tone === 'onColor'
+                                      ? 'border-current text-current placeholder:text-current placeholder:opacity-70'
+                                      : 'border-[var(--line-2)] text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--text)]',
+                              )
+                            : cn(
+                                  'h-12 rounded-full border-2 pl-11 pr-24 placeholder:text-[var(--muted)]',
+                                  tone === 'onColor'
+                                      ? 'border-transparent bg-[var(--surface)] text-[var(--text)] focus:border-[var(--surface)]'
+                                      : 'border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] focus:border-[var(--accent)] focus:bg-[var(--surface)]',
+                              ),
                     )}
                 />
                 {query !== '' && (
@@ -180,17 +198,22 @@ export function SearchBox({
                             input.current?.focus();
                         }}
                         aria-label="Borrar la búsqueda"
-                        className="absolute right-[4.6rem] top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-full text-[var(--muted)] hover:bg-black/5"
+                        className={cn(
+                            'absolute top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-full hover:bg-black/5',
+                            underline ? 'right-0 opacity-70' : 'right-[4.6rem] text-[var(--muted)]',
+                        )}
                     >
                         <XIcon size={15} weight="bold" />
                     </button>
                 )}
-                <button
-                    type="submit"
-                    className="absolute right-1.5 top-1/2 h-9 -translate-y-1/2 rounded-full bg-[var(--accent)] px-4 text-[13.5px] font-bold text-[var(--accent-ink)] hover:brightness-110"
-                >
-                    Buscar
-                </button>
+                {!underline && (
+                    <button
+                        type="submit"
+                        className="absolute right-1.5 top-1/2 h-9 -translate-y-1/2 rounded-full bg-[var(--accent)] px-4 text-[13.5px] font-bold text-[var(--accent-ink)] hover:brightness-110"
+                    >
+                        Buscar
+                    </button>
+                )}
             </form>
 
             {showList && (

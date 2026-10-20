@@ -76,4 +76,10 @@ class FooterBlock extends LandingBlock
             'legal' => 'Todos los derechos reservados.',
         ];
     }
+
+    /** El pie no lleva la pestaña «Diseño»: se pinta igual en toda la landing. */
+    public function supportsAppearance(): bool
+    {
+        return false;
+    }
 }

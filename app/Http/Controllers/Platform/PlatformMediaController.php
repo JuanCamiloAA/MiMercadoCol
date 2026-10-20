@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Platform;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\MediaController;
 use App\Models\MediaAsset;
 use App\Services\ImageService;
+use App\Support\Uploads;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -18,10 +20,12 @@ class PlatformMediaController extends Controller
 {
     public function __construct(protected ImageService $images) {}
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        $kind = $request->query('kind') === 'video' ? 'video' : 'image';
+
         return response()->json([
-            'media' => MediaAsset::platform()->latest('id')->limit(60)->get()->map(fn (MediaAsset $asset) => $asset->toPayload()),
+            'media' => MediaAsset::platform()->ofKind($kind)->latest('id')->limit(60)->get()->map(fn (MediaAsset $asset) => $asset->toPayload()),
         ]);
     }
 
@@ -39,7 +43,7 @@ class PlatformMediaController extends Controller
 
         $asset = MediaAsset::createForPlatform([
             'path' => $stored['path'],
-            'disk' => 'public',
+            'disk' => Uploads::diskName(),
             'mime' => $validated['image']->getMimeType(),
             'width' => $stored['width'],
             'height' => $stored['height'],
@@ -48,6 +52,14 @@ class PlatformMediaController extends Controller
             'variants' => $stored['variants'],
             'created_by_user_id' => $request->user()->id,
         ]);
+
+        return response()->json(['media' => $asset->toPayload()], 201);
+    }
+
+    /** Un video para los bloques de video de las plantillas (`MediaController::videoAttributes`). */
+    public function storeVideo(Request $request): JsonResponse
+    {
+        $asset = MediaAsset::createForPlatform(MediaController::videoAttributes($request, 'storefront-platform/videos'));
 
         return response()->json(['media' => $asset->toPayload()], 201);
     }

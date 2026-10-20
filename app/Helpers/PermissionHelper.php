@@ -55,7 +55,7 @@ class PermissionHelper
                     'sale' => [
                         'display' => 'Venta',
                         'route' => 'pos.index',
-                        'actions' => ['view', 'create', 'discount', 'credit', 'cancel', 'suspend', 'refund', 'service_remove', 'service_reduce', 'service_increase', 'service_add'],
+                        'actions' => ['view', 'create', 'discount', 'credit', 'cancel', 'suspend', 'refund', 'service_remove', 'service_reduce', 'service_increase', 'service_add', 'gateway'],
                         'labels' => [
                             'view' => 'Abrir el punto de venta',
                             'create' => 'Registrar ventas',
@@ -68,6 +68,7 @@ class PermissionHelper
                             'service_reduce' => 'Usar menos cantidad de un artículo del servicio',
                             'service_increase' => 'Usar más cantidad de un artículo del servicio',
                             'service_add' => 'Agregar a un servicio un artículo que no trae',
+                            'gateway' => 'Cobrar con QR, link de pago o datáfono integrado',
                         ],
                     ],
                 ],
@@ -654,10 +655,19 @@ class PermissionHelper
                             'view' => 'Abrir el editor de la tienda',
                             'content' => 'Editar bloques y contenido',
                             'appearance' => 'Editar el aspecto: marca, color y tipografia',
-                            'settings' => 'Editar funciones: domicilio, franjas, pagos y cupones',
+                            'settings' => 'Editar funciones: domicilio, franjas y cupones',
                             'publish' => 'Publicar cambios',
                             'history' => 'Ver el historial y revertir',
                             'copy_store' => 'Copiar la configuracion a otras sedes',
+                        ],
+                    ],
+                    // Los correos del formulario de novedades del pie: datos personales, por eso aparte.
+                    'newsletter' => [
+                        'display' => 'Suscriptores',
+                        'route' => 'storefront.newsletter.index',
+                        'actions' => ['view'],
+                        'labels' => [
+                            'view' => 'Ver y descargar los correos suscritos a las novedades',
                         ],
                     ],
                 ],
@@ -688,6 +698,55 @@ class PermissionHelper
                         'labels' => [
                             'view' => 'Ver el plan, los vencimientos y los cobros',
                             'manage_payment' => 'Pagar, cambiar la tarjeta, la renovación y el plan',
+                        ],
+                    ],
+                ],
+            ],
+
+            // Los medios con que la empresa cobra sus ventas: los manuales y sus propias pasarelas.
+            // No confundir con la tarjeta con que la empresa paga su membresia (`settings.membership`).
+            'payment_methods' => [
+                'display' => 'Medios de pago',
+                'icon' => 'Wallet',
+                'order' => 20,
+                'pages' => [
+                    'index' => [
+                        'display' => 'Medios de pago',
+                        'route' => 'payment_methods.index',
+                        'actions' => ['view', 'create', 'edit', 'delete'],
+                        'labels' => [
+                            'view' => 'Ver los medios de pago',
+                            'create' => 'Crear medios de pago',
+                            'edit' => 'Editar, ordenar, encender y apagar medios de pago',
+                            'delete' => 'Eliminar medios de pago sin uso',
+                        ],
+                    ],
+                    'gateways' => [
+                        'display' => 'Pasarelas',
+                        'route' => 'payment_methods.gateways.index',
+                        'actions' => ['view', 'edit', 'test'],
+                        'labels' => [
+                            'view' => 'Ver las cuentas de pasarela',
+                            'edit' => 'Conectar cuentas, cambiar llaves y rotar el token del webhook',
+                            'test' => 'Probar la conexión con la pasarela',
+                        ],
+                    ],
+                    'terminals' => [
+                        'display' => 'Datáfonos integrados',
+                        'route' => 'payment_methods.terminals.index',
+                        'actions' => ['view', 'edit'],
+                        'labels' => [
+                            'view' => 'Ver los datáfonos',
+                            'edit' => 'Registrar datáfonos y enviar cobros de prueba',
+                        ],
+                    ],
+                    'transactions' => [
+                        'display' => 'Transacciones',
+                        'route' => 'payment_methods.transactions.index',
+                        'actions' => ['view', 'reconcile'],
+                        'labels' => [
+                            'view' => 'Ver las transacciones por pasarela',
+                            'reconcile' => 'Conciliar pagos: aplicarlos, abonarlos o registrar su reembolso',
                         ],
                     ],
                 ],
@@ -766,10 +825,27 @@ class PermissionHelper
                         'route' => 'platform.billing_cycles.index',
                         'actions' => ['view', 'create', 'edit', 'deactivate'],
                     ],
+                    'business_categories' => [
+                        'display' => 'Clasificaciones de empresa',
+                        'route' => 'platform.business_categories.index',
+                        'actions' => ['view', 'create', 'edit', 'deactivate'],
+                        'labels' => [
+                            'view' => 'Ver las clasificaciones',
+                            'create' => 'Crear clasificaciones',
+                            'edit' => 'Editar clasificaciones',
+                            'deactivate' => 'Activar y desactivar clasificaciones',
+                        ],
+                    ],
                     'gateway' => [
                         'display' => 'Pasarela de pagos',
                         'route' => 'platform.gateway.index',
                         'actions' => ['view', 'edit'],
+                    ],
+                    'maps' => [
+                        'display' => 'Mapas',
+                        'route' => 'platform.maps.index',
+                        'actions' => ['view', 'edit'],
+                        'labels' => ['view' => 'Ver el proveedor de mapas', 'edit' => 'Cambiar el proveedor y sus llaves'],
                     ],
                     'landing' => [
                         'display' => 'Landing pública',
@@ -800,13 +876,14 @@ class PermissionHelper
                     'index' => [
                         'display' => 'Listado de empresas',
                         'route' => 'companies.index',
-                        'actions' => ['view', 'create', 'edit', 'delete', 'switch'],
+                        'actions' => ['view', 'create', 'edit', 'delete', 'switch', 'entitlements'],
                         'labels' => [
                             'view' => 'Ver empresas',
                             'create' => 'Crear empresas',
                             'edit' => 'Editar empresas',
                             'delete' => 'Eliminar empresas',
                             'switch' => 'Cambiar la empresa activa',
+                            'entitlements' => 'Sumar o quitar funciones del plan y poner precio especial',
                         ],
                     ],
                 ],
@@ -869,11 +946,16 @@ class PermissionHelper
      * etiqueta. Se arma aqui y no en el front para que el nombre tecnico y el texto que lee
      * el administrador no se separen nunca.
      *
+     * Con `$only`, solo esos permisos: el asignador de una empresa pinta lo que su plan incluye y
+     * nada mas, ni deshabilitado. Un modulo o una pagina sin nada adentro no se pinta.
+     *
+     * @param  list<string>|null  $only
      * @return list<array<string, mixed>>
      */
-    public static function catalogue(bool $includeSuperAdminOnly = false): array
+    public static function catalogue(bool $includeSuperAdminOnly = false, ?array $only = null): array
     {
         $modules = [];
+        $allowed = $only !== null ? array_flip($only) : null;
 
         foreach (self::getPermissionMatrix() as $moduleKey => $config) {
             $superAdminOnly = (bool) ($config['super_admin_only'] ?? false);
@@ -889,6 +971,10 @@ class PermissionHelper
                 $permissions = [];
 
                 foreach ($pageConfig['actions'] as $action) {
+                    if ($allowed !== null && ! isset($allowed["{$moduleKey}.{$pageKey}.{$action}"])) {
+                        continue;
+                    }
+
                     $permissions[] = [
                         'name' => "{$moduleKey}.{$pageKey}.{$action}",
                         'label' => self::actionLabel($moduleKey, $pageKey, $action),
@@ -896,11 +982,19 @@ class PermissionHelper
                     $count++;
                 }
 
+                if ($permissions === []) {
+                    continue;
+                }
+
                 $groups[] = [
                     'key' => $pageKey,
                     'display' => $pageConfig['display'] ?? $pageKey,
                     'permissions' => $permissions,
                 ];
+            }
+
+            if ($groups === []) {
+                continue;
             }
 
             $modules[] = [
@@ -956,6 +1050,8 @@ class PermissionHelper
                 'pos.sale.service_remove',
                 'pos.sale.service_reduce',
                 'pos.sale.service_increase',
+                // Cobrar con el QR o el datafono de la pasarela de la empresa.
+                'pos.sale.gateway',
             ],
             'bodega' => array_merge(
                 [
@@ -1066,6 +1162,14 @@ class PermissionHelper
             // despues, rol por rol, igual que la importacion de maestras.
             'products.catalog_import.run',
             'products.catalog_import.cancel',
+            // Como se cobra y con que llaves es decision del administrador; el supervisor mira.
+            'payment_methods.index.create',
+            'payment_methods.index.edit',
+            'payment_methods.index.delete',
+            'payment_methods.gateways.edit',
+            'payment_methods.gateways.test',
+            'payment_methods.terminals.edit',
+            'payment_methods.transactions.reconcile',
         ];
 
         return array_values(array_filter(

@@ -10,15 +10,16 @@ use App\Models\Store;
 use App\Models\Storefront;
 use App\Models\StorefrontBlock;
 use App\Models\StorefrontTemplate;
-use App\Services\Membership\MembershipFeatures;
 use App\Services\Storefront\StorefrontEditorPayload;
 use App\Services\Storefront\StorefrontManager;
 use App\Services\Storefront\StorefrontPreviewBuilder;
 use App\Services\Storefront\StorefrontPublisher;
 use App\Services\Storefront\StorefrontRenderer;
 use App\Storefront\Blocks\BlockData;
+use App\Support\SectionAppearance;
 use App\Support\StoreContext;
 use App\Support\TenantContext;
+use App\Support\VideoOptions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
@@ -67,6 +68,8 @@ class EditorController extends Controller
                     'visible_to' => $block->visible_to?->format('Y-m-d\TH:i'),
                 ], $block->id))->values()->all(),
             'catalogue' => $this->payload->catalogue(BlockData::CONTEXT_STORE),
+            // Las opciones de la pestaña «Diseño» de cada bloque (tamaño, fondo, animacion).
+            'appearanceCatalogue' => SectionAppearance::groups(SectionAppearance::SURFACE_STORE),
             'theme' => $follows ? array_merge($this->manager->themePayload($storefront), $composed['theme'] ?? []) : $this->manager->themePayload($storefront),
             'settings' => $this->settingsPayload($storefront, $follows ? ($composed['settings'] ?? []) : null),
             'zones' => $storefront->zones->map(fn ($zone) => [
@@ -95,13 +98,21 @@ class EditorController extends Controller
                 'follows' => $follows,
                 'id' => $storefront->template_id,
                 'name' => $storefront->template?->name,
+                // Los colores que sugiere su plantilla: Aspecto ofrece aplicarlos, nunca solos.
+                'palette' => $storefront->template?->paletteSuggestion() ?: null,
+                // La galeria del selector: miniatura, para quien y sus colores sugeridos.
                 'available' => StorefrontTemplate::query()
+                    ->with('previewMedia')
                     ->where('is_active', true)
                     ->whereNotNull('published')
-                    ->orderByDesc('is_default')
+                    ->orderBy('sort_order')
                     ->orderBy('name')
-                    ->get(['id', 'name', 'description', 'is_default'])
-                    ->map(fn (StorefrontTemplate $template) => $template->only(['id', 'name', 'description', 'is_default']))
+                    ->get()
+                    ->map(fn (StorefrontTemplate $template) => [
+                        ...$template->only(['id', 'name', 'description', 'is_default', 'audience', 'audience_group']),
+                        'preview' => $template->previewThumbnail(),
+                        'palette' => $template->paletteSuggestion() ?: null,
+                    ])
                     ->values(),
             ],
             'endpoints' => $this->endpoints(),
@@ -113,9 +124,9 @@ class EditorController extends Controller
                 'history' => $request->user()->can('storefront.editor.history'),
                 'copy_store' => $request->user()->can('storefront.editor.copy_store'),
                 // Los cupones van con las promociones del plan: sin ellas no se ofrece el enlace.
-                'coupons' => $request->user()->can('coupons.index.view') && (bool) TenantContext::company()?->hasFeature(MembershipFeatures::PROMOTIONS),
+                'coupons' => $request->user()->can('coupons.index.view') && (bool) TenantContext::company()?->entitlement()->allowsNode('coupons.*'),
             ],
-            'media' => ['max_kb' => 4096, 'accept' => '.jpg,.jpeg,.png,.webp'],
+            'media' => ['max_kb' => 4096, 'accept' => '.jpg,.jpeg,.png,.webp', 'video_max_kb' => VideoOptions::MAX_VIDEO_KB, 'video_accept' => VideoOptions::ACCEPT],
         ]);
     }
 
@@ -170,6 +181,7 @@ class EditorController extends Controller
             'products' => route('storefront.editor.products'),
             'media_index' => route('media.index'),
             'media_store' => route('media.store'),
+            'media_video_store' => route('media.store-video'),
             'detach' => route('storefront.editor.template.detach'),
             'reattach' => route('storefront.editor.template.reattach'),
         ];

@@ -12,3 +12,7 @@ Schedule::command('membership:process')->dailyAt('03:00')->withoutOverlapping();
 // Saldo a favor: lo que vencio ayer deja de estar disponible (el cobro ya no lo toma; esto lo cierra
 // en el libro para que el saldo guardado cuadre con lo que el cliente puede gastar).
 Schedule::command('store-credit:expire')->dailyAt('02:30')->withoutOverlapping();
+
+// Pagos por pasarela: lo que vencio sin pagarse se cancela y libera lo apartado (inventario y saldo
+// a favor de los pedidos en linea). Cada minuto y sin solaparse.
+Schedule::command('payments:expire')->everyMinute()->withoutOverlapping();

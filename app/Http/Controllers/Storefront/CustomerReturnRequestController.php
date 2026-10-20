@@ -10,8 +10,8 @@ use App\Models\Order;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Services\CustomerReturnService;
+use App\Support\Uploads;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -55,7 +55,8 @@ class CustomerReturnRequestController extends Controller
                 'quantity' => round((float) $item->quantity, 3),
                 'available' => $available[$item->id] ?? 0,
                 'unit_price' => (float) $item->quantity > 0 ? (int) round($item->line_total / (float) $item->quantity) : 0,
-                'image' => $item->product?->thumb_path ?? $item->product?->image_path ?? $item->service?->thumb_path ?? $item->service?->image_path,
+                'image' => $path = $item->product?->thumb_path ?? $item->product?->image_path ?? $item->service?->thumb_path ?? $item->service?->image_path,
+                'image_url' => Uploads::url($path),
                 'includes' => $sale->items->where('parent_sale_item_id', $item->id)->pluck('description')->values(),
             ])
             ->values();
@@ -102,7 +103,7 @@ class CustomerReturnRequestController extends Controller
 
         abort_unless($path !== null, 404);
 
-        return Storage::disk('local')->response($path);
+        return Uploads::privateDisk()->response($path);
     }
 
     protected function owned(int $id): CustomerReturn

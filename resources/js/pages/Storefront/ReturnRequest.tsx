@@ -15,6 +15,7 @@ interface ReturnItem {
     available: number;
     unit_price: number;
     image: string | null;
+    image_url?: string | null;
     includes: string[];
 }
 
@@ -101,8 +102,8 @@ export default function StorefrontReturnRequest({ order, items, reasons, until, 
                             >
                                 <div className="flex items-start gap-3">
                                     <span className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-[11px] bg-[var(--surface-2)] text-[var(--muted)]">
-                                        {item.image ? (
-                                            <img src={`/storage/${item.image}`} alt="" className="h-full w-full object-cover" />
+                                        {item.image_url ? (
+                                            <img src={item.image_url} alt="" className="h-full w-full object-cover" />
                                         ) : item.is_service ? (
                                             <WrenchIcon size={22} />
                                         ) : (

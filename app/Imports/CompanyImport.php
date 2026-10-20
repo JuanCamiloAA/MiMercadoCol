@@ -5,6 +5,7 @@ namespace App\Imports;
 use App\Models\BillingCycle;
 use App\Models\Company;
 use App\Models\MembershipPlan;
+use App\Services\Platform\BusinessCategoryCatalog;
 use App\Services\Platform\CompanyProvisioner;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -52,6 +53,7 @@ class CompanyImport extends MasterImport
             'correo' => 'Correo de la empresa',
             'telefono' => 'Opcional',
             'ciudad' => 'Opcional',
+            'clasificacion' => 'Opcional: Alimentos y supermercados, Textiles y confección, Belleza…; vacía, la de alimentos',
             'plan' => 'Nombre o direccion del plan (basico, pro, cadena)',
             'ciclo' => 'Nombre o codigo del ciclo (monthly, Mensual, annual...)',
             'sede' => 'Nombre de la primera sede; si falta, «Principal»',
@@ -73,7 +75,7 @@ class CompanyImport extends MasterImport
     public function example(): array
     {
         return [
-            'Mercado La Esquina', '901234567-8', 'Mercado La Esquina S.A.S.', 'hola@laesquina.co', '6045551234', 'Itagüí',
+            'Mercado La Esquina', '901234567-8', 'Mercado La Esquina S.A.S.', 'hola@laesquina.co', '6045551234', 'Itagüí', 'Alimentos y supermercados',
             'pro', 'monthly', 'Centro', 'CEN', 'Calle 50 # 50-20', '6.1846', '-75.5991', 'Gloria', 'Mejía', 'gloria@laesquina.co',
         ];
     }
@@ -84,6 +86,7 @@ class CompanyImport extends MasterImport
             'Cada empresa nace completa: sede con su bodega, una caja, roles, plazos de pago y la tienda en línea apagada.',
             'El administrador recibe un correo para crear su contraseña; ninguna contraseña viaja en el archivo.',
             'Los topes del plan se revisan: una fila que no quepa en su plan se omite con el motivo.',
+            'La clasificación va por su nombre, como sale en Plataforma > Clasificaciones. Un archivo sin esa columna clasifica en alimentos, como antes.',
         ];
     }
 
@@ -107,6 +110,7 @@ class CompanyImport extends MasterImport
             throw new RuntimeException('el correo del administrador no es valido');
         }
 
+        $category = $this->category($this->text($row, 'clasificacion'));
         $latitude = $this->coordinate($row, 'latitud', 90);
         $longitude = $this->coordinate($row, 'longitud', 180);
 
@@ -118,6 +122,7 @@ class CompanyImport extends MasterImport
                 'email' => $this->text($row, 'correo'),
                 'phone' => $this->text($row, 'telefono'),
                 'city' => $this->text($row, 'ciudad'),
+                'business_category_id' => $category,
             ],
             'store' => [
                 'name' => $this->text($row, 'sede'),
@@ -166,6 +171,27 @@ class CompanyImport extends MasterImport
     public function rowLabel(array $row): string
     {
         return trim(($this->text($row, 'nombre') ?? '—').' · NIT '.($this->text($row, 'nit') ?? '—'));
+    }
+
+    /**
+     * La de la fila; vacia, la de alimentos, que es la de toda empresa que se cargaba antes de que
+     * hubiera clasificaciones. Una que no existe hace fallar la fila: adivinar la pondria donde no es.
+     */
+    protected function category(?string $value): ?int
+    {
+        $catalog = app(BusinessCategoryCatalog::class);
+
+        if ($value === null) {
+            return $catalog->defaultId();
+        }
+
+        $category = $catalog->findByText($value);
+
+        if (! $category) {
+            throw new RuntimeException("la clasificación «{$value}» no existe o está desactivada");
+        }
+
+        return $category->id;
     }
 
     protected function plan(string $value): MembershipPlan

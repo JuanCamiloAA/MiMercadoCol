@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\PaymentMethod;
 use App\Models\Storefront;
 use App\Models\StorefrontVersion;
 use App\Models\User;
+use App\Services\Payments\PaymentMethodCatalog;
 use App\Services\Storefront\StorefrontManager;
 use App\Services\Storefront\StorefrontPublisher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -92,10 +94,12 @@ class StorefrontPublishTest extends TestCase
     {
         $this->addBlock('announcement', ['text' => 'Hola']);
 
-        $this->storefront->settings()->updateOrCreate(
-            ['key' => 'payments'],
-            ['value' => ['cash_on_delivery' => false, 'card_on_delivery' => false, 'transfer' => false, 'customer_credit' => false]]
-        );
+        // Ningun medio encendido para la tienda en linea de la sede (Medios de pago).
+        PaymentMethod::query()->withoutGlobalScopes()
+            ->where('company_id', $this->company->id)
+            ->whereIn('system_key', ['cash_on_delivery', 'card_on_delivery', 'credit'])
+            ->update(['is_active' => false]);
+        app(PaymentMethodCatalog::class)->forget();
 
         $this->editor()->from(route('storefront.editor.index'))
             ->post(route('storefront.editor.publish'), ['label' => 'Intento'])

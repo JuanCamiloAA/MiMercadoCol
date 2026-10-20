@@ -8,6 +8,7 @@ import {
     type Icon,
 } from '@phosphor-icons/react';
 import type { ReactNode } from 'react';
+import { LiveRefresh } from '@/components/realtime/LiveRefresh';
 import { BrandMark } from '@/components/brand/BrandMark';
 import { BrandStyle } from '@/components/brand/BrandStyle';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
@@ -66,6 +67,8 @@ export default function PosLayout({ title, children, current }: PosLayoutProps) 
         <div className="flex h-screen overflow-hidden bg-[var(--bg)] text-[var(--text)]">
             <Head title={title} />
             <BrandStyle />
+            {/* Lo que cambia en otras pestañas llega solo (tiempo real). */}
+            <LiveRefresh />
 
             <nav className="flex h-full w-[4.5rem] shrink-0 flex-col items-center gap-2 overflow-y-auto border-r border-[var(--line)] bg-[var(--surface)] py-3">
                 <span className="mb-2" title={brand?.display_name ?? undefined}>

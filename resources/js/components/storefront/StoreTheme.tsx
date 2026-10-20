@@ -8,7 +8,7 @@ export type StoreThemeRow = StoreThemePayload;
  * Las parejas de fuentes que ofrece el editor: la del texto, la de los títulos y de dónde se
  * cargan. La tienda no usa las del panel: tiene su propia voz.
  */
-const FONTS: Record<string, { body: string; display: string; weight: number; href: string }> = {
+const FONTS: Record<string, { body: string; display: string; weight: number; href: string; price?: string }> = {
     moderna: {
         body: "'Inter', system-ui, sans-serif",
         display: "'Inter', system-ui, sans-serif",
@@ -33,6 +33,57 @@ const FONTS: Record<string, { body: string; display: string; weight: number; hre
         weight: 800,
         href: 'https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800;6..12,900&display=swap',
     },
+    grotesca: {
+        body: "'Archivo', system-ui, sans-serif",
+        display: "'Archivo', system-ui, sans-serif",
+        weight: 900,
+        href: 'https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap',
+    },
+    minimal: {
+        body: "'Manrope', system-ui, sans-serif",
+        display: "'Manrope', system-ui, sans-serif",
+        weight: 500,
+        href: 'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap',
+    },
+    lujo: {
+        body: "'Jost', system-ui, sans-serif",
+        display: "'Cormorant Garamond', Georgia, serif",
+        weight: 500,
+        href: 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Jost:wght@400;500;600;700&display=swap',
+    },
+    tecnica: {
+        body: "'IBM Plex Sans', system-ui, sans-serif",
+        display: "'IBM Plex Sans', system-ui, sans-serif",
+        weight: 700,
+        price: "'IBM Plex Mono', ui-monospace, monospace",
+        href: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap',
+    },
+    vitrina: {
+        body: "'Ubuntu', system-ui, sans-serif",
+        display: "'Ubuntu', system-ui, sans-serif",
+        weight: 700,
+        href: 'https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&display=swap',
+    },
+    urbano: {
+        body: "'Archivo', system-ui, sans-serif",
+        display: "'Anton', Impact, sans-serif",
+        weight: 400,
+        href: 'https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800&display=swap',
+    },
+    sastre: {
+        body: "'Inter', system-ui, sans-serif",
+        display: "'Playfair Display', Georgia, serif",
+        weight: 600,
+        href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap',
+    },
+};
+
+/** La letra del nombre cuando la sede se presenta sin logo (`logo_mode = name`). */
+const LOGO_FONTS: Record<string, { family: string; weight: number; href: string }> = {
+    italiana: { family: "'Italiana', Georgia, serif", weight: 400, href: 'https://fonts.googleapis.com/css2?family=Italiana&display=swap' },
+    cormorant: { family: "'Cormorant Garamond', Georgia, serif", weight: 600, href: 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&display=swap' },
+    playfair: { family: "'Playfair Display', Georgia, serif", weight: 700, href: 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap' },
+    anton: { family: "'Anton', Impact, sans-serif", weight: 400, href: 'https://fonts.googleapis.com/css2?family=Anton&display=swap' },
 };
 
 /** El radio de las esquinas, en la escala que usan los bloques de la tienda. */
@@ -41,6 +92,12 @@ const RADIUS: Record<string, [string, string]> = {
     soft: ['12px', '8px'],
     round: ['20px', '14px'],
 };
+
+/** El ancho de la página. «Normal» es el de siempre. */
+const CONTAINER: Record<string, string> = { normal: '1280px', wide: '1440px', full: '100%' };
+
+/** La forma de los botones; «Con las esquinas del tema» es la de siempre. */
+const BUTTON_RADIUS: Record<string, string | null> = { default: null, pill: '999px', square: '2px' };
 
 /**
  * Aplica el aspecto que la sede publicó.
@@ -58,6 +115,8 @@ export function StoreTheme({ theme, children, className }: { theme?: StoreThemeP
     const [radius, radiusSmall] = RADIUS[theme?.radius ?? 'soft'] ?? RADIUS.soft;
     const accent = theme?.accent ?? null;
     const deal = theme?.deal_color ?? '#D92D20';
+    const logoFont = LOGO_FONTS[theme?.logo_font ?? 'none'] ?? null;
+    const buttonRadius = BUTTON_RADIUS[theme?.button_shape ?? 'default'] ?? null;
 
     const style = {
         ...(accent
@@ -77,6 +136,12 @@ export function StoreTheme({ theme, children, className }: { theme?: StoreThemeP
         '--store-radius': radius,
         '--store-radius-sm': radiusSmall,
         '--store-gap': theme?.density === 'compact' ? '0.75rem' : '1.25rem',
+        '--store-max': CONTAINER[theme?.container ?? 'normal'] ?? CONTAINER.normal,
+        // El precio con su propia letra (la monoespaciada de «Técnica»); si no, la del texto.
+        '--store-price-font': font.price ?? 'inherit',
+        '--store-logo-font': logoFont?.family ?? 'var(--store-display)',
+        '--store-logo-weight': String(logoFont?.weight ?? font.weight),
+        ...(buttonRadius ? { '--store-btn-radius': buttonRadius } : {}),
         // Lo que dentro de la tienda use las fuentes del panel (títulos, cifras) toma las suyas.
         '--brand-font-body': font.body,
         '--brand-font-display': font.display,
@@ -85,9 +150,19 @@ export function StoreTheme({ theme, children, className }: { theme?: StoreThemeP
     } as CSSProperties;
 
     return (
-        <div className={className} style={style} data-store-buttons={theme?.button_style ?? 'solid'} data-store-shell="">
+        <div
+            className={className}
+            style={style}
+            data-store-buttons={theme?.button_style ?? 'solid'}
+            // El fondo, los títulos en mayúsculas y el ancho completo los pone `storefront.css`.
+            data-store-surface={theme?.surface && theme.surface !== 'white' ? theme.surface : undefined}
+            data-store-headings={theme?.heading_case === 'upper' ? 'upper' : undefined}
+            data-store-container={theme?.container === 'full' ? 'full' : undefined}
+            data-store-shell=""
+        >
             <Head>
                 <link rel="stylesheet" href={font.href} />
+                {logoFont && <link rel="stylesheet" href={logoFont.href} />}
             </Head>
             {children}
         </div>

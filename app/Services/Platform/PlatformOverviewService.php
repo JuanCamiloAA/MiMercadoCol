@@ -37,7 +37,7 @@ class PlatformOverviewService
         // Ingreso recurrente mensual: lo que cada empresa al dia paga al mes en su ciclo.
         $mrr = $companies
             ->filter(fn (Company $company) => $company->is_active && $company->membership_status === Company::MEMBERSHIP_ACTIVE && $company->plan && $company->cycle)
-            ->sum(fn (Company $company) => MembershipPricing::monthlyEquivalent($company->plan, $company->cycle));
+            ->sum(fn (Company $company) => MembershipPricing::monthlyEquivalent($company->plan, $company->cycle, $company));
 
         $expiring = $companies
             ->filter(fn (Company $company) => $company->is_active

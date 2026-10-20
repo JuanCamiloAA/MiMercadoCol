@@ -5,7 +5,7 @@ namespace Database\Seeders;
 use App\Models\BillingCycle;
 use App\Models\MembershipPlan;
 use App\Models\PaymentGatewaySetting;
-use App\Services\Membership\MembershipFeatures;
+use App\Services\Membership\Entitlements;
 use Illuminate\Database\Seeder;
 
 /**
@@ -37,7 +37,8 @@ class PlatformSeeder extends Seeder
                 'max_stores' => 1,
                 'max_users' => 5,
                 'max_registers' => 2,
-                'features' => [],
+                'entitlements' => Entitlements::preset('basico'),
+                'highlights' => ['Punto de venta con caja y cierre', 'Inventario, compras y proveedores', 'Clientes y cartera', 'Informes de ventas e inventario'],
                 'is_featured' => false,
             ],
             [
@@ -49,7 +50,8 @@ class PlatformSeeder extends Seeder
                 'max_stores' => 3,
                 'max_users' => 20,
                 'max_registers' => 8,
-                'features' => [MembershipFeatures::ONLINE_STORE, MembershipFeatures::PROMOTIONS],
+                'entitlements' => Entitlements::preset('pro'),
+                'highlights' => ['Todo lo del Básico', 'Tienda en línea con domicilios', 'Promociones y cupones', 'Hasta 3 sedes'],
                 'is_featured' => true,
             ],
             [
@@ -61,7 +63,8 @@ class PlatformSeeder extends Seeder
                 'max_stores' => null,
                 'max_users' => null,
                 'max_registers' => null,
-                'features' => array_keys(MembershipFeatures::CATALOGUE),
+                'entitlements' => Entitlements::preset('cadena'),
+                'highlights' => ['Todo lo del Pro', 'Sedes, usuarios y cajas sin tope', 'Varias bodegas por sede', 'Importar el catálogo externo'],
                 'is_featured' => false,
             ],
         ];

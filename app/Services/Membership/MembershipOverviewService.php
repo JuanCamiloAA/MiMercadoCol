@@ -18,6 +18,8 @@ class MembershipOverviewService
         protected MembershipBillingService $billing,
         protected MembershipLimiter $limiter,
         protected PlatformSettingsService $platform,
+        protected EntitlementService $entitlements,
+        protected PlanCatalogue $catalogue,
     ) {}
 
     /**
@@ -32,7 +34,9 @@ class MembershipOverviewService
         $card = $company->paymentMethod;
         $usableCard = $this->billing->usableCard($company);
         $canManage = $user->can('settings.membership.manage_payment');
-        $price = $company->plan && $company->cycle ? MembershipPricing::priceFor($company->plan, $company->cycle) : null;
+        $price = $company->plan && $company->cycle ? MembershipPricing::priceFor($company->plan, $company->cycle, $company) : null;
+        $special = $company->plan ? MembershipPricing::specialPrice($company, $company->plan) : null;
+        $entitlement = $this->entitlements->for($company);
 
         $quote = null;
 
@@ -53,7 +57,26 @@ class MembershipOverviewService
                 'id' => $company->plan->id,
                 'name' => $company->plan->name,
                 'description' => $company->plan->description,
-                'features' => $this->featureLabels($company->features()),
+                'modules' => $this->catalogue->modules($company->plan->entitlements),
+            ] : null,
+            // Lo que incluye: el arbol en solo lectura, con lo agregado y su vencimiento.
+            'entitlements' => [
+                'tree' => $entitlement->tree(),
+                'exceptions' => $company->entitlementExceptions()
+                    ->notExpired(now())
+                    ->get()
+                    ->map(fn ($exception) => [
+                        'id' => $exception->id,
+                        'node' => $exception->node,
+                        'label' => Entitlements::label($exception->node),
+                        'effect' => $exception->effect,
+                        'starts_at' => $exception->starts_at?->toIso8601String(),
+                        'ends_at' => $exception->ends_at?->toIso8601String(),
+                    ])->values()->all(),
+            ],
+            'special_price' => $special ? [
+                'description' => $special->describe(),
+                'ends_at' => $special->ends_at?->toIso8601String(),
             ] : null,
             'cycle' => $company->cycle ? ['id' => $company->cycle->id, 'name' => $company->cycle->name, 'months' => $company->cycle->months] : null,
             'price' => $price,
@@ -94,7 +117,7 @@ class MembershipOverviewService
                 ->where('method', MembershipCharge::METHOD_SAVED_CARD)
                 ->where('created_at', '>=', now()->subDay())
                 ->exists(),
-            'plans' => $canManage ? $this->planOptions($cycles) : [],
+            'plans' => $canManage ? $this->planOptions($company, $cycles) : [],
             'cycles' => $canManage ? $cycles->map(fn (BillingCycle $cycle) => [
                 'id' => $cycle->id,
                 'name' => $cycle->name,
@@ -126,8 +149,11 @@ class MembershipOverviewService
      * @param  \Illuminate\Support\Collection<int, BillingCycle>  $cycles
      * @return list<array<string, mixed>>
      */
-    protected function planOptions($cycles): array
+    protected function planOptions(Company $company, $cycles): array
     {
+        $current = $this->entitlements->for($company)->permissions();
+        $exceptions = $company->entitlementExceptions()->notExpired(now())->get();
+
         return MembershipPlan::query()
             ->where('is_active', true)
             ->orderBy('sort_order')
@@ -137,22 +163,19 @@ class MembershipOverviewService
                 'id' => $plan->id,
                 'name' => $plan->name,
                 'description' => $plan->description,
-                'features' => $this->featureLabels(MembershipFeatures::sanitize($plan->features)),
+                'modules' => $this->catalogue->modules($plan->entitlements),
+                // Que gana y que pierde la empresa con ese plan, con sus excepciones encima.
+                'diff' => $this->catalogue->diff(
+                    $current,
+                    $this->entitlements->build((int) $company->id, true, $plan->entitlements, $exceptions, now())->permissions(),
+                ),
                 'limits' => [
                     'stores' => $plan->max_stores,
                     'users' => $plan->max_users,
                     'registers' => $plan->max_registers,
                 ],
-                'prices' => (object) MembershipPricing::priceTable($plan, $cycles),
+                // El precio de ESTA empresa en cada plan: con su precio especial, si lo tiene.
+                'prices' => (object) MembershipPricing::priceTable($plan, $cycles, $company),
             ])->values()->all();
-    }
-
-    /**
-     * @param  list<string>  $features
-     * @return list<string>
-     */
-    protected function featureLabels(array $features): array
-    {
-        return array_values(array_map(fn (string $key) => MembershipFeatures::CATALOGUE[$key]['label'] ?? $key, $features));
     }
 }

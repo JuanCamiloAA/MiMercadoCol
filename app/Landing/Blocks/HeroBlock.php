@@ -2,6 +2,8 @@
 
 namespace App\Landing\Blocks;
 
+use App\Support\MediaVariants;
+
 /** La portada: mensaje principal, imagen y el botón al buscador. */
 class HeroBlock extends LandingBlock
 {
@@ -31,7 +33,7 @@ class HeroBlock extends LandingBlock
             'eyebrow' => ['type' => 'text', 'label' => 'Antetítulo', 'max' => 40],
             'title' => ['type' => 'text', 'label' => 'Título', 'max' => 90],
             'subtitle' => ['type' => 'textarea', 'label' => 'Texto', 'max' => 240],
-            'image' => ['type' => 'image', 'label' => 'Imagen'],
+            ...MediaVariants::field('image', ['type' => 'image', 'label' => 'Imagen'], MediaVariants::SURFACE_LANDING),
             'cta_label' => ['type' => 'text', 'label' => 'Botón principal', 'max' => 30],
             'cta_url' => ['type' => 'url', 'label' => 'Destino del botón principal'],
             'secondary_label' => ['type' => 'text', 'label' => 'Botón secundario', 'max' => 30],

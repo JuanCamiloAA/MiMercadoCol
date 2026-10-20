@@ -58,6 +58,10 @@ export interface OrderLine {
 export interface PurchaseCreateProps {
     suppliers: (SelectOption & { payment_term_id: number | null })[];
     supplierId: number | null;
+    /** Artículos que entran solos al abrir (desde Tienda en línea). */
+    preload?: CatalogProduct[];
+    /** Bodega donde se va a recibir, si no es la de recibo por defecto. */
+    warehouse?: { id: number; name: string } | null;
     products: CatalogProduct[];
     counts: { total: number; low_stock: number };
     store: { id: number; name: string } | null;

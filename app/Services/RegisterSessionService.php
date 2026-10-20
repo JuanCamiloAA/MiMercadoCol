@@ -111,16 +111,21 @@ class RegisterSessionService
      */
     public function summary(RegisterSession $session): array
     {
+        // Por medio configurado (Nequi y Daviplata son transferencias, pero el cajero los cuadra
+        // por separado), en el orden de Medios de pago. `method` sigue siendo el tipo.
         $byMethod = SalePayment::query()
             ->join('sales', 'sales.id', '=', 'sale_payments.sale_id')
+            ->leftJoin('payment_methods', 'payment_methods.id', '=', 'sale_payments.payment_method_id')
             ->where('sales.register_session_id', $session->id)
             ->where('sales.status', '!=', Sale::STATUS_CANCELLED)
-            ->groupBy('sale_payments.method')
-            ->selectRaw('sale_payments.method, SUM('.SalePayment::NET_AMOUNT_SQL.') as total, COUNT(*) as count')
+            ->groupBy('sale_payments.method', 'sale_payments.payment_method_id', 'payment_methods.name', 'payment_methods.sort_order')
+            ->selectRaw('sale_payments.method, sale_payments.payment_method_id, payment_methods.name as method_name, payment_methods.sort_order, SUM('.SalePayment::NET_AMOUNT_SQL.') as total, COUNT(*) as count')
+            ->orderByRaw('payment_methods.sort_order IS NULL, payment_methods.sort_order')
             ->get()
             ->map(fn ($row) => [
                 'method' => $row->method,
-                'label' => SalePayment::METHOD_LABELS[$row->method] ?? $row->method,
+                'payment_method_id' => $row->payment_method_id ? (int) $row->payment_method_id : null,
+                'label' => $row->method_name ?: (SalePayment::METHOD_LABELS[$row->method] ?? $row->method),
                 'total' => (int) $row->total,
                 'count' => (int) $row->count,
             ])

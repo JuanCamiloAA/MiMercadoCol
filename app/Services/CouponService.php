@@ -2,14 +2,13 @@
 
 namespace App\Services;
 
-use App\Models\Company;
 use App\Models\Coupon;
 use App\Models\CouponRedemption;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Storefront;
-use App\Services\Membership\MembershipFeatures;
+use App\Services\Membership\EntitlementService;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -35,8 +34,8 @@ class CouponService
         int $deliveryFee,
         ?Customer $customer = null,
     ): array {
-        // Los cupones van con las promociones en el plan: sin ellas no se aplica ninguno.
-        if (! Company::query()->find($storefront->company_id)?->hasFeature(MembershipFeatures::PROMOTIONS)) {
+        // Sin cupones en el plan (o quitados por excepcion) no se aplica ninguno.
+        if (! app(EntitlementService::class)->forCompanyId((int) $storefront->company_id)?->allowsNode('coupons.*')) {
             throw ValidationException::withMessages(['coupon' => ['Esta tienda no tiene cupones activos.']]);
         }
 

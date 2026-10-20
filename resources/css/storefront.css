@@ -1,0 +1,83 @@
+/* ==========================================================================
+ * Tema de la tienda en línea (`StoreTheme.tsx`): lo que no cabe en una variable.
+ *
+ * Cada regla cuelga de un atributo que `StoreTheme` solo escribe si la sede eligió algo distinto
+ * de lo de siempre: una tienda que no tocó estas opciones se ve exactamente igual.
+ * ========================================================================== */
+
+/* El fondo de la página. En esquema oscuro manda el oscuro: estos tonos son para el claro. */
+html:not([data-theme='dark']) [data-store-shell][data-store-surface='warm'] {
+    --bg: #f7f2ea;
+}
+
+html:not([data-theme='dark']) [data-store-shell][data-store-surface='cool'] {
+    --bg: #f2f3f5;
+}
+
+html:not([data-theme='dark']) [data-store-shell][data-store-surface='sage'] {
+    --bg: #f3f6ef;
+}
+
+html:not([data-theme='dark']) [data-store-shell][data-store-surface='sand'] {
+    --bg: #f6f0e7;
+}
+
+/* Títulos en mayúsculas con espaciado: el de las tiendas de moda. */
+[data-store-shell][data-store-headings='upper'] :is(h1, h2, h3) {
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+/* Toda la pantalla: sin tope de ancho y con más aire a los lados en computador. */
+@media (min-width: 1024px) {
+    [data-store-shell][data-store-container='full'] {
+        --store-gutter: 3rem;
+    }
+}
+
+/* Con el encabezado sobre la portada, el banner de borde a borde arranca justo debajo de la barra de
+   arriba: sin el relleno de la página ni el margen que lo subía hasta el encabezado. */
+main[data-header-overlay] {
+    padding-top: 0;
+}
+
+main[data-header-overlay] .sec[data-surface='store']:first-child,
+main[data-header-overlay] .sec[data-surface='store'][data-frame][data-pt]:first-child {
+    margin-top: 0;
+}
+
+/* El precio con la letra que pide el tema (la monoespaciada de «Técnica»). */
+[data-store-shell] [data-store-price] {
+    font-family: var(--store-price-font, inherit);
+}
+
+/* La cinta que corre (`TickerBlock`): el contenido va dos veces y se corre medio ancho, así el
+   bucle no tiene salto. Quieta al pasar el mouse y para quien pidió menos movimiento. */
+@keyframes store-ticker {
+    from {
+        transform: translateX(0);
+    }
+    to {
+        transform: translateX(-50%);
+    }
+}
+
+.store-ticker-track {
+    animation: store-ticker var(--ticker-duration, 30s) linear infinite;
+}
+
+.store-ticker:hover .store-ticker-track {
+    animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .store-ticker-track {
+        animation: none;
+    }
+}
+
+/* El nombre de la sede cuando se presenta sin logo. */
+[data-store-shell] [data-store-wordmark] {
+    font-family: var(--store-logo-font, var(--store-display));
+    font-weight: var(--store-logo-weight, 800);
+}

@@ -1,4 +1,4 @@
-import { BannerImage } from '@/components/storefront/BannerImage';
+import { BannerImage, bannerMedia } from '@/components/storefront/BannerImage';
 import { Carousel } from '@/components/storefront/Carousel';
 import { cn } from '@/lib/cn';
 import { BlockTitle, TargetLink, text, type BlockProps, type MediaPayload, type Target } from './shared';
@@ -52,8 +52,7 @@ export function PromoCarouselBlock({ data, priority = false }: BlockProps) {
                         className={cn('relative block overflow-hidden rounded-[var(--store-radius)] bg-[var(--surface-2)]', height)}
                     >
                         <BannerImage
-                            media={slide.media}
-                            mobile={slide.media_mobile}
+                            {...bannerMedia(slide)}
                             priority={priority && index === 0}
                             className="absolute inset-0"
                             sizes={`(max-width: 767px) 88vw, ${Math.round(1180 / perView)}px`}

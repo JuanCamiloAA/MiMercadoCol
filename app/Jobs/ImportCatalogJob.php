@@ -7,11 +7,11 @@ use App\Services\Catalog\CatalogImporter;
 use App\Services\Catalog\CsvCatalogReader;
 use App\Services\Catalog\OpenFoodFactsClient;
 use App\Services\Catalog\SearchCriteria;
+use App\Support\Uploads;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Recorre la fuente y va metiendo lo que encuentra.
@@ -182,11 +182,11 @@ class ImportCatalogJob implements ShouldBeUnique, ShouldQueue
 
     protected function runCsv(CatalogImport $import, CatalogImporter $importer, CsvCatalogReader $reader): void
     {
-        if ($this->csvPath === null || ! Storage::disk('local')->exists($this->csvPath)) {
+        if ($this->csvPath === null || ! Uploads::privateDisk()->exists($this->csvPath)) {
             throw new \RuntimeException('El archivo de la importación ya no está disponible.');
         }
 
-        $path = Storage::disk('local')->path($this->csvPath);
+        $path = Uploads::localPath(Uploads::privateDiskName(), $this->csvPath);
         $chunkSize = (int) config('catalog.import.chunk');
         $seen = [];
         $processed = 0;
@@ -204,7 +204,7 @@ class ImportCatalogJob implements ShouldBeUnique, ShouldQueue
                 $import->update(['total_detected' => $processed]);
             }
         } finally {
-            Storage::disk('local')->delete($this->csvPath);
+            Uploads::privateDisk()->delete($this->csvPath);
         }
     }
 
@@ -247,7 +247,7 @@ class ImportCatalogJob implements ShouldBeUnique, ShouldQueue
         }
 
         if ($this->csvPath !== null) {
-            Storage::disk('local')->delete($this->csvPath);
+            Uploads::privateDisk()->delete($this->csvPath);
         }
     }
 

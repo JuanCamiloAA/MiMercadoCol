@@ -4,18 +4,23 @@ namespace App\Http\Controllers\Storefront;
 
 use App\Http\Controllers\Controller;
 use App\Models\Coupon;
+use App\Models\Customer;
 use App\Models\Order;
+use App\Models\PaymentMethod;
 use App\Models\Store;
 use App\Services\CartService;
 use App\Services\CouponService;
 use App\Services\CreditService;
 use App\Services\OrderService;
+use App\Services\Payments\OnlineOrderPayments;
+use App\Services\Payments\PaymentContext;
+use App\Services\Payments\PaymentMethodAvailability;
 use App\Services\StoreCreditService;
 use App\Services\Storefront\StorefrontConfig;
 use App\Support\StorefrontContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -32,6 +37,8 @@ class CheckoutController extends Controller
         protected CouponService $coupons,
         protected StorefrontConfig $config,
         protected StoreCreditService $storeCredits,
+        protected PaymentMethodAvailability $paymentAvailability,
+        protected OnlineOrderPayments $onlinePayments,
     ) {}
 
     public function create(Request $request): Response|RedirectResponse
@@ -45,15 +52,20 @@ class CheckoutController extends Controller
             return redirect()->route('storefront.cart.index')->with('warning', 'Tu carrito esta vacio.');
         }
 
+        // Algo se agoto (o se despublico) entre el carrito y el pago: se vuelve al carrito a quitarlo.
+        if ($summary['has_unavailable']) {
+            return redirect()->route('storefront.cart.index')->with('warning', 'Uno de los artículos se agotó. Quítalo del carrito para seguir.');
+        }
+
         $settings = $this->config->settings($store);
         $zones = $this->config->zones($store);
         $slots = $this->config->slots($store);
-        $methods = $this->config->paymentMethods($store);
 
         $zoneIndex = $request->session()->get('storefront.zone');
         $deliveryFee = $this->config->deliveryFee($store, $summary['subtotal'], is_int($zoneIndex) ? $zoneIndex : null);
         $coupon = $this->currentCoupon($request, $store, $summary, $deliveryFee);
         $total = max(0, $summary['subtotal'] + ($coupon['free_delivery'] ? 0 : $deliveryFee) - $coupon['discount']);
+        $storeCredit = $this->storeCredits->available($customer);
 
         $minimum = (int) ($settings['delivery']['min_order_total'] ?? 0);
 
@@ -76,10 +88,12 @@ class CheckoutController extends Controller
             'zones' => $zones,
             'zone' => is_int($zoneIndex) ? $zoneIndex : null,
             'slots' => $slots,
-            'methods' => collect($methods)
-                ->map(fn (string $method) => ['value' => $method, 'label' => Order::PAYMENT_LABELS[$method]])
-                ->values()
-                ->all(),
+            // Los medios que valen en esta sede, por este monto y para este cliente, agrupados. Si usa
+            // su saldo a favor, el medio paga menos: puede valer uno que con el total no valia.
+            'paymentGroups' => $this->paymentAvailability->groupedForCheckout($this->onlineMethods($store, $customer, $total)),
+            'paymentGroupsWithStoreCredit' => $storeCredit > 0
+                ? $this->paymentAvailability->groupedForCheckout($this->onlineMethods($store, $customer, max(0, $total - min($storeCredit, $total))))
+                : null,
             'coupon' => $coupon['code'] === null ? null : [
                 'code' => $coupon['code'],
                 'discount' => $coupon['discount'],
@@ -93,7 +107,7 @@ class CheckoutController extends Controller
                 'delivery_notes' => $customer->delivery_notes,
             ],
             // Saldo a favor por devoluciones: se puede usar como parte del pago.
-            'storeCredit' => $this->storeCredits->available($customer),
+            'storeCredit' => $storeCredit,
             'credit' => [
                 'enabled' => (bool) $customer->credit_enabled,
                 'blocked' => (bool) $customer->credit_blocked,
@@ -178,28 +192,28 @@ class CheckoutController extends Controller
             return redirect()->route('storefront.cart.index')->with('warning', 'Tu carrito esta vacio.');
         }
 
+        // Algo se agoto (o se despublico) entre el carrito y el pago: se vuelve al carrito a quitarlo.
+        if ($summary['has_unavailable']) {
+            return redirect()->route('storefront.cart.index')->with('warning', 'Uno de los artículos se agotó. Quítalo del carrito para seguir.');
+        }
+
         $settings = $this->config->settings($store);
         $zones = $this->config->zones($store);
         $slots = $this->config->slots($store);
-        $methods = $this->config->paymentMethods($store);
-
-        if ($methods === []) {
-            return back()->withErrors(['payment_method' => 'Esta sede no tiene medios de pago habilitados.']);
-        }
 
         $validated = $request->validate([
             'delivery_address' => ['required', 'string', 'max:160'],
             'delivery_notes' => ['nullable', 'string', 'max:160'],
             'zone' => [$zones === [] ? 'nullable' : 'required', 'integer', 'min:0'],
             'slot' => [$slots === [] ? 'nullable' : 'required', 'string', 'max:40'],
-            'payment_method' => ['required', Rule::in($methods)],
+            // El medio configurado; la clave de siempre (`cash_on_delivery`, `credit`...) tambien vale.
+            'payment_method_id' => ['nullable', 'integer'],
+            'payment_method' => ['nullable', 'string', 'max:30'],
             'use_store_credit' => ['nullable', 'boolean'],
         ], [
             'delivery_address.required' => 'Escribe la direccion de entrega.',
             'zone.required' => 'Elige tu zona de entrega.',
             'slot.required' => 'Elige una franja de entrega.',
-            'payment_method.required' => 'Elige como vas a pagar.',
-            'payment_method.in' => 'Ese medio de pago no esta disponible en esta sede.',
         ]);
 
         $minimum = (int) ($settings['delivery']['min_order_total'] ?? 0);
@@ -248,7 +262,15 @@ class CheckoutController extends Controller
         $useStoreCredit = $request->boolean('use_store_credit');
         $storeCredit = $useStoreCredit ? min($this->storeCredits->available($customer), $total) : 0;
 
-        if ($validated['payment_method'] === Order::PAYMENT_CREDIT && $total - $storeCredit > 0) {
+        // El medio se revalida aqui, por lo que de verdad se va a pagar con el: la lista que vio
+        // el cliente es una sugerencia.
+        $method = $this->chosenMethod($validated, $this->onlineMethods($store, $customer, $total - $storeCredit), $store, $customer, $total - $storeCredit);
+
+        if (is_string($method)) {
+            return back()->withErrors(['payment_method' => $method]);
+        }
+
+        if ($method->kind === PaymentMethod::KIND_CREDIT && $total - $storeCredit > 0) {
             $reason = $this->credit->rejectionReason($customer, $total - $storeCredit);
 
             if ($reason !== null) {
@@ -266,7 +288,7 @@ class CheckoutController extends Controller
                 'substitution_policy' => $item['substitution_policy'],
             ], $summary['items']),
             'channel' => Order::CHANNEL_APP,
-            'payment_method' => $validated['payment_method'],
+            'payment_method_id' => $method->id,
             'delivery_address' => $validated['delivery_address'],
             'delivery_notes' => $validated['delivery_notes'] ?? null,
             'delivery_slot_start' => $slot['starts_at'] ?? null,
@@ -276,6 +298,18 @@ class CheckoutController extends Controller
             'use_store_credit' => $useStoreCredit,
         ], $store);
 
+        // Pago en linea: el pedido espera a la pasarela. Si no se puede abrir el cobro, el pedido se
+        // cancela solo y el carrito queda como estaba para elegir otro medio.
+        $transaction = null;
+
+        if ($order->status === Order::STATUS_PENDING_PAYMENT) {
+            try {
+                $transaction = $this->onlinePayments->start($order, $customer);
+            } catch (ValidationException $exception) {
+                return back()->withErrors(['payment_method' => collect($exception->errors())->flatten()->first() ?? 'No pudimos abrir el pago en línea.']);
+            }
+        }
+
         if ($coupon['model'] instanceof Coupon) {
             $this->coupons->redeem($coupon['model'], $order, $coupon['discount'], $customer);
         }
@@ -283,7 +317,60 @@ class CheckoutController extends Controller
         $this->carts->clear($cart);
         $request->session()->forget([self::COUPON_SESSION_KEY, 'storefront.zone']);
 
+        if ($transaction) {
+            return redirect()->route('storefront.payments.show', $transaction->reference);
+        }
+
         return redirect()->route('storefront.orders.show', $order)->with('success', 'Recibimos tu pedido.');
+    }
+
+    /**
+     * Los medios que el cliente puede elegir en la tienda de esta sede, por ese monto. El saldo a
+     * favor va aparte (se marca y se descuenta primero) y el cambio por devolucion nunca aparece.
+     *
+     * @return Collection<int, PaymentMethod>
+     */
+    protected function onlineMethods(Store $store, Customer $customer, int $amount): Collection
+    {
+        return $this->paymentAvailability
+            ->available($store->company_id, PaymentContext::online($store->id, $amount, $customer, 'delivery'))
+            ->reject(fn (PaymentMethod $method) => in_array($method->kind, [PaymentMethod::KIND_STORE_CREDIT, PaymentMethod::KIND_EXCHANGE], true))
+            ->values();
+    }
+
+    /**
+     * El medio elegido, o por que no vale.
+     *
+     * @param  array<string, mixed>  $validated
+     * @param  Collection<int, PaymentMethod>  $available
+     */
+    protected function chosenMethod(array $validated, Collection $available, Store $store, Customer $customer, int $amount): PaymentMethod|string
+    {
+        if ($available->isEmpty()) {
+            return 'Esta sede no tiene medios de pago habilitados.';
+        }
+
+        if (! empty($validated['payment_method_id'])) {
+            $method = $available->firstWhere('id', (int) $validated['payment_method_id']);
+
+            if ($method) {
+                return $method;
+            }
+
+            $configured = PaymentMethod::query()->withoutGlobalScopes()->where('company_id', $store->company_id)->find((int) $validated['payment_method_id']);
+
+            return $configured
+                ? ($this->paymentAvailability->reason($configured, PaymentContext::online($store->id, $amount, $customer, 'delivery')) ?? 'Ese medio de pago no esta disponible en esta sede.')
+                : 'Ese medio de pago no esta disponible en esta sede.';
+        }
+
+        if (! empty($validated['payment_method'])) {
+            $kind = Order::kindFor((string) $validated['payment_method']);
+
+            return $available->firstWhere('kind', $kind) ?? 'Ese medio de pago no esta disponible en esta sede.';
+        }
+
+        return 'Elige como vas a pagar.';
     }
 
     /**

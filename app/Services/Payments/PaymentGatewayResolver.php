@@ -52,6 +52,6 @@ class PaymentGatewayResolver
     {
         $settings = $this->settings();
 
-        return new WompiService($settings, $this->credential($settings->environment));
+        return new WompiService(WompiCredentials::fromPlatform($settings, $this->credential($settings->environment)));
     }
 }

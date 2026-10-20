@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Middleware\EnsurePlanFeatures;
 use App\Http\Requests\StoreWarehouseRequest;
 use App\Models\ProductStock;
 use App\Models\StockMovement;
 use App\Models\Store;
 use App\Models\Warehouse;
+use App\Services\Membership\EntitlementService;
 use App\Services\Membership\MembershipFeatures;
 use App\Services\WarehouseService;
 use App\Support\TenantContext;
@@ -52,7 +52,7 @@ class WarehouseController extends Controller
         $company = TenantContext::company();
 
         if ($company && ! $company->hasFeature(MembershipFeatures::MULTI_WAREHOUSE)) {
-            throw ValidationException::withMessages(['name' => EnsurePlanFeatures::message(MembershipFeatures::MULTI_WAREHOUSE)]);
+            throw ValidationException::withMessages(['name' => EntitlementService::deniedMessage('stores.warehouses.create')]);
         }
 
         DB::transaction(function () use ($request, $store) {

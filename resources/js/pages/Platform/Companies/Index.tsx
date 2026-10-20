@@ -21,6 +21,7 @@ interface CompanyRow {
     name: string;
     tax_id: string;
     city: string | null;
+    category: string | null;
     is_active: boolean;
     plan: string | null;
     cycle: string | null;
@@ -39,10 +40,11 @@ interface Option {
 
 interface CompaniesIndexProps {
     companies: Paginated<CompanyRow>;
-    filters: { q: string; estado: string; plan: string; orden: string };
+    filters: { q: string; estado: string; plan: string; clasificacion: string; orden: string };
     counts: Record<string, number>;
     statusOptions: Option[];
     planOptions: Option[];
+    categoryOptions: Option[];
     sortOptions: Option[];
     activeCompanyId: number | null;
 }
@@ -50,7 +52,7 @@ interface CompaniesIndexProps {
 /**
  * Plataforma > Empresas: todas las empresas cliente, su membresia y su uso.
  */
-export default function CompaniesIndex({ companies, filters: initialFilters, counts, statusOptions, planOptions, sortOptions, activeCompanyId }: CompaniesIndexProps) {
+export default function CompaniesIndex({ companies, filters: initialFilters, counts, statusOptions, planOptions, categoryOptions, sortOptions, activeCompanyId }: CompaniesIndexProps) {
     const { can } = usePermission();
     const { flash } = usePage<PageProps>().props;
     const { filters, update, reset, hasActive } = useFilters('companies.index', initialFilters);
@@ -116,9 +118,10 @@ export default function CompaniesIndex({ companies, filters: initialFilters, cou
             </div>
 
             <Card className="mb-4">
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
                     <SearchInput placeholder="Nombre, NIT, ciudad o correo" value={filters.q} onChange={(event) => update('q', event.target.value)} />
                     <Select options={planOptions} placeholder="Todos los planes" value={filters.plan} onChange={(event) => update('plan', event.target.value)} />
+                    <Select options={categoryOptions} placeholder="Todas las clasificaciones" value={filters.clasificacion} onChange={(event) => update('clasificacion', event.target.value)} />
                     <Select options={sortOptions.filter((option) => option.value !== '')} placeholder="Por nombre" value={filters.orden} onChange={(event) => update('orden', event.target.value)} />
                     {hasActive && (
                         <Button variant="ghost" onClick={reset}>
@@ -156,6 +159,7 @@ export default function CompaniesIndex({ companies, filters: initialFilters, cou
                                             NIT {company.tax_id}
                                             {company.city ? ` · ${company.city}` : ''}
                                         </p>
+                                        {company.category && <p className="text-[0.75rem] text-[var(--muted)]">{company.category}</p>}
                                     </TD>
                                     <TD>
                                         <p className="text-[0.8125rem]">{company.plan ?? 'Sin plan'}</p>

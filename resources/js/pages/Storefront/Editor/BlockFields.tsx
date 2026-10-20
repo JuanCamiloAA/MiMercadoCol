@@ -1,6 +1,7 @@
-import { CameraIcon, ImageIcon, MagnifyingGlassIcon, PlusIcon, TrashIcon, XIcon } from '@phosphor-icons/react';
+import { CameraIcon, FilmStripIcon, ImageIcon, MagnifyingGlassIcon, MoonIcon, PlusIcon, SunIcon, TrashIcon, XIcon } from '@phosphor-icons/react';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { SchemeSwitch, useEditorScheme } from '@/components/sections/editor-scheme';
 import { Button } from '@/components/ui/Button';
 import { Input, Select, Textarea, Toggle } from '@/components/ui/Field';
 import { cn } from '@/lib/cn';
@@ -25,7 +26,7 @@ export interface EditorEnv {
 export const EditorEnvContext = createContext<EditorEnv>({
     icons: [],
     fieldOptions: {},
-    media: { max_kb: 4096, accept: '.jpg,.jpeg,.png,.webp', index: '', store: '' },
+    media: { max_kb: 4096, accept: '.jpg,.jpeg,.png,.webp', index: '', store: '', video_max_kb: 25600, video_accept: 'video/mp4,video/webm', video_store: '' },
     pages: [],
     targetKinds: ['page', 'search', 'url'],
     productsUrl: '',
@@ -127,6 +128,27 @@ export function BlockField({ name, field, value, readOnly, onChange }: FieldProp
         case 'media':
             return <MediaField label={field.label} help={field.help} value={value as number | null} readOnly={readOnly} onChange={onChange} />;
 
+        case 'video':
+            return <VideoField label={field.label} help={field.help} value={value as number | null} readOnly={readOnly} onChange={onChange} />;
+
+        case 'color':
+            return (
+                <label className="flex flex-col gap-1.5 text-[12.5px] font-medium text-[var(--text)]">
+                    {field.label}
+                    <span className="flex items-center gap-2">
+                        <input
+                            type="color"
+                            disabled={readOnly}
+                            value={typeof value === 'string' ? value : '#000000'}
+                            onChange={(event) => onChange(event.target.value.toUpperCase())}
+                            className="h-10 w-12 rounded-[8px] border border-[var(--line)]"
+                        />
+                        <span className="font-mono text-[12.5px]">{typeof value === 'string' ? value : ''}</span>
+                    </span>
+                    {field.help && <span className="text-[11.5px] font-normal text-[var(--muted)]">{field.help}</span>}
+                </label>
+            );
+
         case 'target':
             return (
                 <TargetField
@@ -141,6 +163,38 @@ export function BlockField({ name, field, value, readOnly, onChange }: FieldProp
 
         case 'repeater':
             return <RepeaterField field={field} readOnly={readOnly} value={(value as Dict[] | undefined) ?? []} onChange={onChange} />;
+
+        case 'style':
+            // El diseño de un banner (`BannerStyle`): sus selects guardan juntos en un objeto, y
+            // «Como el bloque» (`auto`) no se guarda.
+            return (
+                <div className="flex flex-col gap-2.5">
+                    {Object.entries(field.fields ?? {}).map(([key, sub]) => {
+                        const current = value && typeof value === 'object' ? (value as Dict) : {};
+
+                        return (
+                            <BlockField
+                                key={key}
+                                name={`${name}.${key}`}
+                                field={sub}
+                                value={current[key] ?? 'auto'}
+                                readOnly={readOnly}
+                                onChange={(next) => {
+                                    const copy = { ...current };
+
+                                    if (next === 'auto' || next === '' || next == null) {
+                                        delete copy[key];
+                                    } else {
+                                        copy[key] = next;
+                                    }
+
+                                    onChange(copy);
+                                }}
+                            />
+                        );
+                    })}
+                </div>
+            );
 
         case 'categories':
             return (
@@ -444,6 +498,354 @@ export function MediaField({
     );
 }
 
+/** La biblioteca de videos: la misma dirección que la de imágenes, pidiendo solo videos. */
+function videoLibraryUrl(index: string): string {
+    return index === '' ? '' : `${index}${index.includes('?') ? '&' : '?'}kind=video`;
+}
+
+/**
+ * Elige un video de la biblioteca o sube uno nuevo (MP4 o WebM). Como la imagen, pide su
+ * descripción al subirlo. Va con `XMLHttpRequest` y no con `fetch` para mostrar cuánto lleva: un
+ * video tarda en subir. El peso se revisa antes, para no subir algo que el servidor rechaza.
+ */
+export function VideoField({
+    label,
+    help,
+    value,
+    readOnly,
+    onChange,
+}: {
+    label: string;
+    help?: string;
+    value: number | null;
+    readOnly: boolean;
+    onChange: (value: number | null) => void;
+}) {
+    const { media } = useEditorEnv();
+    const libraryUrl = videoLibraryUrl(media.index);
+    const [library, setLibrary] = useState<MediaRow[]>([]);
+    const [pending, setPending] = useState<File | null>(null);
+    const [alt, setAlt] = useState('');
+    const [progress, setProgress] = useState<number | null>(null);
+    const input = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (!libraryUrl) {
+            return;
+        }
+
+        let alive = true;
+        loadLibrary(libraryUrl).then((rows) => alive && setLibrary(rows));
+
+        return () => {
+            alive = false;
+        };
+    }, [libraryUrl]);
+
+    const chosen = library.find((item) => item.id === value) ?? null;
+
+    const pick = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+
+        if (!file) {
+            return;
+        }
+
+        if (file.size > media.video_max_kb * 1024) {
+            toast.error(`El video pesa más de ${Math.round(media.video_max_kb / 1024)} MB. Recórtalo o comprímelo antes de subirlo.`);
+
+            return;
+        }
+
+        setPending(file);
+        setAlt('');
+    };
+
+    const upload = () => {
+        if (!pending || alt.trim().length < 3) {
+            toast.error('Describe el video antes de subirlo.');
+
+            return;
+        }
+
+        const body = new FormData();
+        body.append('video', pending);
+        body.append('alt', alt);
+
+        const request = new XMLHttpRequest();
+        request.open('POST', media.video_store);
+        request.withCredentials = true;
+        request.setRequestHeader('Accept', 'application/json');
+        Object.entries(csrfHeaders()).forEach(([header, headerValue]) => request.setRequestHeader(header, headerValue));
+        request.upload.onprogress = (event) => event.lengthComputable && setProgress(Math.round((event.loaded / event.total) * 100));
+
+        request.onload = async () => {
+            setProgress(null);
+
+            if (request.status >= 200 && request.status < 300) {
+                const result = JSON.parse(request.responseText) as { media: MediaRow };
+                setLibrary((current) => [result.media, ...current]);
+                void loadLibrary(libraryUrl, true);
+                onChange(result.media.id);
+                setPending(null);
+                setAlt('');
+
+                return;
+            }
+
+            toast.error(
+                request.status === 413
+                    ? 'El video pesa más de lo que acepta el servidor.'
+                    : await errorMessage(new Response(request.responseText, { status: request.status }), 'No se pudo subir el video.'),
+            );
+        };
+
+        request.onerror = () => {
+            setProgress(null);
+            toast.error('No se pudo subir el video. Revisa la conexión.');
+        };
+
+        setProgress(0);
+        request.send(body);
+    };
+
+    return (
+        <div>
+            <p className="mb-1.5 text-[12.5px] font-medium text-[var(--text)]">{label}</p>
+
+            {chosen ? (
+                <div className="relative overflow-hidden rounded-[12px] border border-[var(--line)]">
+                    <video src={chosen.url} muted loop autoPlay playsInline className="h-[120px] w-full bg-[var(--surface-2)] object-cover" />
+                    {!readOnly && (
+                        <button
+                            type="button"
+                            onClick={() => onChange(null)}
+                            className="absolute right-2 top-2 min-h-[32px] rounded-[8px] bg-black/60 px-2.5 text-[11.5px] font-medium text-white"
+                        >
+                            Quitar
+                        </button>
+                    )}
+                    <p className="border-t border-[var(--line)] px-2.5 py-1.5 text-[11.5px] text-[var(--muted)]">{chosen.alt}</p>
+                </div>
+            ) : value ? (
+                <p className="rounded-[10px] border border-dashed border-[var(--line-2)] px-3 py-2 text-[12px] text-[var(--muted)]">
+                    Video #{value}{' '}
+                    {!readOnly && (
+                        <button type="button" className="font-semibold text-[var(--accent)]" onClick={() => onChange(null)}>
+                            Quitar
+                        </button>
+                    )}
+                </p>
+            ) : (
+                <>
+                    {library.length > 0 && !readOnly && (
+                        <div className="mb-2 grid max-h-[124px] grid-cols-3 gap-1.5 overflow-y-auto rounded-[10px] border border-[var(--line)] p-1.5">
+                            {library.map((item) => (
+                                <button
+                                    key={item.id}
+                                    type="button"
+                                    onClick={() => onChange(item.id)}
+                                    title={item.alt ?? ''}
+                                    className="overflow-hidden rounded-[8px] border border-transparent hover:border-[var(--accent)]"
+                                >
+                                    {/* `#t=0.5`: el navegador muestra un cuadro del video sin reproducirlo. */}
+                                    <video src={`${item.url}#t=0.5`} muted preload="metadata" className="pointer-events-none h-[54px] w-full bg-[var(--surface-2)] object-cover" />
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {pending ? (
+                        <div className="rounded-[12px] border border-[var(--line)] p-3">
+                            <p className="mb-2 truncate text-[12.5px] text-[var(--muted)]">{pending.name}</p>
+                            <Input
+                                label="Describe el video"
+                                value={alt}
+                                onChange={(event) => setAlt(event.target.value)}
+                                hint="Obligatorio. Es lo que lee quien no lo puede ver."
+                                placeholder="Así se arma un pedido en la tienda"
+                            />
+                            <div className="mt-2 flex gap-2">
+                                <Button size="sm" loading={progress !== null} onClick={upload}>
+                                    {progress !== null ? `Subiendo… ${progress} %` : 'Subir'}
+                                </Button>
+                                <Button size="sm" variant="ghost" disabled={progress !== null} onClick={() => setPending(null)}>
+                                    Cancelar
+                                </Button>
+                            </div>
+                        </div>
+                    ) : (
+                        !readOnly && (
+                            <button
+                                type="button"
+                                onClick={() => input.current?.click()}
+                                className="flex h-[88px] w-full flex-col items-center justify-center gap-1.5 rounded-[12px] border border-dashed border-[var(--line-2)] text-[var(--muted)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--surface-2)]"
+                            >
+                                <FilmStripIcon size={22} />
+                                <span className="text-[12.5px]">Subir un video · MP4 o WebM, máximo {Math.round(media.video_max_kb / 1024)} MB</span>
+                            </button>
+                        )
+                    )}
+                </>
+            )}
+
+            {help && <p className="mt-1 text-[11.5px] text-[var(--muted)]">{help}</p>}
+
+            <input ref={input} type="file" accept={media.video_accept} className="hidden" onChange={pick} />
+        </div>
+    );
+}
+
+interface VariantSlot {
+    key: string;
+    device: string;
+    mode: 'light' | 'dark';
+    hint: string;
+}
+
+/**
+ * Una imagen o un video con sus versiones (`App\Support\MediaVariants`): computador y celular, en
+ * modo claro y en modo oscuro. Se ven las cuatro casillas a la vez; la que se toca se abre abajo
+ * para escoger o subir. Arranca abierta la del modo que se está revisando.
+ *
+ * Solo la de computador en modo claro puede ser obligatoria: las demás, si faltan, se reemplazan
+ * (la de celular por la de computador, la oscura por la clara).
+ */
+export function MediaVariantsField({
+    name,
+    field,
+    values,
+    readOnly,
+    onPatch,
+}: {
+    name: string;
+    field: FieldSchema;
+    values: Dict;
+    readOnly: boolean;
+    onPatch: (patch: Dict) => void;
+}) {
+    const { media } = useEditorEnv();
+    const { scheme } = useEditorScheme();
+    const video = field.type === 'video';
+    const variants = field.variants ?? {};
+    const responsive = Boolean(variants.mobile || variants.mobile_dark);
+    const slots: VariantSlot[] = [
+        { key: name, device: responsive ? 'Computador' : 'Normal', mode: 'light', hint: field.help ?? '' },
+        ...(variants.mobile ? [{ key: variants.mobile, device: 'Celular', mode: 'light' as const, hint: 'Opcional. Si falta, se recorta la de computador.' }] : []),
+        ...(variants.dark
+            ? [{ key: variants.dark, device: responsive ? 'Computador' : 'Fondo oscuro', mode: 'dark' as const, hint: 'Opcional. Si falta, en modo oscuro se usa la de modo claro.' }]
+            : []),
+        ...(variants.mobile_dark
+            ? [{ key: variants.mobile_dark, device: 'Celular', mode: 'dark' as const, hint: 'Opcional. Si falta, se usa la de computador en oscuro y, si tampoco está, la clara.' }]
+            : []),
+    ];
+    const desktopFor = (mode: 'light' | 'dark') => slots.find((slot) => slot.mode === mode)?.key ?? name;
+    const [active, setActive] = useState<string>(() => desktopFor(scheme));
+    const [library, setLibrary] = useState<MediaRow[]>([]);
+    const libraryUrl = video ? videoLibraryUrl(media.index) : media.index;
+    const ids = slots.map((slot) => values[slot.key] ?? '').join(',');
+
+    // Al cambiar el modo que se revisa, se abre la casilla de ese modo.
+    useEffect(() => {
+        setActive(desktopFor(scheme));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [scheme]);
+
+    // Las miniaturas salen de la misma biblioteca (pedida una vez por pantalla).
+    useEffect(() => {
+        if (!libraryUrl) {
+            return;
+        }
+
+        let alive = true;
+        loadLibrary(libraryUrl).then((rows) => alive && setLibrary(rows));
+
+        return () => {
+            alive = false;
+        };
+    }, [libraryUrl, ids]);
+
+    const current = slots.find((slot) => slot.key === active) ?? slots[0];
+    const value = (values[current.key] as number | null | undefined) ?? null;
+    const label = `${field.label} · ${current.device.toLowerCase()} · modo ${current.mode === 'light' ? 'claro' : 'oscuro'}`;
+    const change = (next: number | null) => onPatch({ [current.key]: next });
+
+    const tile = (slot: VariantSlot) => {
+        const id = values[slot.key] as number | null | undefined;
+        const row = id ? library.find((item) => item.id === id) : null;
+
+        return (
+            <button
+                key={slot.key}
+                type="button"
+                onClick={() => setActive(slot.key)}
+                aria-pressed={active === slot.key}
+                title={`${slot.device} · modo ${slot.mode === 'light' ? 'claro' : 'oscuro'}`}
+                className={cn(
+                    'relative aspect-[16/11] overflow-hidden rounded-[9px] border-2 bg-[var(--surface-2)] text-left transition-colors',
+                    active === slot.key ? 'border-[var(--accent)]' : 'border-transparent hover:border-[var(--line-2)]',
+                    slot.mode === 'dark' && !row && 'bg-[#1C1F24]',
+                )}
+            >
+                {row ? (
+                    video ? (
+                        <video src={`${row.url}#t=0.5`} muted preload="metadata" className="pointer-events-none size-full object-cover" />
+                    ) : (
+                        <img src={row.variants?.square ?? row.url} alt="" className="size-full object-cover" />
+                    )
+                ) : (
+                    <span className={cn('grid size-full place-items-center', slot.mode === 'dark' ? 'text-white/50' : 'text-[var(--muted)]')}>
+                        {video ? <FilmStripIcon size={18} /> : <ImageIcon size={18} />}
+                    </span>
+                )}
+                <span className="absolute inset-x-0 bottom-0 truncate bg-black/55 px-1.5 py-0.5 text-[10.5px] font-semibold text-white">{slot.device === 'Computador' ? 'PC' : slot.device}</span>
+            </button>
+        );
+    };
+
+    return (
+        <div>
+            <p className="mb-1.5 text-[12.5px] font-medium text-[var(--text)]">{field.label}</p>
+            <div className="grid grid-cols-2 gap-2">
+                {(['light', 'dark'] as const).map((mode) => (
+                    <div key={mode}>
+                        <p className="mb-1 flex items-center gap-1 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                            {mode === 'light' ? <SunIcon size={12} /> : <MoonIcon size={12} />}
+                            Modo {mode === 'light' ? 'claro' : 'oscuro'}
+                        </p>
+                        <div className={cn('grid gap-1.5', responsive ? 'grid-cols-2' : 'grid-cols-1')}>{slots.filter((slot) => slot.mode === mode).map(tile)}</div>
+                    </div>
+                ))}
+            </div>
+
+            <div className="mt-2.5 rounded-[11px] border border-[var(--line)] p-2.5">
+                {video ? (
+                    <VideoField key={current.key} label={label} help={current.hint || undefined} value={value} readOnly={readOnly} onChange={change} />
+                ) : (
+                    <MediaField key={current.key} label={label} help={current.hint || undefined} value={value} readOnly={readOnly} onChange={change} compact />
+                )}
+            </div>
+        </div>
+    );
+}
+
+/**
+ * Un campo dentro de unos datos (el bloque o una fila de una lista). Las versiones de una imagen
+ * o un video se editan juntas en su campo principal; las hermanas (`variant_of`) no se pintan solas.
+ */
+export function FieldRow({ name, field, values, readOnly, onPatch }: { name: string; field: FieldSchema; values: Dict; readOnly: boolean; onPatch: (patch: Dict) => void }) {
+    if (field.variant_of) {
+        return null;
+    }
+
+    if (field.variants && (field.type === 'media' || field.type === 'video')) {
+        return <MediaVariantsField name={name} field={field} values={values} readOnly={readOnly} onPatch={onPatch} />;
+    }
+
+    return <BlockField name={name} field={field} value={values[name]} readOnly={readOnly} onChange={(value) => onPatch({ [name]: value })} />;
+}
+
 const KIND_LABELS: Record<TargetKind, string> = {
     category: 'Una categoría',
     page: 'Una página',
@@ -524,6 +926,109 @@ export function TargetField({
     );
 }
 
+/** Si el diseño de una fila tiene algo distinto de lo de fábrica (un `style` con claves, otro color u otro velo). */
+function designChanged(item: Record<string, FieldSchema>, row: Dict, defaults: Dict): boolean {
+    return Object.entries(item).some(([key, schema]) => {
+        if (schema.group !== 'design') {
+            return false;
+        }
+
+        const current = row[key];
+
+        if (schema.type === 'style') {
+            return Boolean(current && typeof current === 'object' && Object.keys(current).length > 0);
+        }
+
+        return current != null && current !== '' && String(current) !== String(defaults[key] ?? '');
+    });
+}
+
+/**
+ * «Diseño de esta lámina» en el modo que se revisa. En claro se edita la fila como siempre; en
+ * oscuro, lo que cambia allá (`fila.dark`): color del texto, velo y estilo. Lo que en oscuro
+ * queda igual que en claro no se guarda, así sigue a claro si allá cambia.
+ */
+function RowDesign({ item, row, defaults, readOnly, onChange }: { item: Record<string, FieldSchema>; row: Dict; defaults: Dict; readOnly: boolean; onChange: (row: Dict) => void }) {
+    const { scheme } = useEditorScheme();
+    const dark = scheme === 'dark';
+    const overrides = row.dark && typeof row.dark === 'object' && !Array.isArray(row.dark) ? (row.dark as Dict) : {};
+    const lightStyle = (row.style && typeof row.style === 'object' ? row.style : {}) as Dict;
+    const shown: Dict = dark ? { ...row, ...overrides, style: { ...lightStyle, ...((overrides.style as Dict | undefined) ?? {}) } } : row;
+    const fields = Object.entries(item).filter(([, schema]) => schema.group === 'design');
+    const changedDark = Object.keys(overrides).length > 0;
+
+    const set = (key: string, next: unknown) => {
+        if (!dark) {
+            onChange({ ...row, [key]: next });
+
+            return;
+        }
+
+        const copy = { ...overrides };
+
+        if (item[key]?.type === 'style') {
+            const diff = Object.fromEntries(Object.entries((next as Dict | null) ?? {}).filter(([sub, value]) => String(value) !== String(lightStyle[sub] ?? '')));
+
+            if (Object.keys(diff).length > 0) {
+                copy.style = diff;
+            } else {
+                delete copy.style;
+            }
+        } else if (next == null || next === '' || String(next) === String(row[key] ?? defaults[key] ?? '')) {
+            delete copy[key];
+        } else {
+            copy[key] = next;
+        }
+
+        const updated = { ...row };
+
+        if (Object.keys(copy).length > 0) {
+            updated.dark = copy;
+        } else {
+            delete updated.dark;
+        }
+
+        onChange(updated);
+    };
+
+    return (
+        <details className="group/design rounded-[9px] border border-[var(--line)] bg-[var(--surface)]">
+            <summary className="flex min-h-[40px] cursor-pointer list-none items-center justify-between px-2.5 text-[12.5px] font-medium text-[var(--text)]">
+                {Object.values(item).find((schema) => schema.type === 'style')?.label ?? 'Diseño'}
+                <span className="flex items-center gap-1.5 text-[11px] text-[var(--muted)]">
+                    {designChanged(item, row, defaults) && <span className="size-2 rounded-full bg-[var(--accent)]" title="Con cambios en modo claro" />}
+                    {changedDark && <MoonIcon size={12} weight="fill" aria-label="Con cambios en modo oscuro" />}
+                    <span className="transition-transform group-open/design:rotate-180">▾</span>
+                </span>
+            </summary>
+            <div className="flex flex-col gap-2.5 border-t border-[var(--line)] p-2.5">
+                <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11.5px] text-[var(--muted)]">{dark ? 'En modo oscuro. Lo que no cambies aquí queda como en claro.' : 'En modo claro.'}</p>
+                    <SchemeSwitch compact />
+                </div>
+                {fields
+                    .filter(([, schema]) => isVisible(schema, shown))
+                    .map(([key, schema]) => (
+                        <BlockField key={`${scheme}-${key}`} name={key} field={schema} value={shown[key]} readOnly={readOnly} onChange={(next) => set(key, next)} />
+                    ))}
+                {dark && changedDark && !readOnly && (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            const updated = { ...row };
+                            delete updated.dark;
+                            onChange(updated);
+                        }}
+                        className="self-start text-[12px] font-semibold text-[var(--accent)] hover:underline"
+                    >
+                        Dejarla igual que en modo claro
+                    </button>
+                )}
+            </div>
+        </details>
+    );
+}
+
 function RepeaterField({
     field,
     readOnly,
@@ -597,17 +1102,28 @@ function RepeaterField({
 
                         <div className="flex flex-col gap-2.5">
                             {Object.entries(item)
-                                .filter(([, schema]) => isVisible(schema, row))
+                                .filter(([, schema]) => schema.group !== 'design' && isVisible(schema, row))
                                 .map(([key, schema]) => (
-                                    <BlockField
+                                    <FieldRow
                                         key={key}
                                         name={key}
                                         field={schema}
-                                        value={row[key]}
+                                        values={row}
                                         readOnly={readOnly}
-                                        onChange={(next) => onChange(value.map((entry, position) => (position === index ? { ...entry, [key]: next } : entry)))}
+                                        onPatch={(patch) => onChange(value.map((entry, position) => (position === index ? { ...entry, ...patch } : entry)))}
                                     />
                                 ))}
+
+                            {/* «Diseño de esta lámina»: plegado aparte, para que el contenido se lea primero. */}
+                            {Object.values(item).some((schema) => schema.group === 'design') && (
+                                <RowDesign
+                                    item={item}
+                                    row={row}
+                                    defaults={field.item_defaults ?? {}}
+                                    readOnly={readOnly}
+                                    onChange={(next) => onChange(value.map((entry, position) => (position === index ? next : entry)))}
+                                />
+                            )}
                         </div>
                     </div>
                 ))}

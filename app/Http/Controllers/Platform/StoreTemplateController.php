@@ -16,7 +16,9 @@ use App\Services\Storefront\StorefrontPreviewBuilder;
 use App\Services\Storefront\StorefrontRenderer;
 use App\Services\Storefront\StorefrontTemplateService;
 use App\Storefront\Blocks\BlockData;
+use App\Support\SectionAppearance;
 use App\Support\StorefrontContext;
+use App\Support\VideoOptions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -46,13 +48,16 @@ class StoreTemplateController extends Controller
         $templates = StorefrontTemplate::query()
             ->withCount('followers')
             ->with(['publishedBy:id,name,last_name', 'previewMedia'])
-            ->orderByDesc('is_default')
+            ->orderBy('sort_order')
             ->orderBy('name')
             ->get()
             ->map(fn (StorefrontTemplate $template) => [
                 'id' => $template->id,
                 'name' => $template->name,
                 'description' => $template->description,
+                'audience' => $template->audience,
+                'audience_group' => $template->audience_group,
+                'sort_order' => $template->sort_order,
                 'is_default' => $template->is_default,
                 'is_active' => $template->is_active,
                 'published_at' => $template->published_at?->toIso8601String(),
@@ -60,11 +65,12 @@ class StoreTemplateController extends Controller
                 'followers' => $template->followers_count,
                 'has_unpublished_changes' => $template->published === null || $template->draft != $template->published,
                 'blocks' => count($template->draft['blocks'] ?? []),
-                'preview' => $template->previewMedia?->toPayload()['variants']['wide'] ?? null,
+                'preview' => $template->previewThumbnail(),
             ]);
 
         return Inertia::render('Platform/StoreTemplates/Index', [
             'templates' => $templates,
+            'groups' => StorefrontTemplate::AUDIENCE_GROUPS,
             'can' => [
                 'edit' => $request->user()->can('platform.store_templates.edit'),
                 'publish' => $request->user()->can('platform.store_templates.publish'),
@@ -75,7 +81,7 @@ class StoreTemplateController extends Controller
     public function store(SaveStoreTemplateRequest $request): RedirectResponse
     {
         $validated = $request->validated();
-        $template = $this->templates->create($validated['name'], $validated['description'] ?? null);
+        $template = $this->templates->create($validated['name'], $validated['description'] ?? null, null, $request->safe()->only(['audience', 'audience_group']));
 
         // Partir de otra plantilla ahorra armarla desde cero.
         if (! empty($validated['copy_from'])) {
@@ -88,9 +94,17 @@ class StoreTemplateController extends Controller
 
     public function update(SaveStoreTemplateRequest $request, StorefrontTemplate $template): RedirectResponse
     {
-        $template->update($request->safe()->only(['name', 'description']));
+        $template->update($request->safe()->only(['name', 'description', 'audience', 'audience_group']));
 
         return back()->with('success', 'Se guardó la plantilla.');
+    }
+
+    /** Una copia en borrador para partir de ella sin tocar la original ni a quienes la siguen. */
+    public function duplicate(StorefrontTemplate $template): RedirectResponse
+    {
+        $copy = $this->templates->duplicate($template);
+
+        return redirect()->route('platform.store_templates.edit', $copy)->with('success', 'Quedó la copia «'.$copy->name.'», sin publicar. Ajústala y publícala cuando esté lista.');
     }
 
     /** El editor de la tienda en contexto de plantilla. */
@@ -116,6 +130,8 @@ class StoreTemplateController extends Controller
             ],
             'blocks' => collect($draft['blocks'] ?? [])->map(fn (array $block) => $this->payload->blockRow($block, (string) $block['uuid']))->values()->all(),
             'catalogue' => $this->payload->catalogue(BlockData::CONTEXT_TEMPLATE),
+            // Las opciones de la pestaña «Diseño» de cada bloque (tamaño, fondo, animacion).
+            'appearanceCatalogue' => SectionAppearance::groups(SectionAppearance::SURFACE_STORE),
             // La forma de la plantilla sobre un tema neutro: la marca la pone cada sede.
             'theme' => array_merge([
                 'display_name' => null, 'tagline' => null, 'accent' => '#0E6E4E', 'accent_ink' => '#FFFFFF',
@@ -151,7 +167,7 @@ class StoreTemplateController extends Controller
                 'copy_store' => false,
                 'coupons' => false,
             ],
-            'media' => ['max_kb' => 4096, 'accept' => '.jpg,.jpeg,.png,.webp'],
+            'media' => ['max_kb' => 4096, 'accept' => '.jpg,.jpeg,.png,.webp', 'video_max_kb' => VideoOptions::MAX_VIDEO_KB, 'video_accept' => VideoOptions::ACCEPT],
         ]);
     }
 
@@ -172,6 +188,7 @@ class StoreTemplateController extends Controller
             isset($validated['category']) ? (int) $validated['category'] : null,
             isset($validated['product']) ? (int) $validated['product'] : null,
             $validated['device'] ?? null,
+            $validated['scheme'] ?? null,
         ));
     }
 
@@ -279,6 +296,7 @@ class StoreTemplateController extends Controller
             'products' => '',
             'media_index' => route('platform.store_templates.media.index'),
             'media_store' => route('platform.store_templates.media.store'),
+            'media_video_store' => route('platform.store_templates.media.store-video'),
             'detach' => '',
             'reattach' => '',
             'preview_base' => route('platform.store_templates.preview', $template),

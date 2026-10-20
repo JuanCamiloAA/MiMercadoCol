@@ -47,6 +47,15 @@ final class Channels
         return "company.{$companyId}.imports.{$importId}";
     }
 
+    /**
+     * «Cambio esto»: el aviso que mantiene al dia las pestañas abiertas (`ResourcesChanged`).
+     * Lleva solo el tema y la sede, nunca datos.
+     */
+    public static function changes(int $companyId): string
+    {
+        return "company.{$companyId}.changes";
+    }
+
     /** Quien esta conectado y en que sede. Es el canal de presencia. */
     public static function presence(int $companyId, int $storeId): string
     {

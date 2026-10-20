@@ -8,6 +8,7 @@ use App\Http\Requests\Platform\UpdateGatewaySettingsRequest;
 use App\Models\PaymentGatewayCredential;
 use App\Models\PaymentGatewaySetting;
 use App\Services\Payments\PaymentGatewayResolver;
+use App\Services\Payments\WompiCredentials;
 use App\Services\Payments\WompiService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -97,7 +98,7 @@ class PaymentGatewayController extends Controller
             'is_enabled' => true,
         ]);
 
-        $result = (new WompiService($settings, $this->gateways->credential($environment)))->testConnection();
+        $result = (new WompiService(WompiCredentials::fromPlatform($settings, $this->gateways->credential($environment))))->testConnection();
 
         return back()->with($result['ok'] ? 'success' : 'error', $result['message']);
     }

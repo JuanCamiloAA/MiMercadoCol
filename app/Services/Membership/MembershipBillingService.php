@@ -109,7 +109,7 @@ class MembershipBillingService
             throw ValidationException::withMessages(['membership' => 'La empresa no tiene plan asignado. Comunícate con soporte.']);
         }
 
-        $amount = MembershipPricing::priceFor($period['plan'], $period['cycle']);
+        $amount = MembershipPricing::priceFor($period['plan'], $period['cycle'], $company);
 
         return [
             'amount' => $amount,

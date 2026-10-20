@@ -40,7 +40,7 @@ class CartController extends Controller
         $customer = auth('customer')->user();
         // Mirar el carrito no crea uno.
         $cart = $this->carts->find($request, $store, $customer);
-        $summary = $cart ? $this->carts->summary($cart, $store) : ['items' => [], 'subtotal' => 0, 'savings' => 0, 'count' => 0];
+        $summary = $cart ? $this->carts->summary($cart, $store) : ['items' => [], 'subtotal' => 0, 'savings' => 0, 'count' => 0, 'has_unavailable' => false];
         $settings = $this->config->settings($store);
         $minimum = $this->config->minOrderTotal($store);
 
@@ -56,6 +56,8 @@ class CartController extends Controller
                 'min_order_total' => $minimum,
                 'min_order_missing' => $minimum > 0 ? max(0, $minimum - $summary['subtotal']) : 0,
                 'delivery_note' => $settings['texts']['delivery_note'] ?? null,
+                // Una linea que se agoto o se despublico: hay que quitarla para poder pagar.
+                'has_unavailable' => $summary['has_unavailable'],
             ],
             'isLoggedIn' => auth('customer')->check(),
             // La venta cruzada: los bloques que la sede puso debajo del resumen.
@@ -70,7 +72,7 @@ class CartController extends Controller
     {
         $store = StorefrontContext::requireStore();
         $cart = $this->carts->find($request, $store, auth('customer')->user());
-        $summary = $cart ? $this->carts->summary($cart, $store, withAvailability: false) : ['items' => [], 'subtotal' => 0];
+        $summary = $cart ? $this->carts->summary($cart, $store) : ['items' => [], 'subtotal' => 0];
 
         return response()->json([
             'items' => collect($summary['items'])->map(fn (array $item) => collect($item)->only([
@@ -150,7 +152,7 @@ class CartController extends Controller
         return response()->json(['cart' => $this->carts->brief($cart, $store)]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
         $store = StorefrontContext::requireStore();
 
@@ -189,6 +191,19 @@ class CartController extends Controller
             ->where('is_online_visible', true)
             ->where('is_active', true)
             ->findOrFail($validated['product_id']);
+
+        // La misma regla de la tienda: sin disponible en la bodega que la respalda no se vende.
+        $reason = $this->carts->unavailableReason($product, $this->stock->available($product, $this->warehouses->onlineSourceFor($store->id)));
+
+        if ($reason !== null) {
+            $message = $reason === 'out_of_stock' ? 'Este artículo se agotó.' : 'Ese artículo ya no está disponible.';
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message, 'errors' => ['product_id' => [$message]]], 422);
+            }
+
+            return back()->with('error', $message);
+        }
 
         $cart = $this->carts->current($request, $store, auth('customer')->user());
 

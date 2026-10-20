@@ -30,6 +30,9 @@ class DatabaseSeeder extends Seeder
             DemoOperationSeeder::class,
             // Despues de la operacion: devuelve sobre ventas y pedidos que ya existen.
             CustomerReturnSeeder::class,
+            // La tienda de ropa va al final: trae su propia historia de cuatro semanas, con su tienda
+            // en linea y sus promociones, y no la tocan los seeders de mercado de arriba.
+            FashionCompanySeeder::class,
         ]);
     }
 }

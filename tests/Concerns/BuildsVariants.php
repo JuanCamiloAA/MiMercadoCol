@@ -70,8 +70,7 @@ trait BuildsVariants
             'tax_rate' => 19,
             'attribute_1_id' => $this->attribute($attribute1)->id,
             'attribute_2_id' => $attribute2 ? $this->attribute($attribute2)->id : null,
-            'is_active' => true,
-            'is_online_visible' => true,
+            // Sin `is_active` ni `is_online_visible`: los pone el modelo, como al sembrar o importar.
             'variants' => $variants,
         ], $common), $user, $this->company->id);
     }

@@ -6,6 +6,8 @@ use App\Http\Controllers\Storefront\CheckoutController;
 use App\Models\Company;
 use App\Models\Store;
 use App\Models\Storefront;
+use App\Services\Membership\Entitlements;
+use App\Services\Membership\EntitlementService;
 use App\Services\Membership\MembershipFeatures;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -126,10 +128,8 @@ final class StorefrontContext
      */
     public static function sellable(): Builder
     {
-        $withStore = Company::query()->whereNull('membership_plan_id')->pluck('id')
-            ->merge(self::companiesWithFeature(MembershipFeatures::ONLINE_STORE))
-            ->unique()
-            ->values();
+        // Las sin plan entran todas; las demas, si su plan (con sus excepciones) trae la tienda.
+        $withStore = app(EntitlementService::class)->companiesAllowing(Entitlements::FEATURE_NODES[MembershipFeatures::ONLINE_STORE]);
 
         return Store::query()
             ->withoutGlobalScopes()
@@ -144,18 +144,5 @@ final class StorefrontContext
                 ->whereColumn('storefronts.store_id', 'stores.id')
                 ->where('storefronts.is_online', true)
                 ->whereNotNull('storefronts.published_version_id'));
-    }
-
-    /**
-     * @return Collection<int, int>
-     */
-    protected static function companiesWithFeature(string $feature): Collection
-    {
-        return Company::query()
-            ->whereNotNull('membership_plan_id')
-            ->with('plan:id,features')
-            ->get(['id', 'membership_plan_id'])
-            ->filter(fn (Company $company) => $company->plan?->hasFeature($feature))
-            ->pluck('id');
     }
 }

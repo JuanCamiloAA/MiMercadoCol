@@ -35,7 +35,17 @@ const SEARCH_MS = 250;
  * armar dos órdenes desde cero, recorriendo la tienda dos veces. Aquí se ve todo, se marca
  * quién surte qué, y si la orden queda mezclada se separa sola al guardar.
  */
-export default function PurchaseCreate({ suppliers, supplierId, products, counts, store, paymentTerms, defaultPaymentTermId }: PurchaseCreateProps) {
+export default function PurchaseCreate({
+    suppliers,
+    supplierId,
+    preload = [],
+    warehouse = null,
+    products,
+    counts,
+    store,
+    paymentTerms,
+    defaultPaymentTermId,
+}: PurchaseCreateProps) {
     const errors = (usePage<PageProps>().props.errors ?? {}) as Record<string, string>;
 
     const [supplier, setSupplier] = useState<number | null>(supplierId);
@@ -147,6 +157,18 @@ export default function PurchaseCreate({ suppliers, supplierId, products, counts
             ];
         });
     }, []);
+
+    // Lo precargado (desde Tienda en línea) entra solo, una vez, con la cantidad sugerida.
+    const preloaded = useRef(false);
+
+    useEffect(() => {
+        if (preloaded.current || preload.length === 0) {
+            return;
+        }
+
+        preloaded.current = true;
+        preload.forEach((product) => upsert(product, 'manual'));
+    }, [preload, upsert]);
 
     /**
      * Lo que sale de la matriz: cada casilla con cantidad es un renglón normal; una casilla en
@@ -304,6 +326,7 @@ export default function PurchaseCreate({ suppliers, supplierId, products, counts
                 payment_term_id: termId === '' ? null : Number(termId),
                 status,
                 split,
+                warehouse_id: warehouse?.id ?? null,
                 // Solo cantidad, costo y de dónde salió: el resto lo recalcula el servidor.
                 items: lines.map((line) => ({
                     product_id: line.product_id,
@@ -508,6 +531,7 @@ export default function PurchaseCreate({ suppliers, supplierId, products, counts
                 <h1 className="text-[1.125rem] font-semibold">Nueva orden de compra</h1>
 
                 {store && <span className="text-[0.78125rem] text-[var(--muted)]">Sede {store.name}</span>}
+                {warehouse && <span className="text-[0.78125rem] text-[var(--muted)]">· Se recibe en {warehouse.name}</span>}
 
                 <Button size="sm" variant="secondary" className="ml-auto" disabled={lines.length === 0 || submitting} onClick={() => submit('draft')}>
                     Guardar como borrador

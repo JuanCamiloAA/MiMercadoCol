@@ -29,6 +29,7 @@ const GROUP: Record<SettingsKey, 'settings' | 'structure' | 'look'> = {
     mobile_nav: 'structure',
     cart_bar: 'structure',
     footer: 'structure',
+    floating: 'structure',
     card: 'look',
 };
 

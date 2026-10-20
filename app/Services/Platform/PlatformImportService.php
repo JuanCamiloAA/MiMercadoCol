@@ -9,6 +9,7 @@ use App\Models\AccessLog;
 use App\Models\PlatformImportBatch;
 use App\Models\User;
 use App\Services\MasterImportService;
+use App\Support\Uploads;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -26,7 +27,11 @@ use ZipArchive;
 class PlatformImportService
 {
     /** Disco privado: ni el original ni el reporte de errores se sirven como archivo publico. */
-    public const DISK = 'local';
+    /** El disco de los archivos de la carga masiva: el privado (Firebase en produccion). */
+    public static function disk(): string
+    {
+        return Uploads::privateDiskName();
+    }
 
     public function __construct(protected MasterImportService $imports) {}
 
@@ -68,7 +73,7 @@ class PlatformImportService
      */
     public function preview(UploadedFile $file, string $type, ?int $companyId, User $user): array
     {
-        $path = $file->storeAs('platform-imports/'.now()->format('Y/m'), Str::uuid().'.csv', self::DISK);
+        $path = $file->storeAs('platform-imports/'.now()->format('Y/m'), Str::uuid().'.csv', self::disk());
 
         $batch = PlatformImportBatch::query()->create([
             'user_id' => $user->id,
@@ -80,7 +85,7 @@ class PlatformImportService
         ]);
 
         try {
-            $result = $this->imports->run(self::import($type), Storage::disk(self::DISK)->path($path), (int) ($batch->company_id ?? 0), dryRun: true);
+            $result = $this->imports->run(self::import($type), Uploads::localPath(self::disk(), $path), (int) ($batch->company_id ?? 0), dryRun: true);
         } catch (Throwable $exception) {
             // Un archivo que ni se puede leer no queda como pendiente.
             $batch->forceFill(['status' => PlatformImportBatch::STATUS_FAILED, 'message' => $this->message($exception), 'finished_at' => now()])->save();
@@ -103,7 +108,7 @@ class PlatformImportService
         }
 
         $batch->forceFill(['status' => PlatformImportBatch::STATUS_PROCESSING, 'started_at' => now()])->save();
-        $source = Storage::disk(self::DISK)->path($batch->stored_path);
+        $source = Uploads::localPath(self::disk(), $batch->stored_path);
 
         try {
             $result = $this->imports->run(self::import($batch->type), $source, (int) ($batch->company_id ?? 0));
@@ -182,7 +187,7 @@ class PlatformImportService
         rewind($output);
 
         $path = 'platform-imports/errores/'.$batch->id.'-'.Str::random(8).'.csv';
-        Storage::disk(self::DISK)->put($path, (string) stream_get_contents($output));
+        Storage::disk(self::disk())->put($path, (string) stream_get_contents($output));
         fclose($output);
 
         return $path;

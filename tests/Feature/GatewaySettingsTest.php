@@ -123,15 +123,15 @@ class GatewaySettingsTest extends TestCase
         $this->actingAs($this->super)
             ->post(route('platform.plans.store'), [
                 'name' => 'Pro', 'description' => 'Para crecer', 'monthly_price' => 189000, 'trial_days' => 0,
-                'max_stores' => 3, 'max_users' => 20, 'max_registers' => 8, 'features' => ['online_store', 'promotions', 'inventado'],
+                'max_stores' => 3, 'max_users' => 20, 'max_registers' => 8, 'entitlements' => ['storefront.*', 'promotions.*', 'inventado.*'],
                 'is_public' => true, 'is_featured' => true, 'is_active' => true, 'sort_order' => 2,
             ])
-            ->assertSessionHasErrors('features.2');
+            ->assertSessionHasErrors('entitlements.2');
 
         $this->actingAs($this->super)
             ->post(route('platform.plans.store'), [
                 'name' => 'Pro', 'description' => 'Para crecer', 'monthly_price' => 189000, 'trial_days' => 0,
-                'max_stores' => 3, 'max_users' => 20, 'max_registers' => 8, 'features' => ['online_store', 'promotions'],
+                'max_stores' => 3, 'max_users' => 20, 'max_registers' => 8, 'entitlements' => ['storefront.*', 'promotions.*'],
                 'is_public' => true, 'is_featured' => true, 'is_active' => true, 'sort_order' => 2,
             ])
             ->assertRedirect(route('platform.plans.index'));
@@ -144,9 +144,11 @@ class GatewaySettingsTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->where('plans.0.prices.'.$monthly->id, 189000)
                 ->where('plans.0.prices.'.$annual->id, 1928000)
-                ->where('plans.0.features', ['Tienda en línea', 'Promociones y cupones']));
+                ->where('plans.0.modules.0.display', 'Inicio')
+                ->where('plans.0.modules', fn ($modules) => collect($modules)->pluck('key')->sort()->values()->all() === ['dashboard', 'promotions', 'settings', 'storefront']));
 
-        $this->assertSame(['online_store', 'promotions'], $plan->features);
+        // Los nodos se guardan comprimidos; lo que siempre va (inicio, ajustes) lo pone el calculo.
+        $this->assertSame(['promotions.*', 'storefront.*'], $plan->entitlements);
     }
 
     public function test_un_plan_en_uso_no_se_borra(): void

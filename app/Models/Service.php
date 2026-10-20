@@ -63,6 +63,12 @@ class Service extends Model
         return $this->hasMany(ServiceComponent::class)->orderBy('sort_order')->orderBy('id');
     }
 
+    /** Sus fotos, la portada primero; la portada tambien queda en `image_path` para los listados. */
+    public function images(): HasMany
+    {
+        return $this->hasMany(ServiceImage::class)->orderBy('sort_order')->orderBy('id');
+    }
+
     public function isBundled(): bool
     {
         return $this->pricing_mode !== self::PRICING_ITEMIZED;

@@ -18,7 +18,8 @@ interface PlanRow {
     monthly_price: number;
     trial_days: number;
     limits: { stores: number | null; users: number | null; registers: number | null };
-    features: string[];
+    /** Los modulos que trae, completos o en parte. */
+    modules: { key: string; display: string; state: 'all' | 'some' }[];
     prices: Record<string, number>;
     is_public: boolean;
     is_featured: boolean;
@@ -44,7 +45,7 @@ export default function PlansIndex({ plans, cycles }: PlansIndexProps) {
         <AppLayout title="Planes de membresía">
             <PageHeader
                 title="Planes de membresía"
-                description="Lo que cuesta cada plan en cada ciclo, sus topes y sus funciones."
+                description="Lo que cuesta cada plan en cada ciclo, sus topes y lo que incluye."
                 actions={
                     can('platform.plans.create') && (
                         <ButtonLink href={route('platform.plans.create')}>
@@ -68,7 +69,7 @@ export default function PlansIndex({ plans, cycles }: PlansIndexProps) {
                                     </TH>
                                 ))}
                                 <TH>Topes (sedes · usuarios · cajas)</TH>
-                                <TH>Funciones</TH>
+                                <TH>Qué incluye</TH>
                                 <TH align="right">Empresas</TH>
                                 <TH />
                             </TR>
@@ -98,7 +99,14 @@ export default function PlansIndex({ plans, cycles }: PlansIndexProps) {
                                         </span>
                                     </TD>
                                     <TD>
-                                        <span className="text-[0.8125rem]">{plan.features.length > 0 ? plan.features.join(', ') : '—'}</span>
+                                        <span className="flex max-w-[22rem] flex-wrap gap-1">
+                                            {plan.modules.map((module) => (
+                                                <Badge key={module.key} tone={module.state === 'all' ? 'neutral' : 'info'}>
+                                                    {module.display}
+                                                    {module.state === 'some' ? ' (en parte)' : ''}
+                                                </Badge>
+                                            ))}
+                                        </span>
                                     </TD>
                                     <TD align="right">
                                         <span className="font-mono tabular">{plan.companies_count}</span>

@@ -2,9 +2,8 @@
 
 use App\Http\Middleware\CheckPermission;
 use App\Http\Middleware\EnsureCompanySelected;
-use App\Http\Middleware\EnsureMembershipActive;
-use App\Http\Middleware\EnsurePlanFeatures;
 use App\Http\Middleware\EnsureCustomerAuthenticated;
+use App\Http\Middleware\EnsureMembershipActive;
 use App\Http\Middleware\EnsureStorefrontAvailable;
 use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\EnsureUserBelongsToCompany;
@@ -36,7 +35,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         // Los eventos de la pasarela no traen token CSRF: los protege su firma.
-        $middleware->validateCsrfTokens(except: ['webhooks/wompi']);
+        $middleware->validateCsrfTokens(except: ['webhooks/wompi', 'webhooks/pagos/*']);
 
         $middleware->web(append: [
             HandleInertiaRequests::class,
@@ -51,7 +50,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'customer.auth' => EnsureCustomerAuthenticated::class,
             'company.selected' => EnsureCompanySelected::class,
             'membership.active' => EnsureMembershipActive::class,
-            'plan.features' => EnsurePlanFeatures::class,
             'storefront.available' => EnsureStorefrontAvailable::class,
         ]);
     })

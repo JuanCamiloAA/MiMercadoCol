@@ -99,21 +99,39 @@ class StockTransferRequestController extends Controller
         ]);
     }
 
-    public function create(): Response
+    public function create(Request $request): Response
     {
         $companyId = TenantContext::requireCompanyId();
         $storeId = StoreContext::requireStoreId();
-
-        $mine = $this->warehouses->forStore($storeId)->load('store:id,name');
         $all = $this->warehouses->forCompany($companyId);
 
+        // Precarga (desde «Tienda en linea»): la bodega que pide, la que surte y los articulos.
+        // Solo se propone lo que el usuario podria escoger a mano; guardar sigue validando todo.
+        $wantedTo = $all->firstWhere('id', $request->integer('to_warehouse'));
+
+        // Pedir para una bodega de otra sede del usuario es pasarse a esa sede, como en el
+        // selector de arriba: asi el buscador y el guardado hablan de la misma sede.
+        if ($wantedTo && (int) $wantedTo->store_id !== $storeId && StoreContext::setActiveStore((int) $wantedTo->store_id)) {
+            $storeId = (int) $wantedTo->store_id;
+        }
+
+        $mine = $this->warehouses->forStore($storeId)->load('store:id,name');
+
         // Lo normal es que el piso de venta le pida al deposito de su misma sede.
-        $toId = $this->warehouses->posSourceFor($storeId)->id;
-        $fromId = $mine->firstWhere(fn (Warehouse $warehouse) => $warehouse->id !== $toId)?->id
+        $toId = $mine->firstWhere('id', $wantedTo?->id)?->id ?? $this->warehouses->posSourceFor($storeId)->id;
+        $fromId = $all->firstWhere(fn (Warehouse $warehouse) => $warehouse->id === $request->integer('from_warehouse') && $warehouse->id !== $toId)?->id
+            ?? $mine->firstWhere(fn (Warehouse $warehouse) => $warehouse->id !== $toId)?->id
             ?? $all->firstWhere(fn (Warehouse $warehouse) => $warehouse->id !== $toId)?->id;
 
         // El catalogo muestra lo que tiene la bodega que pide: es lo que le falta lo que pide.
         $catalog = $this->catalog->catalog($companyId, $storeId, warehouseId: $toId);
+        $preload = collect((array) $request->query('products', []))
+            ->filter(fn ($id) => ctype_digit((string) $id))
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->take(100)
+            ->values()
+            ->all();
 
         return Inertia::render('Transfers/Form', [
             'mode' => 'request',
@@ -121,7 +139,7 @@ class StockTransferRequestController extends Controller
             'destinations' => $this->warehouseOptions($mine),
             'fromId' => $fromId,
             'toId' => $toId,
-            'preload' => null,
+            'preload' => $this->catalog->rowsFor($companyId, $storeId, $preload, $toId),
             'products' => $catalog['products'],
             'counts' => ['total' => $catalog['total'], 'low_stock' => $catalog['low_stock']],
         ]);

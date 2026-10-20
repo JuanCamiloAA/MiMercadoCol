@@ -3,6 +3,7 @@
 namespace App\Storefront\Blocks;
 
 use App\Models\StorefrontBlock;
+use App\Support\MediaVariants;
 
 /** Carrusel de promociones con sus propias imagenes, cada una con su destino y su vigencia. */
 class PromoCarouselBlockData extends BlockData
@@ -42,8 +43,7 @@ class PromoCarouselBlockData extends BlockData
                 'singular' => 'lámina',
                 'max_items' => 8,
                 'item' => [
-                    'media_id' => ['type' => 'media', 'label' => 'Imagen para computador', 'required' => true],
-                    'media_mobile_id' => ['type' => 'media', 'label' => 'Imagen para celular', 'help' => 'Opcional.'],
+                    ...MediaVariants::field('media_id', ['type' => 'media', 'label' => 'Imagen', 'required' => true]),
                     'title' => ['type' => 'text', 'label' => 'Título', 'max' => 50],
                     'target' => ['type' => 'target', 'label' => 'A dónde lleva', 'kinds' => self::targetKinds($context)],
                     'visible_from' => ['type' => 'datetime', 'label' => 'Se ve desde', 'help' => 'Vacío: desde ya.'],
@@ -92,7 +92,7 @@ class PromoCarouselBlockData extends BlockData
         foreach ($payload['slides'] ?? [] as $index => $slide) {
             $where = 'La lámina '.($index + 1).' del carrusel';
             array_push($issues, ...$this->imageIssues($slide['media_id'] ?? null, $media, $where));
-            array_push($issues, ...$this->imageIssues($slide['media_mobile_id'] ?? null, $media, $where.' (celular)', required: false));
+            array_push($issues, ...$this->variantIssues($this->fields()['slides']['item'], 'media_id', $slide, $media, $where));
         }
 
         return $issues;

@@ -26,7 +26,7 @@ class CompanySignup extends Model
 
     protected $fillable = [
         'reference', 'membership_plan_id', 'billing_cycle_id', 'amount', 'currency',
-        'company_name', 'tax_id', 'city', 'company_phone', 'company_email',
+        'company_name', 'tax_id', 'city', 'business_category_id', 'company_phone', 'company_email',
         'admin_name', 'admin_last_name', 'admin_email', 'admin_document', 'admin_password_hash',
         'estimated_stores', 'message', 'accepted_terms_at', 'status', 'transaction_id', 'failure_reason',
         'paid_at', 'expires_at', 'company_id',
@@ -43,6 +43,12 @@ class CompanySignup extends Model
             'paid_at' => 'datetime',
             'expires_at' => 'datetime',
         ];
+    }
+
+    /** Alimentos, textiles, belleza…: con ella la landing agrupa las tiendas. */
+    public function businessCategory(): BelongsTo
+    {
+        return $this->belongsTo(BusinessCategory::class);
     }
 
     public function plan(): BelongsTo

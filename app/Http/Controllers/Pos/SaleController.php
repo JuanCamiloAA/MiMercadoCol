@@ -7,6 +7,7 @@ use App\Http\Requests\StorePosSaleRequest;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Employee;
+use App\Models\PaymentTransaction;
 use App\Models\Product;
 use App\Models\ProductFamily;
 use App\Models\ProductStock;
@@ -14,8 +15,8 @@ use App\Models\Sale;
 use App\Models\SalePayment;
 use App\Models\Service;
 use App\Models\Store;
-use App\Models\StoreCreditMovement;
-use App\Services\CreditService;
+use App\Services\Payments\PaymentMethodAvailability;
+use App\Services\PosCustomerPresenter;
 use App\Services\PromotionService;
 use App\Services\ReceiptService;
 use App\Services\RegisterSessionService;
@@ -27,6 +28,7 @@ use App\Services\WarehouseService;
 use App\Settings\SettingsSchema;
 use App\Support\StoreContext;
 use App\Support\TenantContext;
+use App\Support\Uploads;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -42,12 +44,12 @@ class SaleController extends Controller
     public function __construct(
         protected SaleService $sales,
         protected RegisterSessionService $sessions,
-        protected CreditService $credit,
         protected SettingsService $settings,
         protected PromotionService $promotions,
         protected WarehouseService $warehouses,
         protected ServiceSaleBuilder $serviceLines,
         protected ServicePricing $pricing,
+        protected PaymentMethodAvailability $availability,
     ) {}
 
     public function index(Request $request): Response|RedirectResponse
@@ -116,6 +118,17 @@ class SaleController extends Controller
             ],
             'maxDiscountPercent' => (int) $this->settings->get($companyId, 'pos.allow_discount_percent'),
             'cashRounding' => $this->sales->roundingStep($companyId),
+            // Los medios de esta caja a esta hora (Medios de pago). La modal no tiene lista propia.
+            'paymentMethods' => $this->availability->forRegister($companyId, $storeId, $session->register_id, $user->can('pos.sale.gateway')),
+            'paymentPollSeconds' => 3,
+            // Un cobro por QR o datafono que quedo esperando cuando se recargo la pantalla.
+            'pendingGatewayReference' => PaymentTransaction::query()
+                ->where('register_session_id', $session->id)
+                ->where('channel', PaymentTransaction::CHANNEL_POS)
+                ->where('status', PaymentTransaction::STATUS_PENDING)
+                ->where('created_by_user_id', $user->id)
+                ->latest('id')
+                ->value('reference'),
             // Como se reparte la pantalla (Ajustes > Caja). Solo esta pantalla lo usa.
             'posLayout' => $this->posLayout($companyId),
         ]);
@@ -210,38 +223,11 @@ class SaleController extends Controller
                     ->orWhere('document_number', 'like', "%{$term}%")
                     ->orWhere('phone', 'like', "%{$term}%");
             }))
-            ->with('balance')
             ->orderBy('name')
             ->limit(20)
             ->get();
 
-        // El saldo a favor vigente de todos en una sola consulta: lo vencido no cuenta.
-        $storeCredit = StoreCreditMovement::query()
-            ->whereIn('customer_id', $customers->pluck('id'))
-            ->where('remaining', '>', 0)
-            ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
-            ->groupBy('customer_id')
-            ->selectRaw('customer_id, SUM(remaining) as available')
-            ->pluck('available', 'customer_id');
-
-        $customers = $customers
-            ->map(fn (Customer $customer) => [
-                'id' => $customer->id,
-                'name' => $customer->name,
-                'document_number' => $customer->document_number,
-                'phone' => $customer->phone,
-                'credit_enabled' => (bool) $customer->credit_enabled,
-                'credit_blocked' => (bool) $customer->credit_blocked,
-                'blocked_reason' => $customer->blocked_reason,
-                'credit_limit' => $customer->credit_limit,
-                'credit_term_days' => $customer->credit_term_days,
-                'balance' => $customer->currentBalance(),
-                'available_credit' => $this->credit->availableCredit($customer),
-                'store_credit' => (int) ($storeCredit[$customer->id] ?? 0),
-            ])
-            ->values();
-
-        return response()->json(['customers' => $customers]);
+        return response()->json(['customers' => app(PosCustomerPresenter::class)->present($customers)->values()]);
     }
 
     public function store(StorePosSaleRequest $request): RedirectResponse
@@ -552,6 +538,7 @@ class SaleController extends Controller
                 'category_id' => $row->category_id ? (int) $row->category_id : null,
                 'allow_negative_stock' => (bool) $row->allow_negative_stock,
                 'thumb' => $row->thumb_path ?: $row->image_path,
+                'thumb_url' => Uploads::url($row->thumb_path ?: $row->image_path),
                 // «Talla 8 · Azul», «900 ml»: para leerlo rapido en la tarjeta y el tiquete.
                 'variant_label' => $row->variant_label,
                 'family_id' => $row->product_family_id ? (int) $row->product_family_id : null,
@@ -612,6 +599,7 @@ class SaleController extends Controller
                 'barcode' => $service->barcode,
                 'name' => $service->name,
                 'thumb' => $service->thumb(),
+                'thumb_url' => Uploads::url($service->thumb()),
                 'price' => $pricing['value'],
                 'total' => $pricing['total'],
                 'tax_rate' => (float) $service->tax_rate,

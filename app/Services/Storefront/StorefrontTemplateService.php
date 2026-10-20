@@ -7,6 +7,7 @@ use App\Models\Storefront;
 use App\Models\StorefrontBlock;
 use App\Models\StorefrontTemplate;
 use App\Models\StorefrontTemplateVersion;
+use App\Models\StorefrontTheme;
 use App\Models\StorefrontVersion;
 use App\Models\User;
 use App\Storefront\BlockCatalogue;
@@ -51,21 +52,53 @@ class StorefrontTemplateService
                 'radius' => 'soft',
                 'density' => 'cozy',
                 'button_style' => 'solid',
+                ...StorefrontTheme::SHAPE_DEFAULTS,
             ],
             'blocks' => [],
             'settings' => StorefrontTemplate::designOf(['settings' => $defaults])['settings'],
         ];
     }
 
-    public function create(string $name, ?string $description): StorefrontTemplate
+    /**
+     * Una plantilla nueva en borrador.
+     *
+     * Sin `slug` (las que se crean a mano), el nombre lleva una cola al azar: asi nunca le quita
+     * el suyo a una plantilla del catalogo que se siembre despues.
+     *
+     * @param  array<string, mixed>  $attributes  `audience`, `audience_group`, `palette_suggestion`, `sort_order`.
+     */
+    public function create(string $name, ?string $description, ?string $slug = null, array $attributes = []): StorefrontTemplate
     {
         return StorefrontTemplate::create([
+            ...array_intersect_key($attributes, array_flip(['audience', 'audience_group', 'palette_suggestion', 'sort_order'])),
             'name' => $name,
+            'slug' => $slug ?? Str::limit(Str::slug($name) ?: 'plantilla', 80, '').'-'.Str::lower(Str::random(6)),
             'description' => $description,
+            'sort_order' => $attributes['sort_order'] ?? (int) StorefrontTemplate::query()->max('sort_order') + 1,
             'draft' => $this->emptyDraft(),
             'is_default' => false,
             'is_active' => true,
         ]);
+    }
+
+    /**
+     * Una copia en borrador, «(copia)»: el mismo diseño, sin publicar, sin seguidores y sin ser
+     * la de por defecto. Comparte la miniatura, que es un medio de plataforma.
+     */
+    public function duplicate(StorefrontTemplate $template): StorefrontTemplate
+    {
+        $copy = $this->create(Str::limit($template->name, 71, '').' (copia)', $template->description, null, [
+            'audience' => $template->audience,
+            'audience_group' => $template->audience_group,
+            'palette_suggestion' => $template->palette_suggestion,
+        ]);
+
+        $draft = $template->draft ?? $this->emptyDraft();
+        $draft['blocks'] = array_map(fn (array $block) => array_merge($block, ['uuid' => (string) Str::uuid()]), $draft['blocks'] ?? []);
+
+        $copy->forceFill(['draft' => $draft, 'preview_media_id' => $template->preview_media_id])->save();
+
+        return $copy;
     }
 
     /**
@@ -80,6 +113,8 @@ class StorefrontTemplateService
         $media = $this->publisher->mediaFacts($blocks, null);
         $blocking = [];
         $warnings = [];
+        // Como en una sede: la falta de una version oscura solo se avisa si la plantilla se puede ver en los dos modos.
+        $bothModes = ($draft['theme']['scheme'] ?? 'light') === 'auto' || (bool) ($draft['theme']['allow_scheme_toggle'] ?? false);
 
         foreach ($blocks as $block) {
             if (! BlockCatalogue::has($block['type'] ?? '')) {
@@ -97,6 +132,10 @@ class StorefrontTemplateService
                 } else {
                     $warnings[] = $entry;
                 }
+            }
+
+            if ($bothModes && ($block['is_visible'] ?? true) && ($missing = $definition->missingDarkMedia($block['payload'] ?? [], BlockData::CONTEXT_TEMPLATE)) > 0) {
+                $warnings[] = ['message' => $definition->label().' ('.mb_strtolower($where).'): '.StorefrontPublisher::darkWarning($missing), 'hint' => 'Contenido · '.$where];
             }
         }
 

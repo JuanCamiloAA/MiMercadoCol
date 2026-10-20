@@ -1,5 +1,5 @@
 import { Link, router, usePage } from '@inertiajs/react';
-import { CaretDownIcon, CheckIcon, MapPinIcon, ShoppingCartIcon, SignOutIcon, StorefrontIcon, UserCircleIcon, UserIcon } from '@phosphor-icons/react';
+import { CaretDownIcon, CheckIcon, MagnifyingGlassIcon, MapPinIcon, ShoppingCartIcon, SignOutIcon, StorefrontIcon, UserCircleIcon, UserIcon } from '@phosphor-icons/react';
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { money } from '@/lib/format';
@@ -47,7 +47,8 @@ export function StoreBrand({ shell, onColor }: { shell: StoreShell; onColor: boo
                 <>
                     {mode !== 'name' && badge}
                     <span className="min-w-0">
-                        <span className="block truncate text-[17px] font-extrabold leading-tight tracking-tight md:text-[20px]" style={{ fontFamily: 'var(--store-display)' }}>
+                        {/* La letra del nombre la pone el tema (`logo_font`); sin elegir, la de los títulos. */}
+                        <span className="block truncate text-[17px] font-extrabold leading-tight tracking-tight md:text-[20px]" data-store-wordmark="">
                             {name}
                         </span>
                         {settings.header.show_tagline && theme.tagline && (
@@ -271,54 +272,163 @@ export function AccountButton({ onColor }: { onColor: boolean }) {
     );
 }
 
-/**
- * El encabezado de compra: marca, «Recibir en», el buscador grande, la cuenta y el carrito.
- * Fijo al desplazar si la sede lo pidió.
- */
-export function StoreHeader({ shell, onOpenDrawer, searchInitial = '' }: { shell: StoreShell; onOpenDrawer: () => void; searchInitial?: string }) {
-    const header = shell.settings.header;
-    const onColor = header.style !== 'light';
+/** Cómo se pinta el encabezado en cada estado: el estilo elegido, transparente o el de «Al bajar». */
+const LOOKS: Record<string, string> = {
+    light: 'border-b border-[var(--line)] bg-[var(--surface)] text-[var(--text)]',
+    minimal: 'border-b border-[var(--line)] bg-[var(--bg)] text-[var(--text)]',
+    brand: 'bg-[var(--accent)] text-[var(--accent-ink)]',
+    dark: 'bg-[var(--brand-dark)] text-white',
+    // Sobre la portada: letra blanca y un degradado suave arriba para que se lea sobre la foto.
+    transparent: 'bg-gradient-to-b from-black/45 to-transparent text-white',
+    blur_dark: 'bg-[rgba(8,16,29,0.72)] text-white backdrop-blur-md',
+    blur_light: 'border-b border-[var(--line)] bg-[rgba(255,255,255,0.78)] text-[#14171A] backdrop-blur-md',
+};
+
+/** Los estados con letra clara: el buscador y los botones se pintan para fondo de color. */
+const ON_COLOR = ['brand', 'dark', 'transparent', 'blur_dark'];
+
+/** La lupa sola: lleva a la página de búsqueda. */
+function SearchIconLink({ onColor }: { onColor: boolean }) {
+    return (
+        <StoreLink
+            href="/tienda/buscar"
+            ariaLabel="Buscar en la tienda"
+            className={cn('grid size-12 shrink-0 place-items-center rounded-full transition-colors', onColor ? 'hover:bg-white/10' : 'hover:bg-[var(--surface-2)]')}
+        >
+            <MagnifyingGlassIcon size={24} />
+        </StoreLink>
+    );
+}
+
+/** Los enlaces del menú en texto, dentro del encabezado («en una fila»). */
+function InlineNav({ shell, currentPath, onOpenCategories }: { shell: StoreShell; currentPath: string; onOpenCategories: () => void }) {
+    const nav = shell.settings.nav;
+    const { interactive } = usePreviewMode();
 
     return (
-        <header
-            className={cn(
-                header.style === 'light' && 'border-b border-[var(--line)] bg-[var(--surface)] text-[var(--text)]',
-                header.style === 'brand' && 'bg-[var(--accent)] text-[var(--accent-ink)]',
-                header.style === 'dark' && 'bg-[var(--brand-dark)] text-white',
+        <nav aria-label="Menú" className="hidden min-w-0 flex-1 items-center gap-5 overflow-hidden md:flex">
+            {nav.show_deals_chip && (
+                <StoreLink href="/tienda/ofertas" className="shrink-0 text-[12.5px] font-bold uppercase tracking-[0.08em] text-[var(--deal)] hover:underline">
+                    {nav.deals_label}
+                </StoreLink>
             )}
-        >
-            <div className="mx-auto flex w-full max-w-[1280px] items-center gap-2 px-4 py-2 md:gap-3 md:py-3 lg:px-6">
-                <StoreBrand shell={shell} onColor={onColor} />
+            {nav.items.map((item, position) => {
+                const active = currentPath === item.href;
+                const className = cn(
+                    'shrink-0 text-[12.5px] font-semibold uppercase tracking-[0.08em] hover:opacity-70',
+                    active && nav.active_style === 'underline' && 'underline decoration-2 underline-offset-[6px]',
+                );
 
-                {header.show_location && (
-                    <div className="hidden lg:block">
-                        <LocationPill shell={shell} onColor={onColor} />
+                return item.opens_menu ? (
+                    <button key={position} type="button" onClick={() => interactive && onOpenCategories()} className={cn(className, 'inline-flex items-center gap-1')}>
+                        {item.label}
+                        <CaretDownIcon size={12} weight="bold" />
+                    </button>
+                ) : (
+                    <StoreLink key={position} href={item.href} className={className}>
+                        {item.label}
+                    </StoreLink>
+                );
+            })}
+        </nav>
+    );
+}
+
+/**
+ * El encabezado de compra: marca, «Recibir en», el buscador, la cuenta y el carrito. Fijo al
+ * desplazar si la sede lo pidió.
+ *
+ * Tres distribuciones: «Buscador grande» (la de siempre), «Logo al centro» y «Todo en una fila»
+ * (con el menú en texto adentro). Sobre la portada va transparente (`overlay`) y al bajar toma el
+ * estilo de «Al bajar» (`scrolled`).
+ */
+export function StoreHeader({
+    shell,
+    onOpenDrawer,
+    onOpenCategories,
+    searchInitial = '',
+    overlay = false,
+    scrolled = false,
+    currentPath = '',
+}: {
+    shell: StoreShell;
+    onOpenDrawer: () => void;
+    onOpenCategories?: () => void;
+    searchInitial?: string;
+    overlay?: boolean;
+    scrolled?: boolean;
+    currentPath?: string;
+}) {
+    const header = shell.settings.header;
+    const layout = header.layout ?? 'search';
+    const searchStyle = header.search_style ?? 'pill';
+    // «Transparente» fuera de la portada es claro; al bajar manda «Al bajar» si no es sólido.
+    const base = header.style === 'overlay' ? 'light' : header.style;
+    const look = overlay ? 'transparent' : scrolled && header.sticky && header.sticky_style && header.sticky_style !== 'solid' ? header.sticky_style : base;
+    const onColor = ON_COLOR.includes(look);
+    const tone = onColor ? 'onColor' : 'light';
+    const inlineNav = layout === 'inline' && shell.settings.nav.enabled && shell.settings.nav.style === 'text';
+
+    const search = (className?: string) =>
+        searchStyle === 'icon' ? (
+            <SearchIconLink onColor={onColor} />
+        ) : (
+            <SearchBox
+                className={className}
+                placeholder={header.search_placeholder}
+                suggestions={shell.settings.search.suggestions}
+                initial={searchInitial}
+                tone={tone}
+                variant={searchStyle === 'underline' ? 'underline' : 'pill'}
+            />
+        );
+
+    const actions = (
+        <div className="flex items-center gap-0.5">
+            {header.show_account && <AccountButton onColor={onColor} />}
+            <CartButton shell={shell} onColor={onColor} onOpenDrawer={onOpenDrawer} />
+        </div>
+    );
+
+    return (
+        <header className={cn('transition-colors', LOOKS[look] ?? LOOKS.light)}>
+            {layout === 'center' ? (
+                <div className="mx-auto grid w-full max-w-[var(--store-max,1280px)] grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-2 md:gap-3 md:py-3 lg:px-[var(--store-gutter,1.5rem)]">
+                    <div className="flex min-w-0 items-center gap-2">
+                        {searchStyle === 'icon' ? search() : <div className="hidden w-full max-w-[280px] md:block">{search()}</div>}
+                        {header.show_location && (
+                            <div className="hidden xl:block">
+                                <LocationPill shell={shell} onColor={onColor} />
+                            </div>
+                        )}
                     </div>
-                )}
-
-                <SearchBox
-                    className="mx-1 hidden flex-1 md:block"
-                    placeholder={header.search_placeholder}
-                    suggestions={shell.settings.search.suggestions}
-                    initial={searchInitial}
-                    tone={onColor ? 'onColor' : 'light'}
-                />
-
-                <div className="ml-auto flex items-center gap-0.5 md:ml-0">
-                    {header.show_account && <AccountButton onColor={onColor} />}
-                    <CartButton shell={shell} onColor={onColor} onOpenDrawer={onOpenDrawer} />
+                    <StoreBrand shell={shell} onColor={onColor} />
+                    <div className="flex justify-end">{actions}</div>
                 </div>
-            </div>
+            ) : (
+                <div className="mx-auto flex w-full max-w-[var(--store-max,1280px)] items-center gap-2 px-4 py-2 md:gap-3 md:py-3 lg:px-[var(--store-gutter,1.5rem)]">
+                    <StoreBrand shell={shell} onColor={onColor} />
 
-            {/* En celular el buscador va en su propia fila, a todo lo ancho. */}
-            <div className="px-4 pb-2.5 md:hidden">
-                <SearchBox
-                    placeholder={header.search_placeholder}
-                    suggestions={shell.settings.search.suggestions}
-                    initial={searchInitial}
-                    tone={onColor ? 'onColor' : 'light'}
-                />
-            </div>
+                    {header.show_location && layout === 'search' && (
+                        <div className="hidden lg:block">
+                            <LocationPill shell={shell} onColor={onColor} />
+                        </div>
+                    )}
+
+                    {inlineNav && <InlineNav shell={shell} currentPath={currentPath} onOpenCategories={onOpenCategories ?? (() => undefined)} />}
+
+                    {searchStyle === 'icon' ? (
+                        <div className="ml-auto">{search()}</div>
+                    ) : (
+                        search(cn('mx-1 hidden md:block', layout === 'inline' ? 'max-w-[260px] md:ml-auto' : 'flex-1'))
+                    )}
+
+                    <div className={cn(searchStyle === 'icon' ? '' : 'ml-auto md:ml-0')}>{actions}</div>
+                </div>
+            )}
+
+            {/* En celular el buscador va en su propia fila, a todo lo ancho. La lupa sola ya va arriba. */}
+            {searchStyle !== 'icon' && <div className="px-4 pb-2.5 md:hidden">{search()}</div>}
         </header>
     );
 }

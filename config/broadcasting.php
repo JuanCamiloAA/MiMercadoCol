@@ -18,6 +18,12 @@ return [
     'default' => env('BROADCAST_CONNECTION', 'null'),
 
     /*
+    | Avisar a las pestañas abiertas que algo cambio (`ChangeCollector`). Las pruebas lo apagan:
+    | cada peticion de prueba intentaria hablar con un Reverb que no esta.
+    */
+    'changes' => (bool) env('BROADCAST_CHANGES', true),
+
+    /*
     |--------------------------------------------------------------------------
     | Broadcast Connections
     |--------------------------------------------------------------------------
@@ -43,6 +49,10 @@ return [
             ],
             'client_options' => [
                 // Guzzle client options: https://docs.guzzlephp.org/en/stable/request-options.html
+                // Avisar es una peticion corta a Reverb: si no contesta rapido, no esta. Sin esto,
+                // un Reverb apagado demoraria cada guardado lo que tarde el sistema en rendirse.
+                'connect_timeout' => (float) env('REVERB_CONNECT_TIMEOUT', 1),
+                'timeout' => (float) env('REVERB_TIMEOUT', 3),
             ],
         ],
 

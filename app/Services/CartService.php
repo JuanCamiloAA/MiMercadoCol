@@ -6,6 +6,7 @@ use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Customer;
 use App\Models\Product;
+use App\Models\ProductStock;
 use App\Models\Service;
 use App\Models\Store;
 use App\Services\Storefront\StorefrontConfig;
@@ -28,7 +29,6 @@ class CartService
     public const TOKENS_KEY = 'storefront.cart_tokens';
 
     public function __construct(
-        protected StockService $stock,
         protected PromotionService $promotions,
         protected WarehouseService $warehouses,
         protected ServicePricing $servicePricing,
@@ -163,7 +163,7 @@ class CartService
      */
     public function brief(?Cart $cart, Store $store): array
     {
-        $summary = $cart ? $this->summary($cart, $store, withAvailability: false) : ['items' => [], 'subtotal' => 0, 'count' => 0];
+        $summary = $cart ? $this->summary($cart, $store) : ['items' => [], 'subtotal' => 0, 'count' => 0];
         $minimum = $this->config->minOrderTotal($store);
 
         return [
@@ -235,36 +235,55 @@ class CartService
     /**
      * Contenido del carrito con precios y disponibilidad de la sede.
      *
-     * @return array{items: list<array<string, mixed>>, subtotal: int, count: float}
+     * Una linea que la tienda ya no le mostraria al cliente —se agoto en la bodega de la tienda,
+     * se despublico, quedo sin precio— llega con `unavailable` y su motivo: no suma al subtotal,
+     * no entra a las promociones y el carrito no deja pagar mientras este (`has_unavailable`).
+     *
+     * @return array{items: list<array<string, mixed>>, subtotal: int, savings: int, count: float, has_unavailable: bool}
      */
-    public function summary(Cart $cart, Store $store, bool $withAvailability = true): array
+    public function summary(Cart $cart, Store $store): array
     {
         $cart->load(['items.product.family.images', 'items.service.components.product']);
 
         $present = $cart->items->filter(fn (CartItem $item) => $item->product !== null)->values();
         $services = $cart->items->filter(fn (CartItem $item) => $item->product_id === null && $item->service !== null && ! $item->service->trashed())->values();
 
+        // Se resuelve una vez y no por renglon: es la misma bodega para todo el carrito, y lo
+        // disponible de todas sus lineas sale en una sola consulta.
+        $warehouse = $this->warehouses->onlineSourceFor($store->id);
+        $stocks = ProductStock::query()
+            ->where('warehouse_id', $warehouse->id)
+            ->whereIn('product_id', $present->pluck('product_id'))
+            ->get(['product_id', 'quantity', 'reserved_quantity'])
+            ->keyBy('product_id');
+        $availableOf = fn (CartItem $item): float => isset($stocks[$item->product_id])
+            ? round((float) $stocks[$item->product_id]->quantity - (float) $stocks[$item->product_id]->reserved_quantity, 3)
+            : 0.0;
+        $reasons = $present->mapWithKeys(fn (CartItem $item) => [$item->id => $this->unavailableReason($item->product, $availableOf($item))]);
+        $sellable = $present->filter(fn (CartItem $item) => $reasons[$item->id] === null)->values();
+
         // El carrito cobra lo mismo que la venta: el precio sale del motor de promociones, no
-        // del precio de lista, para que el total no cambie al confirmar el pedido.
+        // del precio de lista, para que el total no cambie al confirmar el pedido. Lo que ya no
+        // se puede vender no entra: no debe completar un 3x2.
         $promoted = $this->promotions->apply(
-            $present->map(fn (CartItem $item) => [
+            $sellable->map(fn (CartItem $item) => [
                 'product_id' => (int) $item->product_id,
                 'quantity' => (float) $item->quantity,
             ])->all(),
             $store->company_id,
             PromotionService::CHANNEL_ONLINE,
         );
+        $lines = $sellable->values()->mapWithKeys(fn (CartItem $item, int $index) => [$item->id => $promoted['lines'][$index] ?? null]);
 
         $items = [];
         $subtotal = 0;
         $savings = 0;
         $count = 0.0;
+        $unavailable = false;
 
-        // Se resuelve una vez y no por renglon: es la misma bodega para todo el carrito.
-        $warehouse = $this->warehouses->onlineSourceFor($store->id);
-
-        foreach ($present as $index => $item) {
-            $line = $promoted['lines'][$index] ?? null;
+        foreach ($present as $item) {
+            $line = $lines[$item->id] ?? null;
+            $reason = $reasons[$item->id];
             $price = $line ? (int) $line['unit_price'] : $item->product->storePrice();
             $discount = $line ? (int) ($line['discount'] ?? 0) : 0;
             $listed = $item->product->storePrice();
@@ -293,9 +312,16 @@ class CartService
                 'quantity' => round((float) $item->quantity, 3),
                 'line_total' => $lineTotal,
                 'substitution_policy' => $item->substitution_policy,
-                // Bajo la barra del carrito no hace falta: son dos consultas por renglon.
-                'available' => $withAvailability ? $this->stock->available($item->product, $warehouse) : null,
+                'available' => $availableOf($item),
+                'unavailable' => $reason !== null,
+                'unavailable_reason' => $reason,
             ];
+
+            if ($reason !== null) {
+                $unavailable = true;
+
+                continue;
+            }
 
             $subtotal += $lineTotal;
             $savings += (int) round($item->quantity * max(0, $listed - $price)) + $discount;
@@ -305,8 +331,10 @@ class CartService
         // Los servicios, al precio en linea de `ServicePricing`: el mismo que cobra el pedido.
         foreach ($services as $item) {
             $service = $item->service;
-            $sellable = $service->is_active && $service->is_online_visible && ! $service->open_price && $service->isSellable();
+            $published = $service->is_active && $service->is_online_visible && ! $service->open_price && $service->isSellable();
             $choices = (array) ($item->choices ?? []);
+            $available = $published ? $this->serviceCatalog->available($service, $store, $choices) : 0;
+            $reason = ! $published ? 'unpublished' : ($available < 1 ? 'out_of_stock' : null);
             $lineTotal = $this->servicePricing->lineTotal($service, (float) $item->quantity, PromotionService::CHANNEL_ONLINE, $choices);
 
             $image = StorefrontProducts::image($service->thumb() ?: $service->image_path, null);
@@ -333,9 +361,17 @@ class CartService
                 'quantity' => round((float) $item->quantity, 3),
                 'line_total' => $lineTotal,
                 'substitution_policy' => $item->substitution_policy,
-                'available' => $withAvailability ? ($sellable ? $this->serviceCatalog->available($service, $store, $choices) : 0) : null,
+                'available' => $available,
+                'unavailable' => $reason !== null,
+                'unavailable_reason' => $reason,
                 'includes' => $this->serviceCatalog->includes($service, $choices),
             ];
+
+            if ($reason !== null) {
+                $unavailable = true;
+
+                continue;
+            }
 
             $subtotal += $lineTotal;
             $count += (float) $item->quantity;
@@ -347,7 +383,25 @@ class CartService
             'savings' => $savings,
             'promotions' => $promoted['applied'],
             'count' => round($count, 3),
+            'has_unavailable' => $unavailable,
         ];
+    }
+
+    /**
+     * Por que la tienda ya no le venderia esta linea: `unpublished` (inactivo, despublicado, sin
+     * precio o con su articulo principal oculto) u `out_of_stock` (sin disponible en la bodega
+     * de la tienda y sin permiso de vender en negativo). La misma regla de `StorefrontProducts::query()`.
+     */
+    public function unavailableReason(Product $product, float $available): ?string
+    {
+        $family = $product->product_family_id ? $product->family : null;
+
+        if (! $product->is_active || ! $product->is_online_visible || $product->storePrice() <= 0
+            || ($product->product_family_id && (! $family || ! $family->is_active || ! $family->is_online_visible))) {
+            return 'unpublished';
+        }
+
+        return ! $product->allow_negative_stock && $available <= 0 ? 'out_of_stock' : null;
     }
 
     public function clear(Cart $cart): void

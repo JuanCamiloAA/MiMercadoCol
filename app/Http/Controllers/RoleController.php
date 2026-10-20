@@ -110,6 +110,17 @@ class RoleController extends Controller
             PermissionHelper::assignablePermissions()
         ));
 
+        // El asignador solo pinta lo que el plan incluye: lo que la plantilla tenga fuera del plan
+        // no se ve ahi, asi que se conserva tal cual en vez de borrarse.
+        $entitlement = TenantContext::company()?->entitlement();
+
+        if ($entitlement) {
+            $after = array_values(array_unique([
+                ...$entitlement->filter($after),
+                ...array_filter($before, fn (string $name) => ! $entitlement->allows($name)),
+            ]));
+        }
+
         $role->update([
             'display_name' => $validated['display_name'],
             'description' => $validated['description'] ?? null,

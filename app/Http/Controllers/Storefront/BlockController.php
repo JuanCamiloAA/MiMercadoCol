@@ -6,11 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Storefront;
 use App\Models\StorefrontBlock;
 use App\Storefront\BlockCatalogue;
+use App\Support\SectionAppearance;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Los bloques del borrador, pagina por pagina.
@@ -104,9 +106,28 @@ class BlockController extends Controller
         $changes = collect($validated)->except('payload')->all();
 
         if (array_key_exists('payload', $validated)) {
+            $payload = $validated['payload'];
+
+            // El diseño de la seccion es del aspecto, no del contenido: quien no tiene ese permiso
+            // no ve la pestaña, y aqui se le conserva el que habia aunque mande otro.
+            if (! $request->user()->can('storefront.editor.appearance')) {
+                unset($payload['appearance']);
+
+                if (isset($block->payload['appearance'])) {
+                    $payload['appearance'] = $block->payload['appearance'];
+                }
+            } else {
+                $violations = SectionAppearance::violations($payload['appearance'] ?? null, SectionAppearance::SURFACE_STORE, (int) $this->storefront()->company_id);
+
+                // Se rechaza, no se limpia: quien edita tiene que saber que eso no va.
+                if ($violations !== []) {
+                    throw ValidationException::withMessages(['payload' => $violations]);
+                }
+            }
+
             // Lo que llega del editor se recorta a la forma del tipo: un bloque guardado nunca
             // llega incompleto al renderizador.
-            $changes['payload'] = BlockCatalogue::for($block->type)->normalize($validated['payload']);
+            $changes['payload'] = BlockCatalogue::for($block->type)->normalize($payload);
         }
 
         $block->update($changes);

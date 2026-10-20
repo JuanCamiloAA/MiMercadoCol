@@ -51,7 +51,10 @@ export default function GatewayIndex({ settings, credentials, environments, webh
 
     return (
         <AppLayout title="Pasarela de pagos">
-            <PageHeader title="Pasarela de pagos" description="Wompi: cobra las membresías y las contrataciones en línea." />
+            <PageHeader
+                title="Pasarela de pagos"
+                description="Wompi de la plataforma: cobra las membresías y las contrataciones en línea. Las ventas de cada empresa van por sus propias cuentas (Pasarelas para empresas)."
+            />
 
             <div className="flex flex-col gap-5">
                 <Card>

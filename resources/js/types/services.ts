@@ -11,6 +11,7 @@ export interface ServiceRow {
     barcode: string | null;
     name: string;
     thumb: string | null;
+    thumb_url?: string | null;
     category: { id: number; name: string } | null;
     price: number;
     /** Lo que cobra la caja por una unidad tal cual el maestro (en detallado, con los artículos). */
@@ -61,6 +62,9 @@ export interface ServiceFormData {
     category_id: number | null;
     description: string | null;
     image_path: string | null;
+    image_url?: string | null;
+    /** Las fotos de la galería, la portada marcada. */
+    images?: { id: number; url: string | null; is_cover: boolean }[];
     price: number;
     online_price: number | null;
     cost: number | null;

@@ -2,10 +2,13 @@
 
 namespace App\Services;
 
+use App\Models\CouponRedemption;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderStatusHistory;
+use App\Models\PaymentMethod;
+use App\Models\PaymentTransaction;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SalePayment;
@@ -15,6 +18,10 @@ use App\Models\StoreCreditMovement;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Notifications\OrderStatusChanged;
+use App\Services\Payments\PaymentContext;
+use App\Services\Payments\PaymentMethodAvailability;
+use App\Services\Payments\OnlineOrderPayments;
+use App\Services\Payments\PaymentMethodCatalog;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -37,6 +44,8 @@ class OrderService
         protected WarehouseService $warehouses,
         protected ServicePricing $servicePricing,
         protected StoreCreditService $storeCredits,
+        protected PaymentMethodCatalog $paymentCatalog,
+        protected PaymentMethodAvailability $paymentAvailability,
     ) {}
 
     /**
@@ -123,6 +132,10 @@ class OrderService
             // cual respalda la tienda, este pedido se sigue alistando de donde se aparto.
             $warehouse = $this->warehouses->onlineSourceFor($store->id);
 
+            // El medio con que el cliente dice que paga: el configurado, o el de fabrica del `kind`
+            // para quien llama con la clave de siempre (`cash_on_delivery`, `credit`...).
+            $paymentMethod = $this->paymentMethodOf($data, $store->company_id);
+
             $order = Order::create([
                 'company_id' => $store->company_id,
                 'store_id' => $store->id,
@@ -130,8 +143,10 @@ class OrderService
                 'customer_id' => (int) $data['customer_id'],
                 'number' => $this->numbers->nextOrderNumber($store->company_id),
                 'channel' => $data['channel'] ?? Order::CHANNEL_APP,
-                'status' => Order::STATUS_NEW,
-                'payment_method' => $data['payment_method'] ?? Order::PAYMENT_CASH_ON_DELIVERY,
+                // Pagado en linea espera a la pasarela antes de entrar a la bandeja.
+                'status' => $paymentMethod->kind === PaymentMethod::KIND_GATEWAY_CHECKOUT ? Order::STATUS_PENDING_PAYMENT : Order::STATUS_NEW,
+                'payment_method' => Order::paymentKeyFor($paymentMethod->kind),
+                'payment_method_id' => $paymentMethod->id,
                 'payment_status' => 'pending',
                 'delivery_address' => $data['delivery_address'],
                 'delivery_notes' => $data['delivery_notes'] ?? null,
@@ -191,7 +206,12 @@ class OrderService
                 }
             }
 
-            $this->recordHistory($order, null, Order::STATUS_NEW, $user, 'Pedido recibido');
+            // Si el saldo a favor lo cubrio todo, no hay nada que pagar en linea.
+            if ($order->status === Order::STATUS_PENDING_PAYMENT && (int) $order->total - (int) $order->store_credit_amount <= 0) {
+                $order->update(['status' => Order::STATUS_NEW]);
+            }
+
+            $this->recordHistory($order, null, $order->status, $user, $order->status === Order::STATUS_PENDING_PAYMENT ? 'Pedido recibido, esperando el pago en línea' : 'Pedido recibido');
 
             return $order->load('items.product', 'customer');
         });
@@ -267,6 +287,51 @@ class OrderService
         }
 
         return $lines;
+    }
+
+    /**
+     * La pasarela aprobo el pago en linea: el pedido entra a la bandeja de siempre, ya pagado.
+     * Solo lo llama `OnlineOrderPayments`, con la fila del pedido bloqueada.
+     */
+    public function confirmOnlinePayment(Order $order, PaymentTransaction $transaction): Order
+    {
+        if ($order->status !== Order::STATUS_PENDING_PAYMENT) {
+            throw ValidationException::withMessages(['status' => ['Ese pedido no esperaba un pago en línea.']]);
+        }
+
+        $order->forceFill(['status' => Order::STATUS_NEW, 'payment_status' => 'paid'])->save();
+        $this->recordHistory($order, Order::STATUS_PENDING_PAYMENT, Order::STATUS_NEW, null, "Pago en línea aprobado ({$transaction->reference})");
+
+        return $order;
+    }
+
+    /**
+     * El pago en linea no llego (rechazado, vencido o no se pudo abrir): el pedido se cancela y
+     * se libera todo lo apartado, inventario y saldo a favor. No pasa por `ALLOWED_TRANSITIONS`:
+     * un pedido esperando el pago no lo mueve nadie a mano.
+     */
+    public function cancelUnpaid(Order $order, string $reason): Order
+    {
+        if ($order->status !== Order::STATUS_PENDING_PAYMENT) {
+            return $order;
+        }
+
+        return DB::transaction(function () use ($order, $reason) {
+            $this->releaseReservations($order);
+            $this->releaseStoreCredit($order, (int) $order->store_credit_amount, null, "Pedido #{$order->number}: {$reason}");
+
+            // El pedido nunca se pago: el cupon no se gasto. Un cupon de un solo uso queda libre
+            // para el pedido que haga despues con otro medio.
+            CouponRedemption::query()->where('order_id', $order->id)->delete();
+
+            $order->forceFill(['status' => Order::STATUS_CANCELLED, 'cancel_reason' => $reason])->save();
+            $this->recordHistory($order, Order::STATUS_PENDING_PAYMENT, Order::STATUS_CANCELLED, null, $reason);
+
+            // El correo sale despues de confirmar: llega desde un webhook dentro de una transaccion.
+            DB::afterCommit(fn () => $this->notifyCustomer($order->fresh()));
+
+            return $order;
+        });
     }
 
     public function changeStatus(Order $order, string $status, User $user, ?string $note = null): Order
@@ -378,6 +443,7 @@ class OrderService
         SalePayment::METHOD_CASH,
         SalePayment::METHOD_CARD,
         SalePayment::METHOD_TRANSFER,
+        SalePayment::METHOD_OTHER,
     ];
 
     /**
@@ -393,6 +459,27 @@ class OrderService
     {
         if ($order->payment_status === 'paid') {
             throw ValidationException::withMessages(['payment' => ['Ese pedido ya esta cobrado.']]);
+        }
+
+        // Los medios del cobro en la puerta: cualquiera activo que sea plata, con su referencia si
+        // la exige. El reparto y el cambio siguen las reglas del mostrador (`normalizePayments`).
+        $payments = $this->paymentAvailability->resolve(
+            (int) $order->company_id,
+            PaymentContext::online((int) $order->store_id, null, $order->customer),
+            $payments,
+            enforce: false,
+        );
+        $collectable = $this->paymentAvailability->collectable((int) $order->company_id)->pluck('id')->all();
+
+        foreach ($payments as $payment) {
+            // Un `kind` que no es plata lo rechaza `normalizePayments`; aqui, uno de plata apagado.
+            if ((int) ($payment['amount'] ?? 0) > 0 && in_array($payment['method'], self::COLLECTABLE_METHODS, true) && ! in_array($payment['payment_method_id'], $collectable, true)) {
+                throw ValidationException::withMessages(['payments' => ["«{$payment['payment_method']->name}» está apagado."]]);
+            }
+
+            if ((int) ($payment['amount'] ?? 0) > 0 && $payment['payment_method']->requires_reference && trim((string) ($payment['reference'] ?? '')) === '') {
+                throw ValidationException::withMessages(['payments' => ['Falta '.mb_strtolower($payment['payment_method']->reference_label ?: 'la referencia')." de «{$payment['payment_method']->name}»."]]);
+            }
         }
 
         $sale = $order->sale_id
@@ -415,6 +502,7 @@ class OrderService
                 SalePayment::create([
                     'sale_id' => $sale->id,
                     'sequence' => $payment['sequence'] + $kept,
+                    'payment_method_id' => $payment['payment_method_id'],
                     'method' => $payment['method'],
                     'amount' => $payment['amount'],
                     'received_amount' => $payment['received_amount'],
@@ -542,8 +630,12 @@ class OrderService
         }
 
         if ($rest > 0) {
-            $payments[] = ['method' => $creditPayment ? SalePayment::METHOD_CREDIT : $this->paymentMethodFor($order), 'amount' => $rest];
+            $payments[] = $this->deliveryPayment($order, $creditPayment, $rest);
         }
+
+        // Pagado en linea y alistado por menos: el domiciliario no cobra nada y lo que sobra de lo
+        // pagado vuelve al cliente como saldo a favor, con su movimiento y su nota.
+        $overpaid = $this->onlineOverpaid($order, $rest);
 
         $sale = $this->sales->create([
             'items' => $lines,
@@ -557,10 +649,23 @@ class OrderService
             'note' => "Pedido #{$order->number}",
             // Lo que cambio en un servicio lo decidio quien alisto, no un cajero.
             'service_changes_authorized' => true,
+            // El medio se valido al tomar el pedido: entregarlo de noche no lo vuelve a examinar.
+            'skip_payment_availability' => true,
         ], $user, $store, null, $this->warehouseOf($order));
 
         $order->sale_id = $sale->id;
         $order->delivered_at = now();
+
+        if ($overpaid > 0 && $order->customer && ! $order->customer->isGenericConsumer()) {
+            $this->storeCredits->grant(
+                $order->customer,
+                $overpaid,
+                StoreCreditMovement::TYPE_ONLINE_OVERPAID,
+                ['order_id' => $order->id, 'sale_id' => $sale->id],
+                $user,
+                "Pedido #{$order->number}: se entregó por menos de lo pagado en línea",
+            );
+        }
 
         if ($storeCredit > 0) {
             StoreCreditMovement::query()->withoutGlobalScopes()
@@ -586,13 +691,92 @@ class OrderService
         $order->save();
     }
 
+    /**
+     * El renglon de pago de la venta de un pedido: el medio configurado del pedido; los de antes,
+     * el de fabrica de su clave. A credito siempre es credito.
+     *
+     * @return array<string, mixed>
+     */
+    protected function deliveryPayment(Order $order, bool $creditPayment, int $amount): array
+    {
+        if ($creditPayment) {
+            return ['method' => SalePayment::METHOD_CREDIT, 'amount' => $amount];
+        }
+
+        $method = $order->payment_method_id
+            ? $this->paymentCatalog->find((int) $order->company_id, (int) $order->payment_method_id)
+            : null;
+
+        // Pagado en linea: el renglon de la pasarela, con su transaccion.
+        if ($method && $method->isGateway()) {
+            $transaction = OnlineOrderPayments::transactionOf($order);
+
+            if (! $transaction || $transaction->status !== PaymentTransaction::STATUS_APPROVED) {
+                throw ValidationException::withMessages(['payment' => ['El pago en línea de este pedido no está aprobado.']]);
+            }
+
+            return ['payment_method_id' => $method->id, 'method' => $method->kind, 'amount' => $amount, 'payment_transaction_id' => $transaction->id];
+        }
+
+        if ($method && $method->kind !== PaymentMethod::KIND_CREDIT) {
+            return ['payment_method_id' => $method->id, 'method' => $method->kind, 'amount' => $amount];
+        }
+
+        return ['method' => $this->paymentMethodFor($order), 'amount' => $amount];
+    }
+
+    /**
+     * Cuanto de lo pagado en linea no se va a cobrar porque se alisto de menos.
+     */
+    protected function onlineOverpaid(Order $order, int $charged): int
+    {
+        if ($order->payment_method !== Order::PAYMENT_GATEWAY) {
+            return 0;
+        }
+
+        $transaction = OnlineOrderPayments::transactionOf($order);
+
+        if (! $transaction || $transaction->status !== PaymentTransaction::STATUS_APPROVED) {
+            return 0;
+        }
+
+        if ($charged > (int) $transaction->amount) {
+            throw ValidationException::withMessages(['items' => ['Lo alistado vale más de lo que se pagó en línea.']]);
+        }
+
+        return (int) $transaction->amount - $charged;
+    }
+
     protected function paymentMethodFor(Order $order): string
     {
         return match ($order->payment_method) {
             Order::PAYMENT_CARD => SalePayment::METHOD_CARD,
             Order::PAYMENT_TRANSFER => SalePayment::METHOD_TRANSFER,
+            Order::PAYMENT_OTHER => SalePayment::METHOD_OTHER,
             default => SalePayment::METHOD_CASH,
         };
+    }
+
+    /**
+     * El medio de pago de un pedido nuevo.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    protected function paymentMethodOf(array $data, int $companyId): PaymentMethod
+    {
+        if (! empty($data['payment_method_id'])) {
+            $method = $this->paymentCatalog->find($companyId, (int) $data['payment_method_id']);
+
+            if (! $method || $method->kind === PaymentMethod::KIND_EXCHANGE) {
+                throw ValidationException::withMessages(['payment_method' => ['Ese medio de pago no existe.']]);
+            }
+
+            return $method;
+        }
+
+        $kind = Order::kindFor((string) ($data['payment_method'] ?? Order::PAYMENT_CASH_ON_DELIVERY));
+
+        return $this->paymentCatalog->defaultFor($companyId, $kind, PaymentMethod::CHANNEL_ONLINE);
     }
 
     protected function releaseReservations(Order $order): void

@@ -16,18 +16,18 @@ use App\Models\StockMovement;
 use App\Models\Store;
 use App\Models\Supplier;
 use App\Models\Warehouse;
-use App\Services\ImageService;
+use App\Services\Catalog\CatalogImages;
 use App\Services\ProductFamilyService;
 use App\Services\StockService;
 use App\Services\WarehouseService;
 use App\Support\StoreContext;
 use App\Support\TenantContext;
+use App\Support\Uploads;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -37,7 +37,7 @@ class ProductController extends Controller
 {
     public function __construct(
         protected StockService $stock,
-        protected ImageService $images,
+        protected CatalogImages $catalogImages,
         protected WarehouseService $warehouses,
         protected ProductFamilyService $families,
     ) {}
@@ -127,6 +127,8 @@ class ProductController extends Controller
             'suppliers' => $this->supplierOptions($companyId),
             'stores' => $this->storeOptions($companyId),
             'initialStocks' => [],
+            // Cuantas fotos se le montan a cada articulo (Ajustes > Catalogo).
+            'imageLimit' => $this->catalogImages->limit($companyId),
         ]);
     }
 
@@ -190,7 +192,7 @@ class ProductController extends Controller
                     'contact_name' => $product->supplier->contact_name,
                     'phone' => $product->supplier->phone,
                 ] : null,
-                'images' => $product->images->map(fn ($image) => ['id' => $image->id, 'path' => $image->path, 'thumb_path' => $image->thumb()])->values(),
+                'images' => $product->images->map(fn ($image) => ['id' => $image->id, 'path' => $image->path, 'thumb_path' => $image->thumb(), 'url' => Uploads::url($image->path)])->values(),
                 'family' => $product->family && ! $product->family->trashed() ? ['id' => $product->family->id, 'name' => $product->family->name, 'label' => $product->variant_label] : null,
             ]),
             'stocks' => $this->stocksByStore($product),
@@ -236,7 +238,14 @@ class ProductController extends Controller
             'suppliers' => $this->supplierOptions($product->company_id),
             'stores' => $this->storeOptions($product->company_id),
             'initialStocks' => $this->stocksByStore($product),
-            'images' => $product->images->map(fn (ProductImage $image) => ['id' => $image->id, 'path' => $image->path, 'thumb_path' => $image->thumb()])->values(),
+            'images' => $product->images->map(fn (ProductImage $image) => [
+                'id' => $image->id,
+                'path' => $image->path,
+                'thumb_path' => $image->thumb(),
+                'url' => Uploads::url($image->thumb()),
+                'is_cover' => $image->path === $product->image_path,
+            ])->values(),
+            'imageLimit' => $this->catalogImages->limit((int) $product->company_id),
         ]);
     }
 
@@ -455,7 +464,7 @@ class ProductController extends Controller
 
         abort_if($image->product_id !== $product->id, 403, 'Esa imagen no es de este articulo.');
 
-        Storage::disk('public')->delete(array_filter([$image->path, $image->thumb_path]));
+        $this->catalogImages->deleteFiles($image);
 
         if ($product->image_path === $image->path) {
             // Si se borra la portada, la siguiente imagen toma su lugar.
@@ -466,6 +475,24 @@ class ProductController extends Controller
         $image->delete();
 
         return back()->with('success', 'La imagen quedo eliminada.');
+    }
+
+    /**
+     * La portada: la que se ve en el listado, en la caja y en la tarjeta de la tienda, y con la
+     * que arranca el carrusel de su ficha.
+     */
+    public function coverImage(Product $product, ProductImage $image): RedirectResponse
+    {
+        $this->authorizeCompany($product);
+
+        abort_if($image->product_id !== $product->id, 403, 'Esa imagen no es de este articulo.');
+
+        DB::transaction(function () use ($product, $image) {
+            $this->catalogImages->makeFirst($product->images(), $image);
+            $product->update(['image_path' => $image->path, 'thumb_path' => $image->thumb_path]);
+        });
+
+        return back()->with('success', 'La portada quedó cambiada.');
     }
 
     /**
@@ -482,25 +509,12 @@ class ProductController extends Controller
             return;
         }
 
-        $sort = (int) $product->images()->max('sort_order');
+        // Cuantas caben ya lo midio el formulario contra el tope de la empresa (`CatalogImages`).
+        $created = $this->catalogImages->append($product->images(), $files, (int) $product->company_id, 'products');
+        $first = $created->first();
 
-        foreach ($files as $file) {
-            if (! $file || ! $file->isValid()) {
-                continue;
-            }
-
-            $stored = $this->images->storeProductImage($file, (int) $product->company_id);
-
-            ProductImage::create([
-                'product_id' => $product->id,
-                'path' => $stored['path'],
-                'thumb_path' => $stored['thumb_path'],
-                'sort_order' => ++$sort,
-            ]);
-
-            if (! $product->image_path) {
-                $product->update(['image_path' => $stored['path'], 'thumb_path' => $stored['thumb_path']]);
-            }
+        if ($first && ! $product->image_path) {
+            $product->update(['image_path' => $first->path, 'thumb_path' => $first->thumb_path]);
         }
     }
 
@@ -524,6 +538,7 @@ class ProductController extends Controller
             'is_online_visible' => (bool) $product->is_online_visible,
             'image_path' => $product->image_path,
             'thumb_path' => $product->thumb(),
+            'thumb_url' => Uploads::url($product->thumb()),
             'category' => $product->category ? ['id' => $product->category->id, 'name' => $product->category->name] : null,
             'supplier_name' => $product->supplier?->name,
             'family_id' => $product->product_family_id,
@@ -582,6 +597,7 @@ class ProductController extends Controller
                 'is_active' => (bool) $family->is_active,
                 'is_online_visible' => (bool) $family->is_online_visible,
                 'thumb_path' => $first?->thumb(),
+                'thumb_url' => Uploads::url($first?->thumb()),
                 'category' => $family->category ? ['id' => $family->category->id, 'name' => $family->category->name] : null,
                 'variants_count' => $children->count(),
                 'stock_quantity' => round((float) $children->sum('stock_quantity'), 3),

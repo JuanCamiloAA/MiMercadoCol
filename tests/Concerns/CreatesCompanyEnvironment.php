@@ -16,6 +16,7 @@ use App\Models\Role;
 use App\Models\Store;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Services\Membership\Entitlements;
 use App\Services\StoreDefaultRolesService;
 use App\Services\UserPermissionService;
 use App\Support\StoreContext;
@@ -314,7 +315,9 @@ trait CreatesCompanyEnvironment
             'max_stores' => null,
             'max_users' => null,
             'max_registers' => null,
-            'features' => $features,
+            // Las pruebas siguen hablando de funciones (`online_store`, `promotions`): se traducen a
+            // nodos igual que la conversion de los planes que ya existian.
+            'entitlements' => Entitlements::fromLegacyFeatures($features),
             'is_public' => true,
             'is_active' => true,
             'sort_order' => 1,

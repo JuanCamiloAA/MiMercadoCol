@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Company;
 use App\Models\PaymentTerm;
+use App\Realtime\ChangeCollector;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -83,6 +84,7 @@ class PaymentTermService
 
             // `credit_term_days` es copia de los dias del plazo: se mantiene al dia.
             DB::table('customers')->where('payment_term_id', $term->id)->update(['credit_term_days' => $term->days]);
+            app(ChangeCollector::class)->record((int) $term->company_id, 'customers');
 
             return $term->refresh();
         });

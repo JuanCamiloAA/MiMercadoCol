@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Helpers\PermissionHelper;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\Membership\EntitlementService;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
@@ -60,6 +61,25 @@ class UserPermissionService
         });
 
         $this->flush($target);
+    }
+
+    /**
+     * Guarda lo que se marco en el asignador, que solo pinta lo que el plan de la empresa
+     * incluye. Lo que el usuario tenga asignado fuera del plan no se ve ahi, asi que tampoco se
+     * toca: no se borra, se ignora, y vuelve a valer si la empresa sube de plan.
+     *
+     * @param  list<string>  $permissionNames
+     */
+    public function syncWithinPlan(User $target, array $permissionNames, User $actor): void
+    {
+        $entitlement = app(EntitlementService::class)->forCompanyId($target->company_id ? (int) $target->company_id : null);
+
+        if ($entitlement) {
+            $outside = array_values(array_filter($this->namesFor($target), fn (string $name) => ! $entitlement->allows($name)));
+            $permissionNames = array_values(array_unique([...$entitlement->filter(array_map('strval', $permissionNames)), ...$outside]));
+        }
+
+        $this->sync($target, $permissionNames, $actor);
     }
 
     /**

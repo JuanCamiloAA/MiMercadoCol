@@ -63,11 +63,12 @@ class StorefrontProductPresentationTest extends TestCase
 
         $this->assertSame('Últimas 3 unidades', StorefrontProducts::stock(3, false, false, $low)['note']);
         $this->assertNull(StorefrontProducts::stock(35, false, false, $low)['note']);
-        $this->assertSame('Agotado', StorefrontProducts::stock(0, false, false, $low)['note']);
+        // «Agotado» ya no se pinta: lo que no tiene disponible no llega a la tienda.
+        $this->assertNull(StorefrontProducts::stock(0, false, false, $low)['note']);
         $this->assertNull(StorefrontProducts::stock(3, false, false, ['stock_display' => 'hidden'])['note']);
         $this->assertSame('35 disponibles', StorefrontProducts::stock(35, false, false, ['stock_display' => 'exact'])['note']);
-        // Lo que admite negativo nunca sale agotado.
-        $this->assertFalse(StorefrontProducts::stock(0, true, false, $low)['out']);
+        // Lo que admite negativo no avisa de pocas unidades.
+        $this->assertSame(['level' => 'ok', 'note' => null], StorefrontProducts::stock(0, true, false, $low));
 
         // Por defecto la tienda no muestra la cifra exacta.
         $arroz = $this->makeProduct(['name' => 'Arroz 1 kg', 'is_online_visible' => true], 35);

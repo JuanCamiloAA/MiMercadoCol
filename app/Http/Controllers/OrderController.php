@@ -6,11 +6,15 @@ use App\Models\Customer;
 use App\Models\CustomerReturn;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\Service;
 use App\Models\Store;
 use App\Models\User;
 use App\Services\OrderService;
+use App\Services\Payments\PaymentContext;
+use App\Services\Payments\PaymentMethodAvailability;
+use App\Services\SaleService;
 use App\Services\Storefront\StorefrontConfig;
 use App\Services\Storefront\StorefrontServiceCatalog;
 use App\Support\StoreContext;
@@ -26,6 +30,7 @@ class OrderController extends Controller
     public function __construct(
         protected OrderService $orders,
         protected StorefrontConfig $config,
+        protected PaymentMethodAvailability $paymentAvailability,
     ) {}
 
     public function index(Request $request): Response
@@ -42,7 +47,7 @@ class OrderController extends Controller
         $orders = Order::query()
             ->where('company_id', $companyId)
             ->where('store_id', $storeId)
-            ->with(['customer:id,name,phone', 'courier:id,name,last_name'])
+            ->with(['customer:id,name,phone', 'courier:id,name,last_name', 'paymentMethod:id,name'])
             ->withCount('items')
             ->when($filters['search'], fn ($query, $search) => $query->where(function ($inner) use ($search) {
                 $inner->where('number', 'like', "%{$search}%")
@@ -61,7 +66,7 @@ class OrderController extends Controller
                 'channel' => $order->channel,
                 'channel_label' => Order::CHANNEL_LABELS[$order->channel] ?? $order->channel,
                 'payment_method' => $order->payment_method,
-                'payment_label' => Order::PAYMENT_LABELS[$order->payment_method] ?? $order->payment_method,
+                'payment_label' => $order->paymentLabel(),
                 'payment_status' => $order->payment_status,
                 'customer' => $order->customer?->name,
                 'customer_phone' => $order->customer?->phone,
@@ -109,7 +114,7 @@ class OrderController extends Controller
                 'status_label' => $order->statusLabel(),
                 'channel_label' => Order::CHANNEL_LABELS[$order->channel] ?? $order->channel,
                 'payment_method' => $order->payment_method,
-                'payment_label' => Order::PAYMENT_LABELS[$order->payment_method] ?? $order->payment_method,
+                'payment_label' => $order->paymentLabel(),
                 'payment_status' => $order->payment_status,
                 'delivery_address' => $order->delivery_address,
                 'delivery_notes' => $order->delivery_notes,
@@ -167,6 +172,11 @@ class OrderController extends Controller
                 'allowed_transitions' => Order::ALLOWED_TRANSITIONS[$order->status] ?? [],
             ],
             'couriers' => $this->courierOptions($order->company_id, $order->store_id),
+            // Con que se cobra en la puerta: los medios de la tienda de esa sede que son plata.
+            'collectMethods' => $this->paymentAvailability
+                ->collectable((int) $order->company_id)
+                ->map(fn (PaymentMethod $method) => $this->paymentAvailability->present($method, PaymentMethod::CHANNEL_ONLINE))
+                ->values(),
             'statusLabels' => Order::STATUS_LABELS,
             // Las devoluciones de este pedido, las que pidio el cliente o registro el equipo.
             'returns' => CustomerReturn::query()
@@ -237,7 +247,22 @@ class OrderController extends Controller
             'slots' => $store ? $this->config->slots($store) : [],
             'deliveryFee' => $store ? $this->config->deliveryFee($store, 0) : 0,
             'store' => $store?->only(['id', 'name']),
+            // Los medios de la tienda de la sede, sin la pasarela: un pedido de mostrador se paga al recibir.
+            'paymentMethods' => $this->counterMethods($companyId, $storeId)
+                ->map(fn (PaymentMethod $method) => ['value' => $method->id, 'label' => $method->name, 'kind' => $method->kind])
+                ->values(),
         ]);
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, PaymentMethod>
+     */
+    protected function counterMethods(int $companyId, int $storeId)
+    {
+        return $this->paymentAvailability
+            ->available($companyId, PaymentContext::online($storeId))
+            ->reject(fn (PaymentMethod $method) => $method->isGateway() || $method->kind === PaymentMethod::KIND_STORE_CREDIT)
+            ->values();
     }
 
     public function store(Request $request): RedirectResponse
@@ -251,7 +276,9 @@ class OrderController extends Controller
             'delivery_notes' => ['nullable', 'string', 'max:160'],
             'delivery_slot_start' => ['nullable', 'date'],
             'delivery_slot_end' => ['nullable', 'date', 'after_or_equal:delivery_slot_start'],
-            'payment_method' => ['required', Rule::in(array_keys(Order::PAYMENT_LABELS))],
+            'payment_method_id' => ['required_without:payment_method', 'nullable', 'integer', Rule::in($this->counterMethods($companyId, $storeId)->pluck('id')->all())],
+            // La clave de siempre (`cash_on_delivery`...) sigue valiendo para quien no manda el medio.
+            'payment_method' => ['required_without:payment_method_id', 'nullable', Rule::in(array_keys(Order::PAYMENT_LABELS))],
             'delivery_fee' => ['required', 'integer', 'min:0'],
             'items' => ['required', 'array', 'min:1'],
             // Cada renglon es un articulo o un servicio (tal cual el maestro).
@@ -261,6 +288,8 @@ class OrderController extends Controller
             'items.*.substitution_policy' => ['nullable', Rule::in(array_keys(OrderItem::POLICY_LABELS))],
         ], [
             'customer_id.required' => 'Elige el cliente.',
+            'payment_method_id.in' => 'Ese medio de pago no está disponible en esta sede.',
+            'payment_method_id.required_without' => 'Elige como se va a pagar.',
             'delivery_address.required' => 'La direccion de entrega es obligatoria.',
             'items.required' => 'El pedido necesita al menos un articulo.',
         ]);
@@ -326,15 +355,22 @@ class OrderController extends Controller
         $this->authorizeCompany($order);
 
         $validated = $request->validate([
-            // El cobro se puede repartir, igual que en el mostrador: un pago por medio.
-            'payments' => ['required', 'array', 'min:1', 'max:'.count(OrderService::COLLECTABLE_METHODS)],
-            'payments.*.method' => ['required', 'distinct', Rule::in(OrderService::COLLECTABLE_METHODS)],
+            // El cobro se puede repartir, igual que en el mostrador: un pago por medio configurado.
+            // Cuales valen en la puerta lo decide `PaymentMethodAvailability` en el servicio.
+            'payments' => ['required', 'array', 'min:1', 'max:'.SaleService::MAX_PAYMENT_LINES],
+            'payments.*.payment_method_id' => [
+                'nullable', 'integer', 'distinct',
+                Rule::exists('payment_methods', 'id')->where(fn ($query) => $query->where('company_id', $order->company_id)->whereIn('kind', OrderService::COLLECTABLE_METHODS)),
+            ],
+            'payments.*.method' => ['required_without:payments.*.payment_method_id', 'nullable', 'distinct', Rule::in(OrderService::COLLECTABLE_METHODS)],
             'payments.*.amount' => ['required', 'integer', 'min:1'],
             'payments.*.received_amount' => ['nullable', 'integer', 'min:0'],
             'payments.*.reference' => ['nullable', 'string', 'max:60'],
         ], [
             'payments.required' => 'Elige con que se pago.',
+            'payments.*.payment_method_id.distinct' => 'Hay dos pagos con el mismo medio.',
             'payments.*.method.distinct' => 'Hay dos pagos con el mismo medio.',
+            'payments.*.payment_method_id.exists' => 'Con ese medio no se cobra en la puerta.',
             'payments.*.amount.min' => 'Un pago en cero no se registra: quitalo del cobro.',
         ]);
 

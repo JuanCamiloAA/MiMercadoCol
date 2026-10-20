@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Notifications\Platform\NewPlatformLead;
 use App\Services\Landing\LandingRenderer;
 use App\Services\Payments\PaymentGatewayResolver;
+use App\Services\Platform\BusinessCategoryCatalog;
 use App\Services\Platform\CompanyProvisioner;
 use App\Services\Platform\SignupService;
 use App\Services\PlatformSettingsService;
@@ -60,6 +61,12 @@ class SignupController extends Controller
             'cycles' => $catalogue['cycles'],
             'selectedPlanId' => $plan['id'] ?? null,
             'selectedCycleId' => $cycle['id'] ?? null,
+            // ¿Que tipo de comercio es? Con eso la landing lo agrupa.
+            'categories' => app(BusinessCategoryCatalog::class)->options()->map(fn (array $option) => [
+                'id' => $option['value'],
+                'name' => $option['label'],
+                'icon' => $option['icon'],
+            ])->values(),
             // Sin pasarela no se ofrece pagar en linea: solo «que me contacten» (y la prueba gratis).
             'gatewayEnabled' => $this->gateways->wompi()->isUsable(),
         ]);
@@ -80,6 +87,7 @@ class SignupController extends Controller
                     'email' => $data['company_email'],
                     'phone' => $data['company_phone'] ?? null,
                     'city' => $data['city'],
+                    'business_category_id' => (int) $data['business_category_id'],
                 ],
                 'store' => ['city' => $data['city']],
                 'admin' => [

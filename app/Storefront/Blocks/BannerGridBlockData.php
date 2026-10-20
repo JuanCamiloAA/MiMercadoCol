@@ -3,6 +3,7 @@
 namespace App\Storefront\Blocks;
 
 use App\Models\StorefrontBlock;
+use App\Support\MediaVariants;
 
 /**
  * Mosaico de banners: de dos a cuatro piezas, cada una imagen o color con texto, con destino.
@@ -10,7 +11,7 @@ use App\Models\StorefrontBlock;
 class BannerGridBlockData extends BlockData
 {
     /** Cuantas piezas pide cada diseño. */
-    public const LAYOUTS = ['2' => 2, '3' => 3, '1+2' => 3, '4' => 4];
+    public const LAYOUTS = ['1' => 1, '2' => 2, '3' => 3, '1+2' => 3, '4' => 4];
 
     public function type(): string
     {
@@ -44,7 +45,7 @@ class BannerGridBlockData extends BlockData
             'layout' => [
                 'type' => 'select',
                 'label' => 'Diseño',
-                'options' => self::options(['2' => 'Dos iguales', '3' => 'Tres iguales', '1+2' => 'Uno grande y dos pequeños', '4' => 'Cuatro iguales']),
+                'options' => self::options(['1' => 'Una franja', '2' => 'Dos iguales', '3' => 'Tres iguales', '1+2' => 'Uno grande y dos pequeños', '4' => 'Cuatro iguales']),
             ],
             'tiles' => [
                 'type' => 'repeater',
@@ -54,8 +55,7 @@ class BannerGridBlockData extends BlockData
                 'item_defaults' => ['kind' => 'image', 'tone' => 'accent'],
                 'item' => [
                     'kind' => ['type' => 'select', 'label' => 'Qué lleva', 'options' => self::options(['image' => 'Una imagen', 'color' => 'Un color con texto'])],
-                    'media_id' => ['type' => 'media', 'label' => 'Imagen para computador', 'show_if' => ['field' => 'kind', 'value' => 'image']],
-                    'media_mobile_id' => ['type' => 'media', 'label' => 'Imagen para celular', 'help' => 'Opcional.', 'show_if' => ['field' => 'kind', 'value' => 'image']],
+                    ...MediaVariants::field('media_id', ['type' => 'media', 'label' => 'Imagen', 'show_if' => ['field' => 'kind', 'value' => 'image']]),
                     'tone' => [
                         'type' => 'select',
                         'label' => 'Color',
@@ -64,7 +64,9 @@ class BannerGridBlockData extends BlockData
                     ],
                     'title' => ['type' => 'text', 'label' => 'Título', 'max' => 40],
                     'text' => ['type' => 'text', 'label' => 'Texto', 'max' => 80],
+                    'button_label' => ['type' => 'text', 'label' => 'Texto del botón', 'max' => 24, 'help' => 'Opcional.'],
                     'target' => ['type' => 'target', 'label' => 'A dónde lleva', 'kinds' => self::targetKinds($context)],
+                    ...self::bannerDesign(['ratio', 'text_position', 'title_size', 'overlay_style', 'button_style']),
                 ],
             ],
         ];
@@ -101,7 +103,7 @@ class BannerGridBlockData extends BlockData
             if (($tile['kind'] ?? 'image') === 'image') {
                 $where = 'El banner '.($index + 1).' del mosaico';
                 array_push($issues, ...$this->imageIssues($tile['media_id'] ?? null, $media, $where));
-                array_push($issues, ...$this->imageIssues($tile['media_mobile_id'] ?? null, $media, $where.' (celular)', required: false));
+                array_push($issues, ...$this->variantIssues($this->fields()['tiles']['item'], 'media_id', $tile, $media, $where));
             } elseif (trim((string) ($tile['title'] ?? '')) === '') {
                 $issues[] = ['level' => 'block', 'message' => 'El banner '.($index + 1).' del mosaico es de color y no tiene título.'];
             }

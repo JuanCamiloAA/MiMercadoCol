@@ -59,7 +59,7 @@ export function VariantPicker({
                                 onChange={(event) => {
                                     const variant = target(position, Number(event.target.value));
 
-                                    if (variant && !variant.stock.out) {
+                                    if (variant) {
                                         onSelect(variant);
                                     }
                                 }}
@@ -67,12 +67,12 @@ export function VariantPicker({
                             >
                                 {attribute.values.map((value) => {
                                     const variant = target(position, value.id);
-                                    const out = !variant || variant.stock.out;
+                                    const out = !variant;
 
                                     return (
                                         <option key={value.id} value={value.id} disabled={out}>
                                             {value.value}
-                                            {out ? ' — agotado' : ''}
+                                            {out ? ' — no disponible' : ''}
                                         </option>
                                     );
                                 })}
@@ -81,7 +81,7 @@ export function VariantPicker({
                             <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={attribute.name}>
                                 {attribute.values.map((value) => {
                                     const variant = target(position, value.id);
-                                    const out = !variant || variant.stock.out;
+                                    const out = !variant;
                                     const on = current?.id === value.id;
                                     const swatch = attribute.display === 'swatches';
 
@@ -92,7 +92,7 @@ export function VariantPicker({
                                             role="radio"
                                             aria-checked={on}
                                             aria-disabled={out || undefined}
-                                            aria-label={swatch ? `${value.value}${out ? ', agotado' : ''}` : undefined}
+                                            aria-label={swatch ? `${value.value}${out ? ', no disponible' : ''}` : undefined}
                                             title={swatch ? value.value : undefined}
                                             onClick={() => variant && !out && onSelect(variant)}
                                             className={cn(
@@ -122,7 +122,7 @@ export function VariantPicker({
                                             ) : (
                                                 <>
                                                     {value.value}
-                                                    {out && <span className="sr-only"> (agotado)</span>}
+                                                    {out && <span className="sr-only"> (no disponible)</span>}
                                                 </>
                                             )}
                                             {swatch && out && <span aria-hidden className="absolute inset-x-1 top-1/2 h-0.5 -rotate-45 bg-[var(--muted)]" />}

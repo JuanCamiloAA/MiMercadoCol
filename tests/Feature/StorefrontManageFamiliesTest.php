@@ -33,23 +33,29 @@ class StorefrontManageFamiliesTest extends TestCase
         $oil = $this->makeFamily('Aceite de girasol', 'Volumen', null, [['500 ml', null, 8200], ['1 L', null, 12500, ['is_online_visible' => false]]]);
 
         $this->actingAs($this->admin)->withSession($this->withActiveStore())
-            ->get(route('storefront.catalog.index', ['type' => 'families']))
+            ->get(route('storefront.catalog.index', ['tab' => 'families']))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Storefront/Manage')
-                ->where('filters.type', 'families')
-                ->has('products.data', 1)
-                ->where('products.data.0.id', $oil->id)
-                ->where('products.data.0.price', 8200)
-                ->where('products.data.0.variants_total', 2)
-                ->where('products.data.0.variants_published', 1));
+                ->where('tab', 'families')
+                ->has('rows.data', 1)
+                ->where('rows.data.0.id', $oil->id)
+                ->where('rows.data.0.price', 8200)
+                ->where('rows.data.0.variants_total', 2)
+                ->where('rows.data.0.variants_published', 1)
+                ->where('rows.data.0.variants_available', 1));
+
+        // Un enlace guardado con el nombre de antes (`type`) abre la misma pestaña.
+        $this->actingAs($this->admin)->withSession($this->withActiveStore())
+            ->get(route('storefront.catalog.index', ['type' => 'families']))
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('tab', 'families'));
 
         // Desde ahi se ven sus subarticulos en la pestaña de articulos.
         $this->actingAs($this->admin)->withSession($this->withActiveStore())
-            ->get(route('storefront.catalog.index', ['type' => 'products', 'family' => $oil->id]))
+            ->get(route('storefront.catalog.index', ['family' => $oil->id]))
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->has('products.data', 2)
-                ->where('products.data.0.family', 'Aceite de girasol'));
+                ->has('rows.data', 2)
+                ->where('rows.data.0.family', 'Aceite de girasol'));
     }
 
     public function test_ocultar_la_tarjeta_la_saca_de_la_tienda(): void

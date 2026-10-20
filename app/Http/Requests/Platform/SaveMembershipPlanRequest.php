@@ -3,13 +3,17 @@
 namespace App\Http\Requests\Platform;
 
 use App\Models\MembershipPlan;
-use App\Services\Membership\MembershipFeatures;
+use App\Services\Membership\Entitlements;
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 /**
  * Crear o editar un plan de membresia.
+ *
+ * Lo que incluye llega como nodos del arbol (`inventory.*`, `inventory.transfers.direct`). Un
+ * nodo que no corresponde a nada, o que es de la plataforma, se rechaza.
  */
 class SaveMembershipPlanRequest extends FormRequest
 {
@@ -20,7 +24,15 @@ class SaveMembershipPlanRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->merge(['slug' => Str::slug((string) ($this->input('slug') ?: $this->input('name')))]);
+        $highlights = $this->input('highlights');
+
+        $this->merge([
+            'slug' => Str::slug((string) ($this->input('slug') ?: $this->input('name'))),
+            // Un renglon vacio en la lista de destacados no es un destacado.
+            'highlights' => is_array($highlights)
+                ? array_values(array_filter(array_map(fn ($line) => is_string($line) ? trim($line) : $line, $highlights), fn ($line) => $line !== '' && $line !== null))
+                : $highlights,
+        ]);
     }
 
     /**
@@ -40,8 +52,18 @@ class SaveMembershipPlanRequest extends FormRequest
             'max_stores' => ['nullable', 'integer', 'min:1', 'max:10000'],
             'max_users' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'max_registers' => ['nullable', 'integer', 'min:1', 'max:10000'],
-            'features' => ['array'],
-            'features.*' => ['string', Rule::in(array_keys(MembershipFeatures::CATALOGUE))],
+            'entitlements' => ['present', 'array', 'max:1000'],
+            'entitlements.*' => ['required', 'string', 'max:120', function (string $attribute, mixed $value, Closure $fail) {
+                if (! is_string($value) || ! Entitlements::isValid($value)) {
+                    $fail(is_string($value) && Entitlements::isPlatformOnly($value)
+                        ? 'Lo de la plataforma no forma parte de ningún plan.'
+                        : 'Esa función no existe en el árbol de permisos.');
+                }
+            }],
+            'highlights' => ['nullable', 'array', 'max:'.MembershipPlan::MAX_HIGHLIGHTS],
+            'highlights.*' => ['string', 'max:80'],
+            // Quitarle algo a un plan que ya usan empresas se confirma: el acceso se corta de inmediato.
+            'confirm_removals' => ['nullable', 'boolean'],
             'is_public' => ['required', 'boolean'],
             'is_featured' => ['required', 'boolean'],
             'is_active' => ['required', 'boolean'],
@@ -54,8 +76,9 @@ class SaveMembershipPlanRequest extends FormRequest
      */
     public function planData(): array
     {
-        $data = $this->validated();
-        $data['features'] = MembershipFeatures::sanitize($data['features'] ?? []);
+        $data = $this->safe()->except(['confirm_removals']);
+        $data['entitlements'] = Entitlements::normalize($data['entitlements'] ?? []);
+        $data['highlights'] = array_values($data['highlights'] ?? []);
 
         return $data;
     }
@@ -74,7 +97,9 @@ class SaveMembershipPlanRequest extends FormRequest
             'max_stores.min' => 'El tope de sedes es de al menos 1; déjalo vacío para no poner tope.',
             'max_users.min' => 'El tope de usuarios es de al menos 1; déjalo vacío para no poner tope.',
             'max_registers.min' => 'El tope de cajas es de al menos 1; déjalo vacío para no poner tope.',
-            'features.*.in' => 'Esa función no existe.',
+            'entitlements.present' => 'Marca lo que incluye el plan.',
+            'highlights.max' => 'Los destacados son máximo '.MembershipPlan::MAX_HIGHLIGHTS.'.',
+            'highlights.*.max' => 'Cada destacado va en máximo 80 letras.',
         ];
     }
 }

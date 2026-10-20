@@ -4,7 +4,9 @@ namespace App\Services\Storefront;
 
 use App\Models\Category;
 use App\Models\MediaAsset;
+use App\Models\PaymentMethod;
 use App\Models\Store;
+use App\Services\Payments\PaymentMethodAvailability;
 use App\Storefront\Targets;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
@@ -25,10 +27,15 @@ class StorefrontStructure
     public const TOPBAR_VARIABLES = ['domicilio', 'gratis_desde', 'proxima_franja', 'sede', 'horario'];
 
     /** @var array<string, string> */
-    public const TOPBAR_TONES = ['brand_dark' => 'Marca oscuro', 'accent' => 'Color de la marca', 'neutral' => 'Neutro', 'deal' => 'Rojo de oferta'];
+    public const TOPBAR_TONES = ['brand_dark' => 'Marca oscuro', 'accent' => 'Color de la marca', 'neutral' => 'Neutro', 'deal' => 'Rojo de oferta', 'dark' => 'Negro'];
 
-    /** @var array<string, string> */
-    public const HEADER_STYLES = ['light' => 'Claro', 'brand' => 'Color de la marca', 'dark' => 'Oscuro'];
+    /**
+     * `overlay` va transparente sobre la portada (si el primer bloque es un banner principal de
+     * borde a borde); en las demas paginas se pinta claro.
+     *
+     * @var array<string, string>
+     */
+    public const HEADER_STYLES = ['light' => 'Claro', 'brand' => 'Color de la marca', 'dark' => 'Oscuro', 'minimal' => 'Mínimo (blanco, línea fina)', 'overlay' => 'Transparente sobre la portada'];
 
     /** @var array<string, string> */
     public const LOGO_MODES = ['logo' => 'Logo', 'mark_name' => 'Isotipo y nombre', 'name' => 'Solo el nombre'];
@@ -58,7 +65,7 @@ class StorefrontStructure
         'brand' => 'Marca',
         'price' => 'Rango de precio',
         'deals' => 'Solo ofertas',
-        'in_stock' => 'Solo disponibles',
+        // «Solo disponibles» ya no existe: la tienda nunca muestra lo que no tiene disponible.
         // Tallas, presentaciones, sabores: de los articulos con subarticulos de la categoria.
         'attributes' => 'Características (presentación, talla, sabor…)',
     ];
@@ -91,11 +98,23 @@ class StorefrontStructure
      */
     public const CHOICES = [
         'image_fit' => ['contain' => 'Completa, sobre su fondo', 'cover' => 'Llenando el cuadro'],
-        'image_bg' => ['white' => 'Blanco', 'light' => 'Gris claro'],
+        'image_bg' => ['white' => 'Blanco', 'light' => 'Gris claro', 'tint' => 'Suave, de la marca'],
         'deal_badge' => ['percent' => 'Porcentaje (-12%)', 'savings' => 'Ahorro (Ahorra $ 1.500)', 'none' => 'Sin etiqueta'],
-        'add_button' => ['solid' => 'Relleno', 'outline' => 'Con borde'],
+        'add_button' => ['solid' => 'Relleno', 'outline' => 'Con borde', 'icon' => '«+» sobre la foto', 'none' => 'Sin botón (la tarjeta lleva a la ficha)'],
         'stock_display' => ['low_only' => 'Solo cuando quedan pocas', 'hidden' => 'Nunca (solo «Agotado»)', 'exact' => 'La cantidad exacta'],
-        'price_size' => ['lg' => 'Grande', 'md' => 'Mediano'],
+        'price_size' => ['lg' => 'Grande', 'md' => 'Mediano', 'sm' => 'Pequeño'],
+        'card_style' => ['boxed' => 'Con borde', 'flat' => 'Plana', 'minimal' => 'Mínima (foto, nombre y precio)', 'photo' => 'Foto grande'],
+        'image_ratio' => ['1:1' => 'Cuadrada', '3:4' => 'Vertical (3:4)', '4:5' => 'Vertical (4:5)'],
+        'text_align' => ['left' => 'A la izquierda', 'center' => 'Centrado'],
+        'image_hover' => ['none' => 'Nada', 'second' => 'La segunda foto (en computador)'],
+        'header_layout' => ['search' => 'Buscador grande en el centro', 'center' => 'Logo al centro y menú debajo', 'inline' => 'Todo en una fila'],
+        'sticky_style' => ['solid' => 'Sólido', 'blur_dark' => 'Oscuro translúcido', 'blur_light' => 'Claro translúcido'],
+        'search_style' => ['pill' => 'Caja redondeada', 'underline' => 'Línea debajo', 'icon' => 'Solo la lupa'],
+        'nav_style' => ['bar' => 'Barra de chips', 'text' => 'Texto en mayúsculas pequeñas', 'none' => 'Sin menú'],
+        'nav_active_style' => ['none' => 'Sin marca', 'underline' => 'Subrayado'],
+        'footer_style' => ['full' => 'Completo', 'minimal' => 'Una línea'],
+        'footer_tone' => ['light' => 'Claro', 'dark' => 'Oscuro', 'brand' => 'Color de la marca'],
+        'floating_position' => ['right' => 'Abajo a la derecha', 'left' => 'Abajo a la izquierda'],
         'desktop_behavior' => ['drawer' => 'Abre un cajón al lado', 'page' => 'Va a la página del carrito'],
         'category_layout' => ['sidebar' => 'Filtros a la izquierda', 'top' => 'Filtros en un botón arriba'],
         'pagination' => ['load_more' => 'Botón «Cargar más»', 'pages' => 'Páginas'],
@@ -105,15 +124,25 @@ class StorefrontStructure
         'radius' => ['sharp' => 'Rectas', 'soft' => 'Suaves', 'round' => 'Redondas'],
         'density' => ['cozy' => 'Cómoda', 'compact' => 'Compacta'],
         'button_style' => ['solid' => 'Rellenos', 'outline' => 'Con borde'],
-        'font_pair' => ['mercado' => 'Mercado', 'moderna' => 'Moderna', 'cercana' => 'Cercana', 'editorial' => 'Editorial'],
+        'font_pair' => [
+            'mercado' => 'Mercado', 'moderna' => 'Moderna', 'cercana' => 'Cercana', 'editorial' => 'Editorial',
+            'grotesca' => 'Grotesca', 'minimal' => 'Minimal', 'lujo' => 'Lujo', 'tecnica' => 'Técnica',
+            'vitrina' => 'Vitrina', 'urbano' => 'Urbano', 'sastre' => 'Sastre',
+        ],
+        'logo_font' => ['none' => 'La de los títulos', 'italiana' => 'Italiana (fina)', 'cormorant' => 'Cormorant (serif clásica)', 'playfair' => 'Playfair (serif de revista)', 'anton' => 'Anton (condensada, fuerte)'],
+        'surface' => ['white' => 'Blanco', 'warm' => 'Crema', 'cool' => 'Gris frío', 'sage' => 'Salvia', 'sand' => 'Arena'],
+        'heading_case' => ['normal' => 'Como se escriben', 'upper' => 'En mayúsculas espaciadas'],
+        'container' => ['normal' => 'Normal', 'wide' => 'Amplio', 'full' => 'Toda la pantalla'],
+        'button_shape' => ['default' => 'Con las esquinas del tema', 'pill' => 'Píldora', 'square' => 'Rectos'],
     ];
 
     /** Los medios de pago de la sede, en el nombre de su logo del pie. */
     public const PAYMENT_LOGO_FOR = [
-        'cash_on_delivery' => 'cash',
-        'card_on_delivery' => 'card',
-        'transfer' => 'transfer',
-        'customer_credit' => 'credit',
+        PaymentMethod::KIND_CASH => 'cash',
+        PaymentMethod::KIND_CARD => 'card',
+        PaymentMethod::KIND_TRANSFER => 'transfer',
+        PaymentMethod::KIND_CREDIT => 'credit',
+        PaymentMethod::KIND_GATEWAY_CHECKOUT => 'card',
     ];
 
     /** @var array<string, array<string, mixed>> */
@@ -137,6 +166,10 @@ class StorefrontStructure
             'cart_shows_total' => true,
             'search_placeholder' => '¿Qué necesitas hoy?',
             'logo_mode' => 'logo',
+            'layout' => 'search',
+            'overlay' => false,
+            'sticky_style' => 'solid',
+            'search_style' => 'pill',
         ],
         'nav' => [
             'enabled' => true,
@@ -145,8 +178,11 @@ class StorefrontStructure
             'items' => [],
             'show_all_categories' => true,
             'mega_menu' => true,
+            'style' => 'bar',
+            'active_style' => 'none',
         ],
         'mobile_nav' => [
+            'enabled' => true,
             'items' => ['home', 'categories', 'search', 'orders', 'account'],
         ],
         'card' => [
@@ -160,6 +196,17 @@ class StorefrontStructure
             'stock_display' => 'low_only',
             'low_stock_threshold' => 5,
             'price_size' => 'lg',
+            'style' => 'boxed',
+            'image_ratio' => '1:1',
+            'text_align' => 'left',
+            'show_swatches' => false,
+            'show_description' => false,
+            'image_hover' => 'none',
+        ],
+        // El boton flotante de WhatsApp. El numero es el del contacto de la sede: sin numero no sale.
+        'floating' => [
+            'whatsapp' => false,
+            'position' => 'right',
         ],
         'cart_bar' => [
             'enabled' => true,
@@ -172,7 +219,7 @@ class StorefrontStructure
         ],
         'category_page' => [
             'layout' => 'sidebar',
-            'filters' => ['subcategories', 'brand', 'attributes', 'price', 'deals', 'in_stock'],
+            'filters' => ['subcategories', 'brand', 'attributes', 'price', 'deals'],
             'sorts' => ['relevance', 'price_asc', 'price_desc', 'best_sellers', 'name'],
             'default_sort' => 'relevance',
             'page_size' => 24,
@@ -210,6 +257,10 @@ class StorefrontStructure
             'terms_target' => ['kind' => 'page', 'value' => '/terminos'],
             'privacy_target' => ['kind' => 'page', 'value' => '/privacidad'],
             'pqrs_target' => null,
+            'style' => 'full',
+            'tone' => 'light',
+            // El formulario de suscripcion: la sede decide si lo quiere (apagado de fabrica).
+            'newsletter' => false,
         ],
     ];
 
@@ -243,7 +294,18 @@ class StorefrontStructure
             ]),
             'nav' => $this->nav($settings['nav'], $categories, $slugs, $whatsapp),
             'categories' => $this->tree($categories),
-            'mobile_nav' => ['items' => array_values(array_intersect($settings['mobile_nav']['items'] ?? [], array_keys(self::MOBILE_NAV_ITEMS)))],
+            // Apagada, no lleva opciones: la tienda no reserva su espacio abajo.
+            'mobile_nav' => [
+                'enabled' => (bool) ($settings['mobile_nav']['enabled'] ?? true),
+                'items' => ($settings['mobile_nav']['enabled'] ?? true)
+                    ? array_values(array_intersect($settings['mobile_nav']['items'] ?? [], array_keys(self::MOBILE_NAV_ITEMS)))
+                    : [],
+            ],
+            'floating' => [
+                // Sin numero de WhatsApp de la sede, el boton no tiene a donde llevar.
+                'whatsapp_href' => ($settings['floating']['whatsapp'] ?? false) && $whatsapp ? 'https://wa.me/'.$whatsapp : null,
+                'position' => ($settings['floating']['position'] ?? 'right') === 'left' ? 'left' : 'right',
+            ],
             'card' => $settings['card'],
             'cart_bar' => $settings['cart_bar'],
             'category_page' => $settings['category_page'],
@@ -407,6 +469,8 @@ class StorefrontStructure
                 'image' => $category['image'] ?? null,
                 'href' => $href,
                 'highlight' => (bool) ($item['highlight'] ?? false),
+                // «Categorías ⌄»: el elemento abre el menú grande en vez de llevar a una página.
+                'opens_menu' => (bool) ($item['opens_menu'] ?? false),
             ];
         }
 
@@ -418,11 +482,16 @@ class StorefrontStructure
                 'image' => $category['image'],
                 'href' => $category['href'],
                 'highlight' => false,
+                'opens_menu' => false,
             ])->values()->all();
         }
 
+        $style = in_array($nav['style'] ?? 'bar', ['bar', 'text', 'none'], true) ? $nav['style'] : 'bar';
+
         return [
-            'enabled' => (bool) ($nav['enabled'] ?? true),
+            'enabled' => (bool) ($nav['enabled'] ?? true) && $style !== 'none',
+            'style' => $style,
+            'active_style' => ($nav['active_style'] ?? 'none') === 'underline' ? 'underline' : 'none',
             'show_deals_chip' => (bool) ($nav['show_deals_chip'] ?? true),
             'deals_label' => trim((string) ($nav['deals_label'] ?? '')) ?: 'Ofertas',
             'show_all_categories' => (bool) ($nav['show_all_categories'] ?? true),
@@ -453,10 +522,12 @@ class StorefrontStructure
 
         $logos = array_values(array_intersect($footer['payment_logos'] ?? [], array_keys(self::PAYMENT_LOGOS)));
 
-        // Sin elegir: los medios que de verdad acepta la sede.
+        // Sin elegir: los medios que de verdad acepta la tienda de la sede, por su `kind`.
         if ($logos === []) {
-            foreach (self::PAYMENT_LOGO_FOR as $setting => $logo) {
-                if ($settings['payments'][$setting] ?? false) {
+            $kinds = app(PaymentMethodAvailability::class)->configuredOnline((int) $store->company_id, (int) $store->id)->pluck('kind')->unique();
+
+            foreach (self::PAYMENT_LOGO_FOR as $kind => $logo) {
+                if ($kinds->contains($kind) && ! in_array($logo, $logos, true)) {
                     $logos[] = $logo;
                 }
             }
@@ -467,6 +538,9 @@ class StorefrontStructure
         $whatsappNumber = Targets::whatsappNumber($contact['whatsapp'] ?? null);
 
         return [
+            'style' => ($footer['style'] ?? 'full') === 'minimal' ? 'minimal' : 'full',
+            'tone' => in_array($footer['tone'] ?? 'light', ['light', 'dark', 'brand'], true) ? $footer['tone'] : 'light',
+            'newsletter' => (bool) ($footer['newsletter'] ?? false),
             'columns' => $columns,
             'contact' => [
                 'phone' => $phone,
@@ -567,23 +641,10 @@ class StorefrontStructure
         return $payload['variants']['square'] ?? $payload['url'];
     }
 
-    /** La proxima franja con cupo: «hoy entre 4:00 y 6:00 p. m.». */
+    /** La proxima franja con cupo: «hoy entre 4:00 y 6:00 p. m.». La misma frase en la landing. */
     protected function nextSlot(Store $store): ?string
     {
-        foreach ($this->config->slots($store) as $slot) {
-            if ($slot['full']) {
-                continue;
-            }
-
-            $starts = CarbonImmutable::parse($slot['starts_at']);
-            $ends = CarbonImmutable::parse($slot['ends_at']);
-            $now = CarbonImmutable::now();
-            $day = $starts->isSameDay($now) ? 'hoy' : ($starts->isSameDay($now->addDay()) ? 'mañana' : $starts->locale('es')->isoFormat('dddd'));
-
-            return $day.' entre '.self::clock($starts, false).' y '.self::clock($ends);
-        }
-
-        return null;
+        return $this->config->nextSlotLabel($this->config->slots($store));
     }
 
     protected function hours(Store $store): ?string
@@ -598,8 +659,8 @@ class StorefrontStructure
         return 'de '.self::clock($opens).' a '.self::clock($closes);
     }
 
-    /** «4:00 p. m.», como se escribe la hora en Colombia. */
-    protected static function clock(CarbonImmutable $time, bool $withPeriod = true): string
+    /** «4:00 p. m.», como se escribe la hora en Colombia. Tambien la usan la landing y las franjas. */
+    public static function clock(CarbonImmutable $time, bool $withPeriod = true): string
     {
         return $time->format('g:i').($withPeriod ? ($time->hour < 12 ? ' a. m.' : ' p. m.') : '');
     }

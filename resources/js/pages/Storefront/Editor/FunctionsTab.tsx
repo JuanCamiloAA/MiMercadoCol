@@ -7,6 +7,7 @@ import { Input, Select, Textarea, Toggle } from '@/components/ui/Field';
 import { Badge } from '@/components/ui/Misc';
 import { cn } from '@/lib/cn';
 import { money } from '@/lib/format';
+import { usePermission } from '@/lib/permissions';
 import { saveSetting } from './editor-api';
 import { StructureSection } from './StructureForms';
 import type { EditorContext, Endpoints, Issue, SettingsRow, SlotRow, StructureOptions, ZoneRow } from './types';
@@ -106,7 +107,7 @@ export function FunctionsTab({
                 {section === 'delivery' && <DeliverySection settings={settings} readOnly={readOnly} onSave={save} />}
                 {section === 'coverage' && <CoverageSection settings={settings} zones={zones} readOnly={readOnly} onSave={save} onSaved={onSaved} />}
                 {section === 'slots' && <SlotsSection settings={settings} slots={slots} readOnly={readOnly} onSave={save} onSaved={onSaved} />}
-                {section === 'payments' && <PaymentsSection settings={settings} readOnly={readOnly} onSave={save} />}
+                {section === 'payments' && <PaymentsSection />}
                 {DESIGN.includes(section) && (
                     <div className="flex flex-col gap-2">
                         {locked && !readOnly && (
@@ -579,53 +580,28 @@ function SlotsSection({ settings, slots, readOnly, onSave, onSaved }: SectionPro
     );
 }
 
-function PaymentsSection({ settings, readOnly, onSave }: SectionProps) {
-    const [value, setValue] = useState(settings.payments);
-
-    const commit = (next: typeof value) => {
-        setValue(next);
-        onSave('payments', next);
-    };
-
-    const none = !Object.values(value).some(Boolean);
+/**
+ * Los medios de pago ya no se publican con la tienda: son operacion y se configuran en su modulo,
+ * con reglas de sede, canal, horario y monto. Aqui solo se dice donde.
+ */
+function PaymentsSection() {
+    const { can } = usePermission();
 
     return (
         <Card>
-            <CardHeader title="Medios de pago" description="Con qué puede pagar el cliente al hacer el pedido." />
-
-            <div className="flex flex-col gap-3">
-                <Toggle
-                    label="Efectivo contraentrega"
-                    checked={value.cash_on_delivery}
-                    disabled={readOnly}
-                    onChange={(next) => commit({ ...value, cash_on_delivery: next })}
-                />
-                <Toggle
-                    label="Tarjeta al recibir"
-                    hint="El domiciliario lleva el datáfono."
-                    checked={value.card_on_delivery}
-                    disabled={readOnly}
-                    onChange={(next) => commit({ ...value, card_on_delivery: next })}
-                />
-                <Toggle
-                    label="Transferencia"
-                    checked={value.transfer}
-                    disabled={readOnly}
-                    onChange={(next) => commit({ ...value, transfer: next })}
-                />
-                <Toggle
-                    label="Crédito del cliente"
-                    hint="Solo se le ofrece a quien tenga cupo y esté al día."
-                    checked={value.customer_credit}
-                    disabled={readOnly}
-                    onChange={(next) => commit({ ...value, customer_credit: next })}
-                />
-            </div>
-
-            {none && (
-                <p className="mt-3 rounded-[9px] bg-[var(--danger-soft)] px-3 py-2 text-[12.5px] font-medium text-[var(--danger)]">
-                    Sin ningún medio habilitado el cliente no puede terminar el pedido, y la tienda no se puede publicar.
-                </p>
+            <CardHeader
+                title="Medios de pago"
+                description="Con qué puede pagar el cliente se configura en Medios de pago: pago al recibir, pago en línea por la pasarela de la empresa y crédito, con reglas por sede, horario y monto. No se publica con la tienda: un cambio ahí aplica de inmediato."
+            />
+            {can('payment_methods.index.view') ? (
+                <Link
+                    href={route('payment_methods.index')}
+                    className="inline-flex h-10 items-center rounded-[9px] bg-[var(--accent)] px-4 text-[13px] font-semibold text-[var(--accent-ink)]"
+                >
+                    Ir a Medios de pago
+                </Link>
+            ) : (
+                <p className="text-[12.5px] text-[var(--muted)]">Pídele a quien administra la empresa que los configure.</p>
             )}
         </Card>
     );

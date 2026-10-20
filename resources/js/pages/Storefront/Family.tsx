@@ -1,6 +1,7 @@
 import { CaretRightIcon, ShieldCheckIcon, TruckIcon } from '@phosphor-icons/react';
 import { useMemo, useState } from 'react';
 import { AddToCartControl } from '@/components/storefront/AddToCartControl';
+import { ImageCarousel } from '@/components/storefront/ImageCarousel';
 import { StoreIcon } from '@/components/storefront/icons';
 import { Price } from '@/components/storefront/Price';
 import { ProductShelf } from '@/components/storefront/ProductShelf';
@@ -8,7 +9,6 @@ import { StockNote } from '@/components/storefront/StockNote';
 import { StoreLink, useCurrentShell } from '@/components/storefront/store-context';
 import { VariantPicker } from '@/components/storefront/VariantPicker';
 import StoreLayout from '@/layouts/StoreLayout';
-import { cn } from '@/lib/cn';
 import { money } from '@/lib/format';
 import { StoreBlocks } from '@/pages/Storefront/blocks/StoreBlocks';
 import type { CardProduct, FamilyDetail, StoreBlock } from '@/types/storefront';
@@ -32,7 +32,6 @@ export default function StorefrontFamily({ family, attributes, variants, images,
     const card = shell?.settings.card;
     const freeFrom = shell?.settings.delivery.free_from ?? 0;
     const [selectedId, setSelectedId] = useState<number | null>(selected_id);
-    const [photo, setPhoto] = useState(0);
     const selected = variants.find((variant) => variant.id === selectedId) ?? variants[0];
 
     // La galería: las fotos propias de la presentación; si no tiene, las comunes de su color; si
@@ -51,7 +50,6 @@ export default function StorefrontFamily({ family, attributes, variants, images,
 
     const choose = (id: number) => {
         setSelectedId(id);
-        setPhoto(0);
 
         // El enlace queda con la presentación elegida, sin recargar ni llenar el historial.
         try {
@@ -87,40 +85,22 @@ export default function StorefrontFamily({ family, attributes, variants, images,
             </nav>
 
             <article className="grid gap-5 rounded-[var(--store-radius)] border border-[var(--line)] bg-[var(--surface)] p-3 md:grid-cols-2 md:gap-8 md:p-6">
-                <div className="flex flex-col gap-2">
-                    <div className="relative aspect-square overflow-hidden rounded-[var(--store-radius)] bg-white">
-                        {gallery[photo] ?? selected.image ? (
-                            <img src={gallery[photo] ?? selected.image ?? ''} alt={`${family.name} · ${selected.label ?? ''}`} className="h-full w-full object-contain p-6" />
-                        ) : (
-                            <span className="grid h-full w-full place-items-center bg-[var(--surface-2)] text-[var(--muted)]">
-                                <StoreIcon name={selected.category_icon} size={120} weight="regular" />
-                            </span>
-                        )}
-                        {badge && (
+                <ImageCarousel
+                    images={gallery.length > 0 ? gallery : selected.image ? [selected.image] : []}
+                    alt={`${family.name}${selected.label ? ` · ${selected.label}` : ''}`}
+                    // Otra presentación vuelve a la primera de sus fotos.
+                    resetKey={selected.id}
+                    fallback={
+                        <span className="grid h-full w-full place-items-center bg-[var(--surface-2)] text-[var(--muted)]">
+                            <StoreIcon name={selected.category_icon} size={120} weight="regular" />
+                        </span>
+                    }
+                    overlay={
+                        badge ? (
                             <span className="absolute left-3 top-3 rounded-[8px] bg-[var(--deal)] px-2.5 py-1 text-[15px] font-extrabold text-[var(--deal-ink)] shadow">{badge}</span>
-                        )}
-                    </div>
-                    {gallery.length > 1 && (
-                        <div className="flex gap-2 overflow-x-auto" role="list" aria-label="Fotos">
-                            {gallery.map((url, index) => (
-                                <button
-                                    key={url}
-                                    type="button"
-                                    role="listitem"
-                                    onClick={() => setPhoto(index)}
-                                    aria-label={`Foto ${index + 1}`}
-                                    aria-current={index === photo || undefined}
-                                    className={cn(
-                                        'size-16 shrink-0 overflow-hidden rounded-[var(--store-radius-sm)] border-2 bg-white',
-                                        index === photo ? 'border-[var(--accent)]' : 'border-[var(--line)]',
-                                    )}
-                                >
-                                    <img src={url} alt="" className="h-full w-full object-contain p-1" />
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                        ) : undefined
+                    }
+                />
 
                 <div className="flex flex-col gap-3">
                     {family.brand && <p className="text-[12.5px] font-bold uppercase tracking-wide text-[var(--muted)]">{family.brand}</p>}

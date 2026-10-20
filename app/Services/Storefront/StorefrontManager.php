@@ -148,10 +148,12 @@ class StorefrontManager
             if (isset($snapshot['theme'])) {
                 $storefront->theme()->updateOrCreate(
                     ['storefront_id' => $storefront->id],
-                    collect($snapshot['theme'])->only([
+                    // Una version de antes de las formas nuevas vuelve con las de fabrica.
+                    array_merge(StorefrontTheme::SHAPE_DEFAULTS, collect($snapshot['theme'])->only([
                         'display_name', 'tagline', 'accent', 'deal_color', 'scheme', 'allow_scheme_toggle',
                         'font_pair', 'radius', 'density', 'button_style',
-                    ])->all()
+                        'logo_font', 'surface', 'heading_case', 'container', 'button_shape',
+                    ])->all())
                 );
             }
 
@@ -213,6 +215,11 @@ class StorefrontManager
             'radius' => $theme?->radius ?? 'soft',
             'density' => $theme?->density ?? 'cozy',
             'button_style' => $theme?->button_style ?? 'solid',
+            'logo_font' => $theme?->logo_font ?? StorefrontTheme::SHAPE_DEFAULTS['logo_font'],
+            'surface' => $theme?->surface ?? StorefrontTheme::SHAPE_DEFAULTS['surface'],
+            'heading_case' => $theme?->heading_case ?? StorefrontTheme::SHAPE_DEFAULTS['heading_case'],
+            'container' => $theme?->container ?? StorefrontTheme::SHAPE_DEFAULTS['container'],
+            'button_shape' => $theme?->button_shape ?? StorefrontTheme::SHAPE_DEFAULTS['button_shape'],
             'logo' => $theme?->logo?->toPayload(),
             'favicon' => $theme?->favicon?->toPayload(),
             'mark' => $theme?->mark?->toPayload(),
@@ -260,7 +267,7 @@ class StorefrontManager
             $snapshot['blocks'] ?? []
         );
         $snapshot['theme'] = array_merge(
-            ['deal_color' => '#D92D20', 'deal_ink' => '#FFFFFF', 'allow_scheme_toggle' => false, 'mark' => null],
+            ['deal_color' => '#D92D20', 'deal_ink' => '#FFFFFF', 'allow_scheme_toggle' => false, 'mark' => null, ...StorefrontTheme::SHAPE_DEFAULTS],
             $snapshot['theme'] ?? []
         );
         $snapshot['template'] = array_merge(['id' => null, 'follows' => false], $snapshot['template'] ?? []);

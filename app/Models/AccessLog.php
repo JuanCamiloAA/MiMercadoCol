@@ -15,6 +15,9 @@ class AccessLog extends Model
 
     public const ACTION_PERMISSION_DENIED = 'permission_denied';
 
+    /** Tenia el permiso, pero el plan de su empresa no lo incluye. */
+    public const ACTION_PLAN_DENIED = 'plan_denied';
+
     protected $fillable = ['company_id', 'user_id', 'action', 'ip', 'user_agent', 'context'];
 
     protected function casts(): array

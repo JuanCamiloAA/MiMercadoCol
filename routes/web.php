@@ -21,9 +21,20 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PaymentTermController;
 use App\Http\Controllers\Platform\ActiveCompanyController;
 use App\Http\Controllers\Platform\BillingCycleController;
+use App\Http\Controllers\Platform\BusinessCategoryController;
 use App\Http\Controllers\Platform\CompanyController;
+use App\Http\Controllers\Platform\CompanyEntitlementController;
+use App\Http\Controllers\Platform\CompanyGatewayProvidersController;
+use App\Http\Controllers\Payments\GatewayAccountController;
+use App\Http\Controllers\Payments\PaymentMethodController;
+use App\Http\Controllers\Payments\TerminalController;
+use App\Http\Controllers\Payments\TransactionController;
+use App\Http\Controllers\Pos\GatewayPaymentController as PosGatewayPaymentController;
+use App\Http\Controllers\PublicPaymentController;
+use App\Http\Controllers\Webhooks\PaymentWebhookController;
 use App\Http\Controllers\Platform\LandingAdminController;
 use App\Http\Controllers\Platform\LeadController;
+use App\Http\Controllers\Platform\MapSettingsController;
 use App\Http\Controllers\Platform\MembershipPlanController;
 use App\Http\Controllers\Platform\PaymentGatewayController;
 use App\Http\Controllers\Platform\PlatformImportController;
@@ -52,6 +63,7 @@ use App\Http\Controllers\Settings\AppearanceSettingController;
 use App\Http\Controllers\Settings\BrandImageController;
 use App\Http\Controllers\Settings\BrandSettingController;
 use App\Http\Controllers\Settings\CompanySettingController;
+use App\Http\Controllers\Settings\CatalogSettingController;
 use App\Http\Controllers\Settings\CreditSettingController;
 use App\Http\Controllers\Settings\MembershipSettingController;
 use App\Http\Controllers\Settings\NavigationSettingController;
@@ -73,6 +85,9 @@ use App\Http\Controllers\Storefront\TemplateLinkController;
 use App\Http\Controllers\Storefront\ThemeController;
 use App\Http\Controllers\Storefront\VersionController;
 use App\Http\Controllers\StorefrontCatalogManagerController;
+use App\Http\Controllers\StorefrontNewsletterController;
+use App\Http\Controllers\StorefrontOutOfStockController;
+use App\Http\Controllers\StorefrontSuggestionController;
 use App\Http\Controllers\StoreSwitchController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\SupplierReturnController;
@@ -114,9 +129,11 @@ Route::middleware(['auth', 'verified.company', 'force.password.change'])->group(
     /*
      * Pantallas de una empresa. El super usuario en «Todas las empresas» no tiene ninguna
      * elegida: `company.selected` le pide que elija y lo devuelve a donde iba. `membership.active`
-     * deja pasar solo lo necesario para pagar cuando la membresia esta suspendida.
+     * deja pasar solo lo necesario para pagar cuando la membresia esta suspendida. Lo que incluye
+     * el plan no lleva middleware propio: `permission:` ya responde con el techo del plan
+     * (`EffectivePermissionService`).
      */
-    Route::middleware(['company.selected', 'membership.active', 'plan.features'])->group(function () {
+    Route::middleware(['company.selected', 'membership.active'])->group(function () {
         // Roles
         Route::get('roles', [RoleController::class, 'index'])->middleware('permission:roles.index.view')->name('roles.index');
         Route::get('roles/crear', [RoleController::class, 'create'])->middleware('permission:roles.index.create')->name('roles.create');
@@ -147,6 +164,7 @@ Route::middleware(['auth', 'verified.company', 'force.password.change'])->group(
         Route::put('productos/familia/{family}', [ProductFamilyController::class, 'update'])->whereNumber('family')->middleware('permission:products.index.edit')->name('products.families.update');
         Route::post('productos/familia/{family}/deshacer', [ProductFamilyController::class, 'ungroup'])->whereNumber('family')->middleware('permission:products.index.edit')->name('products.families.ungroup');
         Route::delete('productos/familia/{family}/fotos/{image}', [ProductFamilyController::class, 'destroyImage'])->whereNumber('family')->middleware('permission:products.index.edit')->name('products.families.images.destroy');
+        Route::patch('productos/familia/{family}/fotos/{image}/portada', [ProductFamilyController::class, 'coverImage'])->whereNumber('family')->middleware('permission:products.index.edit')->name('products.families.images.cover');
         Route::get('productos/agrupar', [ProductFamilyController::class, 'groupForm'])->middleware('permission:products.index.edit')->name('products.families.group.form');
         Route::post('productos/agrupar', [ProductFamilyController::class, 'group'])->middleware('permission:products.index.edit')->name('products.families.group');
         Route::get('productos/{product}', [ProductController::class, 'show'])->middleware('permission:products.show.view')->name('products.show');
@@ -155,6 +173,7 @@ Route::middleware(['auth', 'verified.company', 'force.password.change'])->group(
         Route::delete('productos/{product}', [ProductController::class, 'destroy'])->middleware('permission:products.index.delete')->name('products.destroy');
         Route::post('productos/{product}/precio', [ProductController::class, 'updatePrice'])->middleware('permission:products.show.edit_price')->name('products.price');
         Route::delete('productos/{product}/imagenes/{image}', [ProductController::class, 'destroyImage'])->middleware('permission:products.index.edit')->name('products.images.destroy');
+        Route::patch('productos/{product}/imagenes/{image}/portada', [ProductController::class, 'coverImage'])->middleware('permission:products.index.edit')->name('products.images.cover');
         Route::get('productos/{product}/convertir', [ProductFamilyController::class, 'convertForm'])->middleware('permission:products.index.edit')->name('products.convert.form');
         Route::post('productos/{product}/convertir', [ProductFamilyController::class, 'convert'])->middleware('permission:products.index.edit')->name('products.convert');
         Route::post('productos/{product}/separar', [ProductFamilyController::class, 'detach'])->middleware('permission:products.index.edit')->name('products.detach');
@@ -182,6 +201,8 @@ Route::middleware(['auth', 'verified.company', 'force.password.change'])->group(
         Route::get('servicios/{service}/editar', [ServiceController::class, 'edit'])->middleware('permission:services.index.edit')->name('services.edit');
         Route::put('servicios/{service}', [ServiceController::class, 'update'])->middleware('permission:services.index.edit')->name('services.update');
         Route::patch('servicios/{service}/en-linea', [ServiceController::class, 'online'])->middleware('permission:services.index.edit')->name('services.online');
+        Route::delete('servicios/{service}/fotos/{image}', [ServiceController::class, 'destroyImage'])->middleware('permission:services.index.edit')->name('services.images.destroy');
+        Route::patch('servicios/{service}/fotos/{image}/portada', [ServiceController::class, 'coverImage'])->middleware('permission:services.index.edit')->name('services.images.cover');
         Route::post('servicios/{service}/duplicar', [ServiceController::class, 'duplicate'])->middleware('permission:services.index.create')->name('services.duplicate');
         Route::delete('servicios/{service}', [ServiceController::class, 'destroy'])->middleware('permission:services.index.delete')->name('services.destroy');
 
@@ -227,6 +248,10 @@ Route::middleware(['auth', 'verified.company', 'force.password.change'])->group(
         Route::post('pos/ventas/{sale}/devolucion', [PosReturnController::class, 'store'])->middleware('permission:pos.sale.refund')->name('pos.sales.refund');
         Route::post('pos/ventas/{sale}/cambio', [PosReturnController::class, 'exchange'])->middleware('permission:pos.sale.refund')->name('pos.sales.exchange');
         Route::get('pos/devoluciones/{customerReturn}/imprimir', [PosReturnController::class, 'print'])->middleware('permission:pos.sale.refund')->name('pos.returns.print');
+        // Cobro con QR, link o datafono de la pasarela: la venta nace cuando la pasarela aprueba.
+        Route::post('pos/pagos', [PosGatewayPaymentController::class, 'store'])->middleware(['permission:pos.sale.gateway', 'throttle:30,1'])->name('pos.gateway.store');
+        Route::get('pos/pagos/{reference}', [PosGatewayPaymentController::class, 'show'])->where('reference', 'PAY-[A-Z0-9]+')->middleware(['permission:pos.sale.view', 'throttle:120,1'])->name('pos.gateway.show');
+        Route::post('pos/pagos/{reference}/cancelar', [PosGatewayPaymentController::class, 'cancel'])->where('reference', 'PAY-[A-Z0-9]+')->middleware('permission:pos.sale.gateway')->name('pos.gateway.cancel');
         Route::get('pos/suspendidos', [HeldSaleController::class, 'index'])->middleware('permission:pos.sale.suspend')->name('pos.hold.index');
         Route::post('pos/suspendidos', [HeldSaleController::class, 'store'])->middleware('permission:pos.sale.suspend')->name('pos.hold.store');
         Route::delete('pos/suspendidos/{held}', [HeldSaleController::class, 'destroy'])->middleware('permission:pos.sale.suspend')->name('pos.hold.destroy');
@@ -382,6 +407,15 @@ Route::middleware(['auth', 'verified.company', 'force.password.change'])->group(
         // Tienda en linea (administracion del surtido)
         Route::get('tienda-en-linea', [StorefrontCatalogManagerController::class, 'index'])->middleware('permission:storefront.catalog.manage')->name('storefront.catalog.index');
         Route::post('tienda-en-linea', [StorefrontCatalogManagerController::class, 'update'])->middleware('permission:storefront.catalog.manage')->name('storefront.catalog.update');
+        // Todo es parte de decidir el surtido: no hay permiso nuevo que repartir.
+        Route::get('tienda-en-linea/sin-stock', [StorefrontOutOfStockController::class, 'index'])->middleware('permission:storefront.catalog.manage')->name('storefront.catalog.out_of_stock');
+        Route::get('tienda-en-linea/sugerencias', [StorefrontSuggestionController::class, 'index'])->middleware('permission:storefront.catalog.manage')->name('storefront.catalog.suggestions');
+        Route::post('tienda-en-linea/sugerencias/descartar', [StorefrontSuggestionController::class, 'dismiss'])->middleware('permission:storefront.catalog.manage')->name('storefront.catalog.suggestions.dismiss');
+        Route::delete('tienda-en-linea/sugerencias/descartar', [StorefrontSuggestionController::class, 'restore'])->middleware('permission:storefront.catalog.manage')->name('storefront.catalog.suggestions.restore');
+        Route::get('tienda-en-linea/exportar', [StorefrontCatalogManagerController::class, 'export'])->middleware('permission:storefront.catalog.manage')->name('storefront.catalog.export');
+        // Los correos que dejan los clientes en el pie (si la sede encendió el formulario).
+        Route::get('tienda-en-linea/suscriptores', [StorefrontNewsletterController::class, 'index'])->middleware('permission:storefront.newsletter.view')->name('storefront.newsletter.index');
+        Route::get('tienda-en-linea/suscriptores/exportar', [StorefrontNewsletterController::class, 'export'])->middleware('permission:storefront.newsletter.view')->name('storefront.newsletter.export');
 
         // Sedes
         // Editor de la tienda: borrador por sede, publicacion e historial.
@@ -395,8 +429,8 @@ Route::middleware(['auth', 'verified.company', 'force.password.change'])->group(
         Route::post('tienda/editor/bloques/orden', [EditorBlockController::class, 'reorder'])->middleware('permission:storefront.editor.content')->name('storefront.editor.blocks.reorder');
         // Los ajustes van por el permiso de la pestaña donde se editan: lo operativo en Funciones,
         // la estructura global en Contenido y la tarjeta de producto en Aspecto.
-        Route::patch('tienda/editor/funciones/{key}', [EditorSettingController::class, 'update'])->where('key', 'delivery|coverage|slots|payments|texts|seo|catalog|category_page|product_page|search')->middleware('permission:storefront.editor.settings')->name('storefront.editor.settings');
-        Route::patch('tienda/editor/estructura/{key}', [EditorSettingController::class, 'update'])->where('key', 'topbar|header|nav|mobile_nav|cart_bar|footer')->middleware('permission:storefront.editor.content')->name('storefront.editor.structure');
+        Route::patch('tienda/editor/funciones/{key}', [EditorSettingController::class, 'update'])->where('key', 'delivery|coverage|slots|texts|seo|catalog|category_page|product_page|search')->middleware('permission:storefront.editor.settings')->name('storefront.editor.settings');
+        Route::patch('tienda/editor/estructura/{key}', [EditorSettingController::class, 'update'])->where('key', 'topbar|header|nav|mobile_nav|cart_bar|footer|floating')->middleware('permission:storefront.editor.content')->name('storefront.editor.structure');
         Route::patch('tienda/editor/aspecto/{key}', [EditorSettingController::class, 'update'])->where('key', 'card')->middleware('permission:storefront.editor.appearance')->name('storefront.editor.look');
         // La plantilla base: personalizar (dejar de seguirla) y volver a ella o aplicar otra.
         Route::post('tienda/editor/plantilla/personalizar', [TemplateLinkController::class, 'detach'])->middleware('permission:storefront.editor.content')->name('storefront.editor.template.detach');
@@ -418,6 +452,7 @@ Route::middleware(['auth', 'verified.company', 'force.password.change'])->group(
         // Biblioteca de imagenes del editor.
         Route::get('medios', [MediaController::class, 'index'])->middleware('permission:storefront.editor.content')->name('media.index');
         Route::post('medios', [MediaController::class, 'store'])->middleware('permission:storefront.editor.content')->name('media.store');
+        Route::post('medios/videos', [MediaController::class, 'storeVideo'])->middleware(['permission:storefront.editor.content', 'throttle:10,1'])->name('media.store-video');
         Route::patch('medios/{media}', [MediaController::class, 'update'])->middleware('permission:storefront.editor.content')->name('media.update');
 
         // Cupones.
@@ -456,6 +491,7 @@ Route::middleware(['auth', 'verified.company', 'force.password.change'])->group(
         Route::put('ajustes/tiquete/sedes/{store}', [ReceiptSettingController::class, 'updateStore'])->middleware('permission:settings.index.pos_layout')->name('settings.receipt.store.update');
 
         Route::put('ajustes/credito', [CreditSettingController::class, 'update'])->middleware('permission:settings.index.edit')->name('settings.credit.update');
+        Route::put('ajustes/catalogo', [CatalogSettingController::class, 'update'])->middleware('permission:settings.index.edit')->name('settings.catalog.update');
         Route::put('ajustes/empresa', [CompanySettingController::class, 'update'])->middleware('permission:settings.index.edit')->name('settings.company.update');
 
         // Membresia. Siguen abiertas con la empresa suspendida: son el camino para ponerse al dia.
@@ -466,6 +502,28 @@ Route::middleware(['auth', 'verified.company', 'force.password.change'])->group(
         Route::get('ajustes/membresia/retorno', [MembershipSettingController::class, 'checkoutReturn'])->middleware('permission:settings.membership.view')->name('settings.membership.return');
         Route::put('ajustes/membresia/plan', [MembershipSettingController::class, 'schedule'])->middleware('permission:settings.membership.manage_payment')->name('settings.membership.plan');
         Route::get('ajustes/membresia/cobros/{charge}/comprobante', [MembershipSettingController::class, 'receipt'])->middleware('permission:settings.membership.view')->name('settings.membership.receipt');
+
+        // Medios de pago de la empresa: los manuales y sus propias pasarelas. Las fijas
+        // (`pasarelas`, `datafonos`, `transacciones`, `orden`) antes de las que llevan `{method}`.
+        Route::get('medios-pago', [PaymentMethodController::class, 'index'])->middleware('permission:payment_methods.index.view')->name('payment_methods.index');
+        Route::post('medios-pago', [PaymentMethodController::class, 'store'])->middleware('permission:payment_methods.index.create')->name('payment_methods.store');
+        Route::post('medios-pago/orden', [PaymentMethodController::class, 'reorder'])->middleware('permission:payment_methods.index.edit')->name('payment_methods.reorder');
+        Route::get('medios-pago/pasarelas', [GatewayAccountController::class, 'index'])->middleware('permission:payment_methods.gateways.view')->name('payment_methods.gateways.index');
+        Route::post('medios-pago/pasarelas', [GatewayAccountController::class, 'store'])->middleware('permission:payment_methods.gateways.edit')->name('payment_methods.gateways.store');
+        Route::put('medios-pago/pasarelas/{account}', [GatewayAccountController::class, 'update'])->middleware('permission:payment_methods.gateways.edit')->name('payment_methods.gateways.update');
+        Route::post('medios-pago/pasarelas/{account}/probar', [GatewayAccountController::class, 'test'])->middleware(['permission:payment_methods.gateways.test', 'throttle:10,1'])->name('payment_methods.gateways.test');
+        Route::post('medios-pago/pasarelas/{account}/token', [GatewayAccountController::class, 'rotate'])->middleware('permission:payment_methods.gateways.edit')->name('payment_methods.gateways.rotate');
+        Route::patch('medios-pago/pasarelas/{account}/estado', [GatewayAccountController::class, 'toggle'])->middleware('permission:payment_methods.gateways.edit')->name('payment_methods.gateways.toggle');
+        Route::get('medios-pago/datafonos', [TerminalController::class, 'index'])->middleware('permission:payment_methods.terminals.view')->name('payment_methods.terminals.index');
+        Route::post('medios-pago/datafonos', [TerminalController::class, 'store'])->middleware('permission:payment_methods.terminals.edit')->name('payment_methods.terminals.store');
+        Route::put('medios-pago/datafonos/{terminal}', [TerminalController::class, 'update'])->middleware('permission:payment_methods.terminals.edit')->name('payment_methods.terminals.update');
+        Route::post('medios-pago/datafonos/{terminal}/prueba', [TerminalController::class, 'test'])->middleware(['permission:payment_methods.terminals.edit', 'throttle:10,1'])->name('payment_methods.terminals.test');
+        Route::get('medios-pago/transacciones', [TransactionController::class, 'index'])->middleware('permission:payment_methods.transactions.view')->name('payment_methods.transactions.index');
+        Route::get('medios-pago/transacciones/{transaction}', [TransactionController::class, 'show'])->middleware('permission:payment_methods.transactions.view')->name('payment_methods.transactions.show');
+        Route::post('medios-pago/transacciones/{transaction}/conciliar', [TransactionController::class, 'reconcile'])->middleware('permission:payment_methods.transactions.reconcile')->name('payment_methods.transactions.reconcile');
+        Route::put('medios-pago/{method}', [PaymentMethodController::class, 'update'])->middleware('permission:payment_methods.index.edit')->name('payment_methods.update');
+        Route::patch('medios-pago/{method}/estado', [PaymentMethodController::class, 'toggle'])->middleware('permission:payment_methods.index.edit')->name('payment_methods.toggle');
+        Route::delete('medios-pago/{method}', [PaymentMethodController::class, 'destroy'])->middleware('permission:payment_methods.index.delete')->name('payment_methods.destroy');
 
         // Plazos de pago de la empresa: los usan el credito de clientes, los proveedores y las compras.
         Route::get('plazos-pago', [PaymentTermController::class, 'index'])->middleware('permission:payment_terms.index.view')->name('payment_terms.index');
@@ -524,11 +582,18 @@ Route::middleware(['auth', 'verified.company', 'force.password.change', 'super.a
     Route::post('empresas/{company}/estado', [CompanyController::class, 'status'])->middleware('permission:companies.index.delete')->name('companies.status');
     Route::post('empresas/{company}/entrar', [CompanyController::class, 'enter'])->middleware('permission:companies.index.switch')->name('companies.enter');
     Route::post('empresas/{company}/pagos', [CompanyController::class, 'recordPayment'])->middleware('permission:companies.index.edit')->name('companies.payments.store');
+    // Plan y funciones: excepciones al plan y precio especial, con vigencia y motivo.
+    Route::post('empresas/{company}/excepciones', [CompanyEntitlementController::class, 'store'])->middleware('permission:companies.index.entitlements')->name('companies.entitlements.store');
+    Route::post('empresas/{company}/excepciones/{exception}/terminar', [CompanyEntitlementController::class, 'end'])->middleware('permission:companies.index.entitlements')->name('companies.entitlements.end');
+    Route::post('empresas/{company}/precio-especial', [CompanyEntitlementController::class, 'storePrice'])->middleware('permission:companies.index.entitlements')->name('companies.prices.store');
+    Route::post('empresas/{company}/precio-especial/{price}/terminar', [CompanyEntitlementController::class, 'endPrice'])->middleware('permission:companies.index.entitlements')->name('companies.prices.end');
 
     // Planes y ciclos de la membresia.
     Route::get('planes', [MembershipPlanController::class, 'index'])->middleware('permission:platform.plans.view')->name('platform.plans.index');
     Route::get('planes/crear', [MembershipPlanController::class, 'create'])->middleware('permission:platform.plans.create')->name('platform.plans.create');
     Route::post('planes', [MembershipPlanController::class, 'store'])->middleware('permission:platform.plans.create')->name('platform.plans.store');
+    // Los destacados que se proponen a partir de los modulos que trae lo marcado en el editor.
+    Route::post('planes/destacados', [MembershipPlanController::class, 'highlights'])->middleware(['permission:platform.plans.create|platform.plans.edit', 'throttle:60,1'])->name('platform.plans.highlights');
     Route::get('planes/{plan}/editar', [MembershipPlanController::class, 'edit'])->middleware('permission:platform.plans.edit')->name('platform.plans.edit');
     Route::put('planes/{plan}', [MembershipPlanController::class, 'update'])->middleware('permission:platform.plans.edit')->name('platform.plans.update');
     Route::post('planes/{plan}/estado', [MembershipPlanController::class, 'toggle'])->middleware('permission:platform.plans.deactivate')->name('platform.plans.toggle');
@@ -538,6 +603,12 @@ Route::middleware(['auth', 'verified.company', 'force.password.change', 'super.a
     Route::post('ciclos', [BillingCycleController::class, 'store'])->middleware('permission:platform.billing_cycles.create')->name('platform.billing_cycles.store');
     Route::put('ciclos/{cycle}', [BillingCycleController::class, 'update'])->middleware('permission:platform.billing_cycles.edit')->name('platform.billing_cycles.update');
     Route::post('ciclos/{cycle}/estado', [BillingCycleController::class, 'toggle'])->middleware('permission:platform.billing_cycles.deactivate')->name('platform.billing_cycles.toggle');
+
+    // Clasificaciones de empresa (alimentos, textiles, belleza…): la landing agrupa por aqui.
+    Route::get('clasificaciones', [BusinessCategoryController::class, 'index'])->middleware('permission:platform.business_categories.view')->name('platform.business_categories.index');
+    Route::post('clasificaciones', [BusinessCategoryController::class, 'store'])->middleware('permission:platform.business_categories.create')->name('platform.business_categories.store');
+    Route::put('clasificaciones/{category}', [BusinessCategoryController::class, 'update'])->middleware('permission:platform.business_categories.edit')->name('platform.business_categories.update');
+    Route::post('clasificaciones/{category}/estado', [BusinessCategoryController::class, 'toggle'])->middleware('permission:platform.business_categories.deactivate')->name('platform.business_categories.toggle');
 
     // Carga masiva (CSV). Las fijas antes de las que llevan {batch}.
     Route::get('carga-masiva', [PlatformImportController::class, 'index'])->middleware('permission:platform.imports.view')->name('platform.imports.index');
@@ -558,6 +629,7 @@ Route::middleware(['auth', 'verified.company', 'force.password.change', 'super.a
     Route::post('plantillas-tienda', [StoreTemplateController::class, 'store'])->middleware('permission:platform.store_templates.edit')->name('platform.store_templates.store');
     Route::get('plantillas-tienda/medios', [PlatformMediaController::class, 'index'])->middleware('permission:platform.store_templates.edit')->name('platform.store_templates.media.index');
     Route::post('plantillas-tienda/medios', [PlatformMediaController::class, 'store'])->middleware('permission:platform.store_templates.edit')->name('platform.store_templates.media.store');
+    Route::post('plantillas-tienda/medios/videos', [PlatformMediaController::class, 'storeVideo'])->middleware(['permission:platform.store_templates.edit', 'throttle:10,1'])->name('platform.store_templates.media.store-video');
     Route::get('plantillas-tienda/{template}/editar', [StoreTemplateController::class, 'edit'])->middleware('permission:platform.store_templates.view')->name('platform.store_templates.edit');
     Route::patch('plantillas-tienda/{template}', [StoreTemplateController::class, 'update'])->middleware('permission:platform.store_templates.edit')->name('platform.store_templates.update');
     Route::get('plantillas-tienda/{template}/vista-previa', [StoreTemplateController::class, 'preview'])->middleware('permission:platform.store_templates.view')->name('platform.store_templates.preview');
@@ -573,6 +645,7 @@ Route::middleware(['auth', 'verified.company', 'force.password.change', 'super.a
     Route::post('plantillas-tienda/{template}/historial/{version}/revertir', [StoreTemplateController::class, 'restore'])->middleware('permission:platform.store_templates.publish')->name('platform.store_templates.restore');
     Route::post('plantillas-tienda/{template}/por-defecto', [StoreTemplateController::class, 'setDefault'])->middleware('permission:platform.store_templates.publish')->name('platform.store_templates.default');
     Route::post('plantillas-tienda/{template}/estado', [StoreTemplateController::class, 'toggle'])->middleware('permission:platform.store_templates.publish')->name('platform.store_templates.toggle');
+    Route::post('plantillas-tienda/{template}/duplicar', [StoreTemplateController::class, 'duplicate'])->middleware('permission:platform.store_templates.edit')->name('platform.store_templates.duplicate');
 
     // Landing publica: editor por bloques, ajustes, publicar e historial.
     Route::get('landing', [LandingAdminController::class, 'index'])->middleware('permission:platform.landing.view')->name('platform.landing.index');
@@ -584,6 +657,7 @@ Route::middleware(['auth', 'verified.company', 'force.password.change', 'super.a
     Route::patch('landing/bloques/{block:uuid}/visible', [LandingAdminController::class, 'visibility'])->middleware('permission:platform.landing.edit')->name('platform.landing.blocks.visibility');
     Route::delete('landing/bloques/{block:uuid}', [LandingAdminController::class, 'destroy'])->middleware('permission:platform.landing.edit')->name('platform.landing.blocks.destroy');
     Route::post('landing/imagenes', [LandingAdminController::class, 'upload'])->middleware(['permission:platform.landing.edit', 'throttle:30,1'])->name('platform.landing.upload');
+    Route::post('landing/videos', [LandingAdminController::class, 'uploadVideo'])->middleware(['permission:platform.landing.edit', 'throttle:10,1'])->name('platform.landing.upload-video');
     Route::put('landing/ajustes', [LandingAdminController::class, 'updateSettings'])->middleware('permission:platform.landing.edit')->name('platform.landing.settings');
     Route::post('landing/publicar', [LandingAdminController::class, 'publish'])->middleware('permission:platform.landing.publish')->name('platform.landing.publish');
     Route::post('landing/versiones/{version}/restaurar', [LandingAdminController::class, 'restore'])->middleware('permission:platform.landing.publish')->name('platform.landing.restore');
@@ -593,11 +667,31 @@ Route::middleware(['auth', 'verified.company', 'force.password.change', 'super.a
     Route::put('pasarela', [PaymentGatewayController::class, 'update'])->middleware('permission:platform.gateway.edit')->name('platform.gateway.update');
     Route::put('pasarela/{environment}', [PaymentGatewayController::class, 'updateCredentials'])->middleware('permission:platform.gateway.edit')->whereIn('environment', ['sandbox', 'production'])->name('platform.gateway.credentials');
     Route::post('pasarela/{environment}/probar', [PaymentGatewayController::class, 'test'])->middleware(['permission:platform.gateway.view', 'throttle:10,1'])->whereIn('environment', ['sandbox', 'production'])->name('platform.gateway.test');
+
+    // Pasarelas para empresas: que proveedores pueden conectar las empresas a SU cuenta. No es la
+    // pasarela de arriba, que es la cuenta con que la plataforma cobra las membresias.
+    Route::get('pasarelas-empresas', [CompanyGatewayProvidersController::class, 'index'])->middleware('permission:platform.gateway.view')->name('platform.company_gateways.index');
+    Route::put('pasarelas-empresas', [CompanyGatewayProvidersController::class, 'update'])->middleware('permission:platform.gateway.edit')->name('platform.company_gateways.update');
+
+    // Mapas: el proveedor del buscador de la landing y del formulario de sedes.
+    Route::get('mapas', [MapSettingsController::class, 'index'])->middleware('permission:platform.maps.view')->name('platform.maps.index');
+    Route::put('mapas', [MapSettingsController::class, 'update'])->middleware('permission:platform.maps.edit')->name('platform.maps.update');
+    Route::post('mapas/probar', [MapSettingsController::class, 'preview'])->middleware(['permission:platform.maps.edit', 'throttle:30,1'])->name('platform.maps.preview');
 });
 
 // Eventos de la pasarela: publica, sin sesion y fuera de CSRF (bootstrap/app.php). La firma
 // y la relectura en la API son la seguridad.
 Route::post('webhooks/wompi', WompiWebhookController::class)->middleware('throttle:120,1')->name('webhooks.wompi');
+
+// Eventos de las pasarelas de las EMPRESAS, una URL por cuenta (el token la identifica). Fuera de
+// CSRF. ePayco puede confirmar por GET o por POST.
+Route::match(['get', 'post'], 'webhooks/pagos/{provider}/{token}', PaymentWebhookController::class)
+    ->where(['provider' => 'wompi|mercadopago|payu|epayco|bold', 'token' => '[A-Za-z0-9]{20,64}'])
+    ->middleware('throttle:240,1')
+    ->name('webhooks.payments');
+
+// La pagina a la que vuelve el celular del cliente despues de pagar un QR o link de la caja.
+Route::get('pago/{reference}', PublicPaymentController::class)->where('reference', 'PAY-[A-Z0-9]+')->middleware('throttle:60,1')->name('payments.public');
 
 require __DIR__.'/auth.php';
 require __DIR__.'/storefront.php';

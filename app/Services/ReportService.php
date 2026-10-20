@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\PaymentMethod;
+use App\Models\PaymentTransaction;
 use App\Models\Product;
 use App\Models\ProductStock;
 use App\Models\Sale;
@@ -60,6 +62,8 @@ class ReportService
             'by_day' => $this->salesByDay($base(), $from, $to),
             'by_category' => $this->salesByCategory($companyId, $from, $to, $storeId, $channel),
             'by_method' => $this->salesByMethod($companyId, $from, $to, $storeId, $channel),
+            'by_payment_method' => $this->salesByPaymentMethod($companyId, $from, $to, $storeId, $channel),
+            'gateways' => $this->gatewayReconciliation($companyId, $from, $to, $storeId, $channel),
             'by_employee' => $this->salesByEmployee($base()),
             'top_products' => $this->topProducts($companyId, $from, $to, $storeId, $channel, $groupVariants),
             'services' => $this->servicesConsumption($companyId, $from, $to, $storeId, $channel),
@@ -147,10 +151,123 @@ class ReportService
             ->get()
             ->map(fn ($row) => [
                 'method' => $row->method,
-                'label' => SalePayment::METHOD_LABELS[$row->method] ?? $row->method,
+                'label' => PaymentMethod::KIND_LABELS[$row->method] ?? SalePayment::METHOD_LABELS[$row->method] ?? $row->method,
                 'total' => (int) $row->total,
                 'count' => (int) $row->count,
             ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Por medio configurado, con la comision estimada y lo que queda. La comision sale de lo que
+     * la empresa anoto en Medios de pago (porcentaje + fijo por cobro) y solo pesa sobre lo que
+     * entro: una devolucion no le devuelve la comision a nadie. Es estimada; la real la dice el
+     * extracto del banco o de la pasarela.
+     *
+     * @return list<array{payment_method_id: int|null, method: string, label: string, kind_label: string, total: int, count: int, fee: int, net: int}>
+     */
+    protected function salesByPaymentMethod(int $companyId, CarbonImmutable $from, CarbonImmutable $to, ?int $storeId, ?string $channel): array
+    {
+        $net = SalePayment::NET_AMOUNT_SQL;
+
+        return SalePayment::query()
+            ->join('sales', 'sales.id', '=', 'sale_payments.sale_id')
+            ->leftJoin('payment_methods', 'payment_methods.id', '=', 'sale_payments.payment_method_id')
+            ->where('sales.company_id', $companyId)
+            ->whereBetween('sales.sold_at', [$from->startOfDay(), $to->endOfDay()])
+            ->where('sales.status', '!=', Sale::STATUS_CANCELLED)
+            ->when($storeId, fn ($query, $store) => $query->where('sales.store_id', $store))
+            ->when($channel, fn ($query, $value) => $query->where('sales.channel', $value))
+            ->groupBy('sale_payments.method', 'sale_payments.payment_method_id', 'payment_methods.name', 'payment_methods.fee_percent', 'payment_methods.fee_fixed', 'payment_methods.sort_order')
+            ->selectRaw("sale_payments.method, sale_payments.payment_method_id, payment_methods.name as method_name,
+                COALESCE(payment_methods.fee_percent, 0) as fee_percent, COALESCE(payment_methods.fee_fixed, 0) as fee_fixed,
+                SUM({$net}) as total, COUNT(*) as count,
+                SUM(CASE WHEN sale_payments.amount > 0 THEN {$net} ELSE 0 END) as charged,
+                SUM(CASE WHEN sale_payments.amount > 0 THEN 1 ELSE 0 END) as charges")
+            ->orderByRaw('payment_methods.sort_order IS NULL, payment_methods.sort_order')
+            ->get()
+            ->map(function ($row) {
+                $fee = (int) round((int) $row->charged * (float) $row->fee_percent / 100) + (int) $row->fee_fixed * (int) $row->charges;
+
+                return [
+                    'payment_method_id' => $row->payment_method_id ? (int) $row->payment_method_id : null,
+                    'method' => $row->method,
+                    'label' => $row->method_name ?: (PaymentMethod::KIND_LABELS[$row->method] ?? $row->method),
+                    'kind_label' => PaymentMethod::KIND_LABELS[$row->method] ?? $row->method,
+                    'total' => (int) $row->total,
+                    'count' => (int) $row->count,
+                    'fee' => $fee,
+                    'net' => (int) $row->total - $fee,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Conciliacion de pasarelas: por cuenta y medio, cuanto aprobo la pasarela, cuanto quedo en
+     * ventas o pedidos y cuanto falta por conciliar. Lo aprobado que no aparece en una venta ni
+     * en un pedido es plata que entro y que el informe de ventas no ve. Los cobros de prueba
+     * (sin medio) no cuentan.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function gatewayReconciliation(int $companyId, CarbonImmutable $from, CarbonImmutable $to, ?int $storeId, ?string $channel = null): array
+    {
+        $approved = "payment_transactions.status = '".PaymentTransaction::STATUS_APPROVED."'";
+        $pending = "{$approved} AND payment_transactions.applied_at IS NULL AND payment_transactions.resolution IS NULL";
+        $failed = "payment_transactions.status IN ('".PaymentTransaction::STATUS_DECLINED."', '".PaymentTransaction::STATUS_ERROR."')";
+        $expired = "payment_transactions.status = '".PaymentTransaction::STATUS_EXPIRED."'";
+        // El canal del informe es el de la venta; el de la transaccion es caja o tienda.
+        $gatewayChannel = match ($channel) {
+            null, '' => null,
+            Sale::CHANNEL_POS => PaymentTransaction::CHANNEL_POS,
+            default => PaymentTransaction::CHANNEL_ONLINE,
+        };
+
+        return PaymentTransaction::query()->withoutGlobalScopes()
+            ->join('payment_methods', 'payment_methods.id', '=', 'payment_transactions.payment_method_id')
+            ->where('payment_transactions.company_id', $companyId)
+            ->whereBetween('payment_transactions.created_at', [$from->startOfDay(), $to->endOfDay()])
+            ->when($storeId, fn ($query, $store) => $query->where('payment_transactions.store_id', $store))
+            ->when($gatewayChannel, fn ($query, $value) => $query->where('payment_transactions.channel', $value))
+            ->groupBy('payment_transactions.provider', 'payment_transactions.environment', 'payment_transactions.payment_method_id', 'payment_methods.name', 'payment_methods.fee_percent', 'payment_methods.fee_fixed')
+            ->selectRaw("payment_transactions.provider, payment_transactions.environment, payment_transactions.payment_method_id, payment_methods.name as method_name,
+                payment_methods.fee_percent, payment_methods.fee_fixed,
+                COUNT(*) as attempts,
+                SUM(CASE WHEN {$approved} THEN 1 ELSE 0 END) as approved_count,
+                SUM(CASE WHEN {$approved} THEN payment_transactions.amount ELSE 0 END) as approved_total,
+                SUM(CASE WHEN {$approved} AND payment_transactions.applied_at IS NOT NULL THEN payment_transactions.amount ELSE 0 END) as applied_total,
+                SUM(CASE WHEN {$pending} THEN 1 ELSE 0 END) as to_reconcile_count,
+                SUM(CASE WHEN {$pending} THEN payment_transactions.amount ELSE 0 END) as to_reconcile_total,
+                SUM(CASE WHEN {$failed} THEN 1 ELSE 0 END) as failed_count,
+                SUM(CASE WHEN {$expired} THEN 1 ELSE 0 END) as expired_count,
+                SUM(payment_transactions.refunded_amount) as refunded_total")
+            ->orderBy('payment_transactions.provider')
+            ->get()
+            ->map(function ($row) {
+                $approvedTotal = (int) $row->approved_total;
+                $fee = (int) round($approvedTotal * (float) $row->fee_percent / 100) + (int) $row->fee_fixed * (int) $row->approved_count;
+
+                return [
+                    'provider' => $row->provider,
+                    'environment' => $row->environment,
+                    'payment_method_id' => (int) $row->payment_method_id,
+                    'label' => $row->method_name,
+                    'attempts' => (int) $row->attempts,
+                    'approved_count' => (int) $row->approved_count,
+                    'approved_total' => $approvedTotal,
+                    'applied_total' => (int) $row->applied_total,
+                    'to_reconcile_count' => (int) $row->to_reconcile_count,
+                    'to_reconcile_total' => (int) $row->to_reconcile_total,
+                    'failed_count' => (int) $row->failed_count,
+                    'expired_count' => (int) $row->expired_count,
+                    'refunded_total' => (int) $row->refunded_total,
+                    'fee' => $fee,
+                    'net' => $approvedTotal - (int) $row->refunded_total - $fee,
+                ];
+            })
             ->values()
             ->all();
     }

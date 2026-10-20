@@ -12,13 +12,14 @@ import {
 } from '@phosphor-icons/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { type DesignCatalogue, DesignPanel } from '@/components/sections/DesignPanel';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Field';
 import { ConfirmDialog, Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Misc';
 import { cn } from '@/lib/cn';
 import { StoreIcon } from '@/pages/Storefront/blocks/StoreBlocks';
-import { BlockField, ChipPicker, isVisible, useEditorEnv } from './BlockFields';
+import { ChipPicker, FieldRow, isVisible, MediaField, useEditorEnv, VideoField } from './BlockFields';
 import { withId } from './editor-api';
 import { STRUCTURE_LABELS, StructureSection } from './StructureForms';
 import type { BlockRow, CatalogueEntry, Dict, EditorContext, Endpoints, SettingsRow, StructureKey, StructureOptions } from './types';
@@ -34,12 +35,18 @@ const PANELS: { key: Panel; label: string }[] = [
 ];
 
 /** Las piezas de la estructura global, en el orden en que aparecen en la tienda. */
-export const STRUCTURE_KEYS: StructureKey[] = ['topbar', 'header', 'nav', 'cart_bar', 'mobile_nav', 'footer'];
+export const STRUCTURE_KEYS: StructureKey[] = ['topbar', 'header', 'nav', 'cart_bar', 'mobile_nav', 'footer', 'floating'];
 
 interface ContentTabProps {
     context: EditorContext;
     blocks: BlockRow[];
     catalogue: CatalogueEntry[];
+    /** La pestaña «Diseño» de cada sección (`SectionAppearance::groups`). */
+    appearanceCatalogue: DesignCatalogue;
+    /** Quien no tiene permiso de aspecto no ve la pestaña «Diseño» (el servidor tampoco se la acepta). */
+    canDesign: boolean;
+    /** Cómo se ven los colores con nombre de esta sede, para la muestra. */
+    swatches: Record<string, string>;
     page: string;
     onPage: (page: string) => void;
     settings: SettingsRow;
@@ -59,6 +66,9 @@ export function ContentTab({
     context,
     blocks,
     catalogue,
+    appearanceCatalogue,
+    canDesign,
+    swatches,
     page,
     onPage,
     settings,
@@ -301,6 +311,9 @@ export function ContentTab({
                             context={context}
                             block={block}
                             schema={schema}
+                            appearanceCatalogue={appearanceCatalogue}
+                            canDesign={canDesign}
+                            swatches={swatches}
                             endpoints={endpoints}
                             readOnly={!editable}
                             onSaved={onSaved}
@@ -404,6 +417,9 @@ interface PropertiesProps {
     context: EditorContext;
     block: BlockRow;
     schema: CatalogueEntry;
+    appearanceCatalogue: DesignCatalogue;
+    canDesign: boolean;
+    swatches: Record<string, string>;
     endpoints: Endpoints;
     readOnly: boolean;
     onSaved: () => void;
@@ -417,9 +433,9 @@ interface PropertiesProps {
  * No hay botón «Guardar»: cada cambio se manda al borrador con 600 ms de espera. Lo que sí hay
  * es «Deshacer», porque el que se equivoca escribiendo quiere volver atrás, no guardar.
  */
-function BlockProperties({ context, block, schema, endpoints, readOnly, onSaved, onDuplicate, onRemove }: PropertiesProps) {
+function BlockProperties({ context, block, schema, appearanceCatalogue, canDesign, swatches, endpoints, readOnly, onSaved, onDuplicate, onRemove }: PropertiesProps) {
     const env = useEditorEnv();
-    const [tab, setTab] = useState<'content' | 'where' | 'schedule'>('content');
+    const [tab, setTab] = useState<'content' | 'design' | 'where' | 'schedule'>('content');
     const [payload, setPayload] = useState<Dict>(block.payload);
     const [savedAt, setSavedAt] = useState<number | null>(null);
     const history = useRef<Dict[]>([]);
@@ -460,10 +476,13 @@ function BlockProperties({ context, block, schema, endpoints, readOnly, onSaved,
         };
     }, [payload, patch]);
 
-    const set = (key: string, value: unknown) => {
+    const set = (key: string, value: unknown) => setMany({ [key]: value });
+
+    // Varias claves de una vez: una imagen y sus versiones (celular, modo oscuro) son claves hermanas.
+    const setMany = (patch: Dict) => {
         // Las últimas veinte acciones se pueden deshacer.
         history.current = [...history.current.slice(-19), payload];
-        setPayload((current) => ({ ...current, [key]: value }));
+        setPayload((current) => ({ ...current, ...patch }));
     };
 
     const undo = useCallback(() => {
@@ -531,6 +550,7 @@ function BlockProperties({ context, block, schema, endpoints, readOnly, onSaved,
                 {(
                     [
                         ['content', 'Contenido'],
+                        ...(canDesign ? ([['design', 'Diseño']] as const) : []),
                         ['where', 'Dónde se ve'],
                         ['schedule', 'Cuándo se ve'],
                     ] as const
@@ -553,7 +573,25 @@ function BlockProperties({ context, block, schema, endpoints, readOnly, onSaved,
                 {tab === 'content' &&
                     Object.entries(schema.fields)
                         .filter(([, field]) => isVisible(field, payload))
-                        .map(([key, field]) => <BlockField key={key} name={key} field={field} value={payload[key]} readOnly={readOnly} onChange={(value) => set(key, value)} />)}
+                        .map(([key, field]) => <FieldRow key={key} name={key} field={field} values={payload} readOnly={readOnly} onPatch={setMany} />)}
+
+                {tab === 'design' && canDesign && (
+                    <DesignPanel
+                        catalogue={appearanceCatalogue}
+                        defaults={schema.appearance_defaults ?? {}}
+                        value={(payload.appearance as Dict | undefined) ?? {}}
+                        readOnly={readOnly}
+                        swatches={swatches}
+                        onChange={(next) => set('appearance', next)}
+                        renderMedia={(key, field, value, change) =>
+                            field.type === 'video' ? (
+                                <VideoField label={field.label} help={field.help} value={(value as number | null) ?? null} readOnly={readOnly} onChange={change} />
+                            ) : (
+                                <MediaField label={field.label} help={field.help} value={(value as number | null) ?? null} readOnly={readOnly} onChange={change} />
+                            )
+                        }
+                    />
+                )}
 
                 {tab === 'where' && (
                     <>

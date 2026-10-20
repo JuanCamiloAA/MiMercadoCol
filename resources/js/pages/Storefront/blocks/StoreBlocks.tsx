@@ -1,21 +1,27 @@
 import { EyeSlashIcon, SquaresFourIcon } from '@phosphor-icons/react';
 import { useContext } from 'react';
+import { SectionShell } from '@/components/sections/SectionShell';
 import { BlockSelectionContext } from '@/components/storefront/store-context';
 import { cn } from '@/lib/cn';
 import type { StoreBlock } from '@/types/storefront';
 import { AnnouncementBlock } from './AnnouncementBlock';
 import { BannerGridBlock } from './BannerGridBlock';
 import { BenefitsBlock } from './BenefitsBlock';
+import { BrandLogosBlock } from './BrandLogosBlock';
 import { CategoriesBlock } from './CategoriesBlock';
 import { CtaBandBlock } from './CtaBandBlock';
 import { DealCountdownBlock } from './DealCountdownBlock';
 import { FaqBlock } from './FaqBlock';
 import { HeroBlock } from './HeroBlock';
+import { ImageTextBlock } from './ImageTextBlock';
+import { LookBlock } from './LookBlock';
 import { ProductGridBlock } from './ProductGridBlock';
 import { PromoCarouselBlock } from './PromoCarouselBlock';
 import { RichTextBlock } from './RichTextBlock';
 import type { BlockProps } from './shared';
 import { StoreInfoBlock } from './StoreInfoBlock';
+import { TickerBlock } from './TickerBlock';
+import { MediaCarouselBlock, VideoBlock, VideoShowcaseBlock } from './VideoBlocks';
 
 export { StoreIcon } from '@/components/storefront/icons';
 export type { StoreBlock };
@@ -32,15 +38,22 @@ const RENDERERS: Record<string, (props: BlockProps) => React.ReactNode> = {
     product_grid: ProductGridBlock,
     deal_countdown: DealCountdownBlock,
     promo_carousel: PromoCarouselBlock,
+    media_carousel: MediaCarouselBlock,
+    video: VideoBlock,
+    video_showcase: VideoShowcaseBlock,
     cta_band: CtaBandBlock,
     benefits: BenefitsBlock,
     rich_text: RichTextBlock,
+    image_text: ImageTextBlock,
+    look: LookBlock,
+    brand_logos: BrandLogosBlock,
+    ticker: TickerBlock,
     faq: FaqBlock,
     store_info: StoreInfoBlock,
 };
 
 /** Los tipos que llevan imagen grande: el primero de la página pide prioridad al navegador. */
-const BANNERS = ['hero', 'banner_grid', 'promo_carousel'];
+const BANNERS = ['hero', 'banner_grid', 'promo_carousel', 'media_carousel', 'image_text', 'look'];
 
 interface BlocksProps {
     blocks: StoreBlock[];
@@ -69,18 +82,50 @@ function emptyReason(block: StoreBlock): string | null {
             return none('slides') ? 'El banner principal no tiene láminas. Agrega la primera con su imagen en el panel de la izquierda.' : null;
         case 'promo_carousel':
             return none('slides') ? 'El carrusel no tiene láminas. Agrega la primera con su imagen en el panel de la izquierda.' : null;
+        case 'media_carousel':
+            return none('slides') ? 'El carrusel de imágenes y videos no tiene láminas. Agrega la primera con una imagen o un video.' : null;
+        case 'video':
+        case 'video_showcase':
+            return !data.video ? 'Sube o elige el video en el panel de la izquierda. Sin video, el bloque no sale en la tienda.' : null;
         case 'banner_grid':
             return none('tiles') ? 'El mosaico no tiene banners todavía.' : null;
         case 'categories':
             return none('items') ? 'No hay categorías para mostrar con la regla elegida.' : null;
         case 'product_grid':
-            return none('products') && !data.placeholder ? 'Este estante no tiene artículos con la regla elegida. Prueba con otra fuente o revisa que los artículos estén en línea.' : null;
+            if (!none('products') || data.placeholder) {
+                return null;
+            }
+
+            // La tienda no muestra lo que no tiene disponible: el estante no está roto, está sin existencias.
+            return data.out_of_stock_only
+                ? 'Todos los artículos de este estante están sin existencias. Siguen publicados y vuelven solos cuando entre mercancía.'
+                : 'Este estante no tiene artículos con la regla elegida. Prueba con otra fuente o revisa que los artículos estén en línea.';
         case 'deal_countdown':
+            if (data.style === 'drop') {
+                return !data.drop ? 'El lanzamiento no tiene una fecha por venir. Ponle la fecha en «Sale el»; cuando pasa, el bloque se va solo.' : null;
+            }
+
             if (!data.promotion) {
                 return 'No hay una promoción vigente con fecha de fin. Elige una o créala en Mercadeo › Promociones.';
             }
 
             return none('products') ? 'La promoción no tiene artículos a la venta en línea.' : null;
+        case 'image_text':
+            if (!data.media) {
+                return 'Elige la imagen en el panel de la izquierda. Sin imagen, el bloque no sale en la tienda.';
+            }
+
+            return blank('title') ? 'Ponle un título: sin título el bloque no sale en la tienda.' : null;
+        case 'look':
+            if (!data.media) {
+                return 'Elige la foto del look en el panel de la izquierda.';
+            }
+
+            return none('items') ? 'No hay prendas para mostrar: elige cuáles o revisa que estén en línea y con disponible.' : null;
+        case 'brand_logos':
+            return none('items') ? 'Agrega las marcas con su logo o su nombre.' : null;
+        case 'ticker':
+            return none('items') ? 'Agrega las frases de la cinta.' : null;
         case 'cta_band':
             return blank('title') ? 'La franja no tiene título todavía.' : null;
         case 'benefits':
@@ -122,9 +167,14 @@ export function StoreBlocks({ blocks, activeUuid: givenUuid, onSelect: givenSele
                 }
 
                 return (
-                    <section
+                    <SectionShell
                         key={block.uuid}
+                        surface="store"
+                        appearance={block.appearance}
+                        replayKey={draft ? JSON.stringify(block.appearance ?? null) : undefined}
                         data-block-uuid={block.uuid}
+                        // Un bloque solo de celular no aparece en computador, y al revés (`sections.css`).
+                        data-devices={block.devices === 'all' ? undefined : block.devices}
                         aria-label={typeof block.data.title === 'string' && block.data.title !== '' ? block.data.title : undefined}
                         onClickCapture={
                             onSelect
@@ -135,10 +185,7 @@ export function StoreBlocks({ blocks, activeUuid: givenUuid, onSelect: givenSele
                                 : undefined
                         }
                         className={cn(
-                            'relative min-w-0',
-                            // Un bloque solo de celular no aparece en computador, y al revés.
-                            block.devices === 'mobile' && 'md:hidden',
-                            block.devices === 'desktop' && 'hidden md:block',
+                            'min-w-0',
                             onSelect && 'cursor-pointer',
                             activeUuid === block.uuid && 'rounded-[14px] outline outline-2 outline-offset-4 outline-[var(--accent)]',
                         )}
@@ -164,7 +211,7 @@ export function StoreBlocks({ blocks, activeUuid: givenUuid, onSelect: givenSele
                                 <Renderer data={block.data} priority={index === firstBanner && index < 3} draft={draft} />
                             )}
                         </div>
-                    </section>
+                    </SectionShell>
                 );
             })}
         </div>

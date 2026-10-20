@@ -1,0 +1,3639 @@
+{
+  "version": 1,
+  "templates": [
+    {
+      "slug": "vitrina",
+      "name": "Vitrina",
+      "description": "Encabezado transparente sobre una foto a pantalla completa, el nombre gigante en serif fina, frase grande en mayúsculas, dos fotos sin margen con botón píldora, carrusel de producto con descripción y pie azul noche con newsletter.",
+      "audience": "Moda contemporánea",
+      "audience_group": "Moda",
+      "sort_order": 1,
+      "demo_store_name": "Luma",
+      "preview_catalog": "fashion",
+      "palette_suggestion": {
+        "accent": "#08101D",
+        "deal_color": "#B42318"
+      },
+      "theme": {
+        "scheme": "light",
+        "font_pair": "vitrina",
+        "logo_font": "italiana",
+        "radius": "soft",
+        "density": "cozy",
+        "button_style": "solid",
+        "button_shape": "pill",
+        "surface": "white",
+        "heading_case": "normal",
+        "container": "normal"
+      },
+      "settings": {
+        "topbar": {
+          "enabled": false,
+          "tone": "neutral",
+          "messages": []
+        },
+        "header": {
+          "style": "overlay",
+          "layout": "inline",
+          "overlay": true,
+          "sticky_style": "blur_dark",
+          "search_style": "underline",
+          "logo_mode": "name",
+          "search_placeholder": "Buscar",
+          "show_location": false,
+          "cart_shows_total": false
+        },
+        "nav": {
+          "enabled": true,
+          "style": "text",
+          "items": [
+            {
+              "label": "Inicio",
+              "icon": null,
+              "highlight": false,
+              "target": {
+                "kind": "page",
+                "value": "/tienda"
+              }
+            },
+            {
+              "label": "Productos",
+              "icon": null,
+              "highlight": false,
+              "target": {
+                "kind": "search",
+                "value": "productos"
+              }
+            },
+            {
+              "label": "Categorías",
+              "icon": null,
+              "highlight": false,
+              "target": {
+                "kind": "search",
+                "value": "categorías"
+              },
+              "opens_menu": true
+            }
+          ],
+          "active_style": "underline",
+          "show_deals_chip": false,
+          "deals_label": "Outlet"
+        },
+        "card": {
+          "style": "photo",
+          "image_ratio": "4:5",
+          "image_fit": "cover",
+          "image_bg": "light",
+          "show_brand": false,
+          "show_content": false,
+          "show_description": true,
+          "show_unit_price": false,
+          "deal_badge": "none",
+          "add_button": "none",
+          "price_size": "md",
+          "text_align": "left",
+          "show_swatches": false
+        },
+        "footer": {
+          "style": "full",
+          "tone": "brand",
+          "newsletter": true
+        },
+        "floating": {
+          "whatsapp": true
+        },
+        "mobile_nav": {
+          "enabled": false,
+          "items": []
+        }
+      },
+      "blocks": [
+        {
+          "type": "hero",
+          "page": "home",
+          "sort_order": 0,
+          "payload": {
+            "layout": "cover_center",
+            "height": "high",
+            "wordmark": true,
+            "subtitle": "Moda contemporánea",
+            "slides": [
+              {
+                "media": [
+                  "rack",
+                  "#BDB6AA",
+                  "#8F887C",
+                  [
+                    "#1F2A44",
+                    "#2B2B2D",
+                    "#E4D9C6",
+                    "#6E7553",
+                    "#A0522D",
+                    "#C9B79C"
+                  ]
+                ]
+              }
+            ],
+            "appearance": {
+              "height": "screen",
+              "frame": "bleed",
+              "pad_top": "none",
+              "align": "center",
+              "width": "full"
+            }
+          }
+        },
+        {
+          "type": "rich_text",
+          "page": "home",
+          "sort_order": 1,
+          "payload": {
+            "style": "bold",
+            "title": "Estilo casual & esencial",
+            "button_label": "Comprar",
+            "body": "Básicos elevados y prendas esenciales para tu rutina.",
+            "target": {
+              "kind": "page",
+              "value": "/tienda/buscar"
+            }
+          }
+        },
+        {
+          "type": "banner_grid",
+          "page": "home",
+          "sort_order": 2,
+          "payload": {
+            "layout": "2",
+            "tiles": [
+              {
+                "kind": "image",
+                "title": "",
+                "button_label": "Comprar",
+                "media": [
+                  "studio",
+                  "#D9CFC0",
+                  "#A89C8A",
+                  "#EFE7DA",
+                  "dress"
+                ],
+                "style": {
+                  "button_style": "pill_white"
+                },
+                "target": {
+                  "kind": "page",
+                  "value": "/tienda/buscar"
+                }
+              },
+              {
+                "kind": "image",
+                "title": "",
+                "button_label": "Comprar",
+                "media": [
+                  "studio",
+                  "#CFCBC4",
+                  "#8E8A84",
+                  "#1F2A44",
+                  "coat"
+                ],
+                "style": {
+                  "button_style": "pill_white"
+                },
+                "target": {
+                  "kind": "page",
+                  "value": "/tienda/buscar"
+                }
+              }
+            ],
+            "appearance": {
+              "frame": "bleed",
+              "gap": "none",
+              "width": "full"
+            }
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "home",
+          "sort_order": 3,
+          "payload": {
+            "title": "Outlet",
+            "source": "on_sale",
+            "layout": "carousel",
+            "columns_desktop": 3,
+            "columns_mobile": "row",
+            "limit": 8,
+            "arrows": "top",
+            "scrollbar": true
+          }
+        },
+        {
+          "type": "categories",
+          "page": "home",
+          "sort_order": 4,
+          "payload": {
+            "title": "Todo lo que buscas en un solo lugar",
+            "style": "tall_cards",
+            "title_position": "center",
+            "button_label": "Ver",
+            "source": "all",
+            "limit": 4,
+            "preview_media": [
+              {
+                "label": "Camisas",
+                "media": [
+                  "flatlay",
+                  "#8C857B",
+                  [
+                    "#F3EFE7",
+                    "#FFFFFF",
+                    "#E4D9C6",
+                    "#DCE3EA",
+                    "#F3EFE7",
+                    "#FFFFFF"
+                  ]
+                ]
+              },
+              {
+                "label": "Jeans",
+                "media": [
+                  "flatlay",
+                  "#7E7A73",
+                  [
+                    "#5C7FA6",
+                    "#2D3E57",
+                    "#8FA9C6",
+                    "#3E5675",
+                    "#5C7FA6",
+                    "#2D3E57"
+                  ]
+                ]
+              },
+              {
+                "label": "Accesorios",
+                "media": [
+                  "flatlay",
+                  "#8A8378",
+                  [
+                    "#C9B79C",
+                    "#5B4636",
+                    "#2B2B2D",
+                    "#A0522D"
+                  ]
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "type": "categories",
+          "page": "home",
+          "sort_order": 5,
+          "payload": {
+            "title": "Clásicos en tendencia",
+            "style": "tall_cards",
+            "title_position": "top",
+            "button_label": null,
+            "source": "all",
+            "limit": 4,
+            "preview_media": [
+              {
+                "label": "Outlet",
+                "media": [
+                  "flatlay",
+                  "#3A3836",
+                  [
+                    "#2B2B2D",
+                    "#6E7553",
+                    "#C9B79C",
+                    "#A0522D",
+                    "#E4D9C6",
+                    "#1F2A44"
+                  ]
+                ]
+              },
+              {
+                "label": "Gorras",
+                "media": [
+                  "flatlay",
+                  "#4A4743",
+                  [
+                    "#6E7553",
+                    "#2B2B2D",
+                    "#C9B79C"
+                  ]
+                ]
+              },
+              {
+                "label": "Joggers",
+                "media": [
+                  "flatlay",
+                  "#55524D",
+                  [
+                    "#7C8A9A",
+                    "#2B2B2D",
+                    "#B9A68A",
+                    "#3C3F44"
+                  ]
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "product",
+          "sort_order": 0,
+          "payload": {
+            "title": "Combínalo con",
+            "source": "best_sellers",
+            "layout": "carousel",
+            "limit": 10,
+            "arrows": "top",
+            "scrollbar": true
+          }
+        },
+        {
+          "type": "benefits",
+          "page": "product",
+          "sort_order": 1,
+          "payload": {
+            "items": [
+              {
+                "icon": "Truck",
+                "title": "Envío a domicilio",
+                "text": "Lo llevamos a tu puerta"
+              },
+              {
+                "icon": "ArrowUUpLeft",
+                "title": "Cambios fáciles",
+                "text": "Desde «Mis pedidos»"
+              }
+            ]
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "cart",
+          "sort_order": 0,
+          "payload": {
+            "title": "Completa tu look",
+            "source": "on_sale",
+            "layout": "carousel",
+            "limit": 10,
+            "arrows": "top",
+            "scrollbar": true
+          }
+        }
+      ]
+    },
+    {
+      "slug": "pasarela",
+      "name": "Pasarela",
+      "description": "La versión nocturna: fondo negro, serif fina, portada editorial con dos diapositivas, una cinta que corre con los anuncios, tres banners sin margen y un «compra el look» que vende varias prendas desde una sola foto.",
+      "audience": "Moda femenina premium",
+      "audience_group": "Moda",
+      "sort_order": 2,
+      "demo_store_name": "Maison Vela",
+      "preview_catalog": "fashion",
+      "palette_suggestion": {
+        "accent": "#E9E1D3",
+        "deal_color": "#A35A49"
+      },
+      "theme": {
+        "scheme": "dark",
+        "font_pair": "lujo",
+        "logo_font": "cormorant",
+        "radius": "sharp",
+        "density": "cozy",
+        "button_style": "outline",
+        "button_shape": "square",
+        "surface": "white",
+        "heading_case": "upper",
+        "container": "full"
+      },
+      "settings": {
+        "topbar": {
+          "enabled": false,
+          "tone": "neutral",
+          "messages": []
+        },
+        "header": {
+          "style": "overlay",
+          "layout": "center",
+          "overlay": true,
+          "sticky_style": "blur_dark",
+          "search_style": "icon",
+          "logo_mode": "name",
+          "search_placeholder": "Buscar",
+          "show_location": false,
+          "cart_shows_total": false
+        },
+        "nav": {
+          "enabled": true,
+          "style": "text",
+          "items": [
+            {
+              "label": "Nuevo",
+              "icon": null,
+              "highlight": false,
+              "target": {
+                "kind": "search",
+                "value": "nuevo"
+              }
+            },
+            {
+              "label": "Vestidos",
+              "icon": null,
+              "highlight": false,
+              "target": {
+                "kind": "search",
+                "value": "vestidos"
+              }
+            },
+            {
+              "label": "Sastrería",
+              "icon": null,
+              "highlight": false,
+              "target": {
+                "kind": "search",
+                "value": "sastrería"
+              }
+            },
+            {
+              "label": "Accesorios",
+              "icon": null,
+              "highlight": false,
+              "target": {
+                "kind": "search",
+                "value": "accesorios"
+              }
+            },
+            {
+              "label": "Rebajas",
+              "icon": null,
+              "highlight": false,
+              "target": {
+                "kind": "search",
+                "value": "rebajas"
+              }
+            }
+          ],
+          "active_style": "underline",
+          "show_deals_chip": false,
+          "deals_label": "Rebajas"
+        },
+        "card": {
+          "style": "photo",
+          "image_ratio": "3:4",
+          "image_fit": "cover",
+          "image_bg": "tint",
+          "image_hover": "second",
+          "show_brand": false,
+          "show_content": false,
+          "show_description": false,
+          "show_unit_price": false,
+          "deal_badge": "percent",
+          "add_button": "none",
+          "price_size": "sm",
+          "text_align": "center",
+          "show_swatches": true
+        },
+        "footer": {
+          "style": "full",
+          "tone": "dark",
+          "newsletter": true
+        },
+        "floating": {
+          "whatsapp": true
+        },
+        "mobile_nav": {
+          "enabled": false,
+          "items": []
+        }
+      },
+      "blocks": [
+        {
+          "type": "hero",
+          "page": "home",
+          "sort_order": 0,
+          "payload": {
+            "layout": "editorial",
+            "height": "high",
+            "slides": [
+              {
+                "media": [
+                  "studio",
+                  "#3B3530",
+                  "#121110",
+                  "#6E2E2E",
+                  "dress",
+                  160
+                ]
+              }
+            ],
+            "eyebrow": "Otoño · Invierno",
+            "title": "La noche es nuestra",
+            "button_label": "Ver colección",
+            "target": {
+              "kind": "page",
+              "value": "/tienda/buscar"
+            },
+            "appearance": {
+              "height": "screen",
+              "frame": "bleed",
+              "pad_top": "none",
+              "width": "full"
+            }
+          }
+        },
+        {
+          "type": "ticker",
+          "page": "home",
+          "sort_order": 1,
+          "payload": {
+            "tone": "accent",
+            "items": [
+              {
+                "text": "Nueva colección"
+              },
+              {
+                "text": "Envío gratis desde $ 250.000"
+              },
+              {
+                "text": "Cambios en 30 días"
+              },
+              {
+                "text": "Pago en 3 cuotas"
+              }
+            ],
+            "appearance": {
+              "frame": "bleed",
+              "pad_top": "none",
+              "pad_bottom": "none",
+              "width": "full"
+            }
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "home",
+          "sort_order": 2,
+          "payload": {
+            "title": "Recién llegado",
+            "source": "new_arrivals",
+            "layout": "grid",
+            "columns_desktop": 4,
+            "columns_mobile": "2",
+            "limit": 8,
+            "title_align": "center"
+          }
+        },
+        {
+          "type": "banner_grid",
+          "page": "home",
+          "sort_order": 3,
+          "payload": {
+            "layout": "3",
+            "tiles": [
+              {
+                "kind": "image",
+                "title": "Vestidos",
+                "button_label": "Ver",
+                "style": {
+                  "ratio": "tall",
+                  "text_position": "middle-center",
+                  "button_style": "pill_white"
+                },
+                "media": [
+                  "studio",
+                  "#4A3E36",
+                  "#1A1714",
+                  "#6E7553",
+                  "dress"
+                ],
+                "target": {
+                  "kind": "page",
+                  "value": "/tienda/buscar"
+                }
+              },
+              {
+                "kind": "image",
+                "title": "Sastrería",
+                "button_label": "Ver",
+                "style": {
+                  "ratio": "tall",
+                  "text_position": "middle-center",
+                  "button_style": "pill_white"
+                },
+                "media": [
+                  "studio",
+                  "#3A3A3C",
+                  "#141416",
+                  "#2B2B2D",
+                  "coat"
+                ],
+                "target": {
+                  "kind": "page",
+                  "value": "/tienda/buscar"
+                }
+              },
+              {
+                "kind": "image",
+                "title": "Accesorios",
+                "button_label": "Ver",
+                "style": {
+                  "ratio": "tall",
+                  "text_position": "middle-center",
+                  "button_style": "pill_white"
+                },
+                "media": [
+                  "flatlay",
+                  "#3D3631",
+                  [
+                    "#C9A86A",
+                    "#6E2E2E",
+                    "#2B2B2D",
+                    "#E9E1D3"
+                  ]
+                ],
+                "target": {
+                  "kind": "page",
+                  "value": "/tienda/buscar"
+                }
+              }
+            ],
+            "appearance": {
+              "frame": "bleed",
+              "gap": "none",
+              "width": "full"
+            }
+          }
+        },
+        {
+          "type": "look",
+          "page": "home",
+          "sort_order": 4,
+          "payload": {
+            "title": "Compra el look",
+            "text": "Todo lo que lleva puesto, en una sola compra.",
+            "button_label": "Agregar el look completo",
+            "media": [
+              "studio",
+              "#4B4038",
+              "#191513",
+              "#A0522D",
+              "dress"
+            ]
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "home",
+          "sort_order": 5,
+          "payload": {
+            "title": "Lo más deseado",
+            "source": "best_sellers",
+            "layout": "carousel",
+            "columns_desktop": 4,
+            "columns_mobile": "row",
+            "limit": 8,
+            "arrows": "top",
+            "scrollbar": true
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "product",
+          "sort_order": 0,
+          "payload": {
+            "title": "Combínalo con",
+            "source": "best_sellers",
+            "layout": "carousel",
+            "limit": 10,
+            "title_align": "center"
+          }
+        },
+        {
+          "type": "benefits",
+          "page": "product",
+          "sort_order": 1,
+          "payload": {
+            "items": [
+              {
+                "icon": "Truck",
+                "title": "Envío a domicilio",
+                "text": "Lo llevamos a tu puerta"
+              },
+              {
+                "icon": "ArrowUUpLeft",
+                "title": "Cambios fáciles",
+                "text": "Desde «Mis pedidos»"
+              }
+            ]
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "cart",
+          "sort_order": 0,
+          "payload": {
+            "title": "Completa tu look",
+            "source": "on_sale",
+            "layout": "carousel",
+            "limit": 10,
+            "title_align": "center"
+          }
+        }
+      ]
+    },
+    {
+      "slug": "urbano",
+      "name": "Urbano",
+      "description": "Letra condensada enorme, cinta con la fecha del próximo lanzamiento, cuenta regresiva del drop y tarjetas altas de categoría con el título arriba, como «Clásicos en tendencia» de Aura pero más ruidosa.",
+      "audience": "Streetwear, gorras y tenis",
+      "audience_group": "Moda",
+      "sort_order": 3,
+      "demo_store_name": "BLOQUE",
+      "preview_catalog": "street",
+      "palette_suggestion": {
+        "accent": "#FF5A1F",
+        "deal_color": "#C94717"
+      },
+      "theme": {
+        "scheme": "light",
+        "font_pair": "urbano",
+        "logo_font": "anton",
+        "radius": "sharp",
+        "density": "compact",
+        "button_style": "solid",
+        "button_shape": "square",
+        "surface": "warm",
+        "heading_case": "upper",
+        "container": "wide"
+      },
+      "settings": {
+        "topbar": {
+          "enabled": false,
+          "tone": "dark",
+          "messages": []
+        },
+        "header": {
+          "style": "dark",
+          "layout": "inline",
+          "overlay": false,
+          "sticky_style": "solid",
+          "search_style": "underline",
+          "logo_mode": "name",
+          "search_placeholder": "Buscar",
+          "show_location": false,
+          "cart_shows_total": false
+        },
+        "nav": {
+          "enabled": true,
+          "style": "text",
+          "items": [
+            {
+              "label": "Drops",
+              "icon": null,
+              "highlight": false,
+              "target": {
+                "kind": "search",
+                "value": "drops"
+              }
+            },
+            {
+              "label": "Hoodies",
+              "icon": null,
+              "highlight": false,
+              "target": {
+                "kind": "search",
+                "value": "hoodies"
+              }
+            },
+            {
+              "label": "Gorras",
+              "icon": null,
+              "highlight": false,
+              "target": {
+                "kind": "search",
+                "value": "gorras"
+              }
+            },
+            {
+              "label": "Joggers",
+              "icon": null,
+              "highlight": false,
+              "target": {
+                "kind": "search",
+                "value": "joggers"
+              }
+            },
+            {
+              "label": "Tenis",
+              "icon": null,
+              "highlight": false,
+              "target": {
+                "kind": "search",
+                "value": "tenis"
+              }
+            }
+          ],
+          "active_style": "underline",
+          "show_deals_chip": false,
+          "deals_label": "Sale"
+        },
+        "card": {
+          "style": "photo",
+          "image_ratio": "1:1",
+          "image_fit": "contain",
+          "image_bg": "light",
+          "show_brand": false,
+          "show_content": false,
+          "show_description": true,
+          "show_unit_price": false,
+          "deal_badge": "percent",
+          "add_button": "solid",
+          "price_size": "md",
+          "text_align": "left",
+          "show_swatches": true
+        },
+        "footer": {
+          "style": "full",
+          "tone": "dark",
+          "newsletter": true
+        },
+        "floating": {
+          "whatsapp": true
+        },
+        "mobile_nav": {
+          "enabled": true,
+          "items": [
+            "home",
+            "categories",
+            "search",
+            "account",
+            "cart"
+          ]
+        }
+      },
+      "blocks": [
+        {
+          "type": "ticker",
+          "page": "home",
+          "sort_order": 0,
+          "payload": {
+            "tone": "accent",
+            "items": [
+              {
+                "text": "Drop 07"
+              },
+              {
+                "text": "20 de octubre · 6 p. m."
+              },
+              {
+                "text": "Solo 150 unidades"
+              },
+              {
+                "text": "Envío en 24 horas"
+              }
+            ],
+            "appearance": {
+              "frame": "bleed",
+              "pad_top": "none",
+              "pad_bottom": "none",
+              "width": "full"
+            }
+          }
+        },
+        {
+          "type": "hero",
+          "page": "home",
+          "sort_order": 1,
+          "payload": {
+            "layout": "cover_center",
+            "height": "high",
+            "wordmark": false,
+            "title": "Sin reglas",
+            "subtitle": "Colección Bloque 07",
+            "button_label": "Comprar ahora",
+            "slides": [
+              {
+                "media": [
+                  "rack",
+                  "#3A3633",
+                  "#1E1C1A",
+                  [
+                    "#2C2C2C",
+                    "#FF5A1F",
+                    "#4B5A3C",
+                    "#E8E2D6",
+                    "#1F2A44",
+                    "#7A7266"
+                  ]
+                ]
+              }
+            ],
+            "target": {
+              "kind": "page",
+              "value": "/tienda/buscar"
+            },
+            "appearance": {
+              "frame": "bleed",
+              "pad_top": "none",
+              "align": "center",
+              "width": "full"
+            }
+          }
+        },
+        {
+          "type": "deal_countdown",
+          "page": "home",
+          "sort_order": 2,
+          "payload": {
+            "title": "Próximo drop",
+            "style": "drop",
+            "source": "next_ending",
+            "limit": 4
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "home",
+          "sort_order": 3,
+          "payload": {
+            "title": "Lo nuevo",
+            "source": "new_arrivals",
+            "layout": "carousel",
+            "columns_desktop": 4,
+            "columns_mobile": "row",
+            "limit": 8,
+            "arrows": "top",
+            "scrollbar": true
+          }
+        },
+        {
+          "type": "categories",
+          "page": "home",
+          "sort_order": 4,
+          "payload": {
+            "title": "Clásicos en tendencia",
+            "style": "tall_cards",
+            "title_position": "top",
+            "button_label": null,
+            "source": "all",
+            "limit": 4,
+            "preview_media": [
+              {
+                "label": "Gorras",
+                "media": [
+                  "flatlay",
+                  "#2A2826",
+                  [
+                    "#4B5A3C",
+                    "#FF5A1F",
+                    "#E8E2D6"
+                  ]
+                ]
+              },
+              {
+                "label": "Joggers",
+                "media": [
+                  "flatlay",
+                  "#33302C",
+                  [
+                    "#5A5148",
+                    "#2C2C2C",
+                    "#7A7266",
+                    "#5A5148"
+                  ]
+                ]
+              },
+              {
+                "label": "Hoodies",
+                "media": [
+                  "flatlay",
+                  "#2E2B28",
+                  [
+                    "#2C2C2C",
+                    "#C9C2B4",
+                    "#FF5A1F",
+                    "#7A7266",
+                    "#1F2A44",
+                    "#2C2C2C"
+                  ]
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "type": "banner_grid",
+          "page": "home",
+          "sort_order": 5,
+          "payload": {
+            "layout": "2",
+            "tiles": [
+              {
+                "kind": "image",
+                "title": "Tenis",
+                "button_label": "Ver",
+                "media": [
+                  "flatlay",
+                  "#8C857B",
+                  [
+                    "#EDE9E1",
+                    "#111111",
+                    "#EDE9E1"
+                  ]
+                ],
+                "style": {
+                  "text_position": "top-center",
+                  "title_size": "display",
+                  "button_style": "pill_white"
+                },
+                "target": {
+                  "kind": "page",
+                  "value": "/tienda/buscar"
+                }
+              },
+              {
+                "kind": "color",
+                "tone": "accent",
+                "title": "Únete al club Bloque",
+                "text": "Acceso anticipado a cada drop",
+                "button_label": "Registrarme",
+                "style": {
+                  "button_style": "pill_white"
+                },
+                "target": {
+                  "kind": "page",
+                  "value": "/tienda/buscar"
+                }
+              }
+            ],
+            "appearance": {
+              "frame": "bleed",
+              "gap": "none",
+              "width": "full"
+            }
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "product",
+          "sort_order": 0,
+          "payload": {
+            "title": "Combínalo con",
+            "source": "best_sellers",
+            "layout": "carousel",
+            "limit": 10,
+            "arrows": "top",
+            "scrollbar": true
+          }
+        },
+        {
+          "type": "benefits",
+          "page": "product",
+          "sort_order": 1,
+          "payload": {
+            "items": [
+              {
+                "icon": "Truck",
+                "title": "Envío a domicilio",
+                "text": "Lo llevamos a tu puerta"
+              },
+              {
+                "icon": "ArrowUUpLeft",
+                "title": "Cambios fáciles",
+                "text": "Desde «Mis pedidos»"
+              }
+            ]
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "cart",
+          "sort_order": 0,
+          "payload": {
+            "title": "Completa tu look",
+            "source": "on_sale",
+            "layout": "carousel",
+            "limit": 10,
+            "arrows": "top",
+            "scrollbar": true
+          }
+        }
+      ]
+    },
+    {
+      "slug": "sastre",
+      "name": "Sastre",
+      "description": "Crema y azul marino con serif clásica. Portada dividida con la foto a sangre, tarjetas altas de categoría, beneficios en línea, carrusel con descripción y una invitación a agendar cita de sastrería.",
+      "audience": "Ropa masculina clásica y sastrería",
+      "audience_group": "Moda",
+      "sort_order": 4,
+      "demo_store_name": "Casa Arango",
+      "preview_catalog": "fashion",
+      "palette_suggestion": {
+        "accent": "#1B2A41",
+        "deal_color": "#9B2C2C"
+      },
+      "theme": {
+        "scheme": "light",
+        "font_pair": "sastre",
+        "logo_font": "playfair",
+        "radius": "sharp",
+        "density": "cozy",
+        "button_style": "solid",
+        "button_shape": "square",
+        "surface": "warm",
+        "heading_case": "normal",
+        "container": "normal"
+      },
+      "settings": {
+        "topbar": {
+          "enabled": true,
+          "tone": "brand_dark",
+          "messages": [
+            {
+              "icon": null,
+              "text": "Ajustes de basta y manga sin costo",
+              "target": null
+            },
+            {
+              "icon": null,
+              "text": "Envío gratis a todo Colombia",
+              "target": null
+            }
+          ]
+        },
+        "header": {
+          "style": "light",
+          "layout": "center",
+          "overlay": false,
+          "sticky_style": "solid",
+          "search_style": "icon",
+          "logo_mode": "name",
+          "search_placeholder": "Buscar",
+          "show_location": false,
+          "cart_shows_total": false
+        },
+        "nav": {
+          "enabled": true,
+          "style": "text",
+          "items": [
+            {
+              "label": "Camisas",
+              "icon": null,
+              "highlight": false,
+              "target": {
+                "kind": "search",
+                "value": "camisas"
+              }
+            },
+            {
+              "label": "Pantalones",
+              "icon": null,
+              "highlight": false,
+              "target": {
+                "kind": "search",
+                "value": "pantalones"
+              }
+            },
+            {
+              "label": "Blazers",
+              "icon": null,
+              "highlight": false,
+              "target": {
+                "kind": "search",
+                "value": "blazers"
+              }
+            },
+            {
+              "label": "Punto",
+              "icon": null,
+              "highlight": false,
+              "target": {
+                "kind": "search",
+                "value": "punto"
+              }
+            },
+            {
+              "label": "Sastrería a la medida",
+              "icon": null,
+              "highlight": false,
+              "target": {
+                "kind": "search",
+                "value": "sastrería a la medida"
+              }
+            }
+          ],
+          "active_style": "underline",
+          "show_deals_chip": false,
+          "deals_label": "Rebajas"
+        },
+        "card": {
+          "style": "photo",
+          "image_ratio": "4:5",
+          "image_fit": "cover",
+          "image_bg": "tint",
+          "show_brand": false,
+          "show_content": false,
+          "show_description": true,
+          "show_unit_price": false,
+          "deal_badge": "none",
+          "add_button": "none",
+          "price_size": "md",
+          "text_align": "left",
+          "show_swatches": true
+        },
+        "footer": {
+          "style": "full",
+          "tone": "brand",
+          "newsletter": true
+        },
+        "floating": {
+          "whatsapp": true
+        },
+        "mobile_nav": {
+          "enabled": false,
+          "items": []
+        }
+      },
+      "blocks": [
+        {
+          "type": "hero",
+          "page": "home",
+          "sort_order": 0,
+          "payload": {
+            "layout": "split",
+            "height": "high",
+            "image_side": "left",
+            "slides": [
+              {
+                "media": [
+                  "studio",
+                  "#D6CCBC",
+                  "#A69A86",
+                  "#1B2A41",
+                  "coat"
+                ]
+              }
+            ],
+            "eyebrow": "Desde 1987",
+            "title": "El buen corte no pasa de moda",
+            "subtitle": "Blazers, camisas y pantalones hechos en Bogotá con telas italianas.",
+            "button_label": "Ver la colección",
+            "target": {
+              "kind": "page",
+              "value": "/tienda/buscar"
+            },
+            "appearance": {
+              "height": "screen",
+              "frame": "bleed",
+              "pad_top": "none",
+              "width": "full"
+            }
+          }
+        },
+        {
+          "type": "categories",
+          "page": "home",
+          "sort_order": 1,
+          "payload": {
+            "title": "Compra por prenda",
+            "style": "tall_cards",
+            "title_position": "bottom",
+            "button_label": "Ver",
+            "source": "all",
+            "limit": 3,
+            "preview_media": [
+              {
+                "label": "Camisas",
+                "media": [
+                  "flatlay",
+                  "#B8AD9C",
+                  [
+                    "#FFFFFF",
+                    "#DCE3EA",
+                    "#E4D9C6",
+                    "#F3EFE7",
+                    "#DCE3EA",
+                    "#FFFFFF"
+                  ]
+                ]
+              },
+              {
+                "label": "Blazers",
+                "media": [
+                  "studio",
+                  "#CFC6B8",
+                  "#9E937F",
+                  "#3C3F44",
+                  "coat"
+                ]
+              },
+              {
+                "label": "Pantalones",
+                "media": [
+                  "flatlay",
+                  "#A79C8B",
+                  [
+                    "#2B2B2D",
+                    "#7C8A9A",
+                    "#B9A68A",
+                    "#3C3F44"
+                  ]
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "type": "benefits",
+          "page": "home",
+          "sort_order": 2,
+          "payload": {
+            "style": "inline",
+            "items": [
+              {
+                "icon": "Scissors",
+                "title": "Ajustes sin costo",
+                "text": "Basta y manga en 48 horas"
+              },
+              {
+                "icon": "Ruler",
+                "title": "Guía de tallas",
+                "text": "Medidas reales de cada prenda"
+              },
+              {
+                "icon": "Truck",
+                "title": "Envío gratis",
+                "text": "A todo el país"
+              },
+              {
+                "icon": "ArrowUUpLeft",
+                "title": "Cambios",
+                "text": "Hasta 30 días después"
+              }
+            ]
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "home",
+          "sort_order": 3,
+          "payload": {
+            "title": "Esenciales de temporada",
+            "source": "best_sellers",
+            "layout": "carousel",
+            "columns_desktop": 3,
+            "columns_mobile": "row",
+            "limit": 8,
+            "arrows": "top",
+            "scrollbar": true
+          }
+        },
+        {
+          "type": "image_text",
+          "page": "home",
+          "sort_order": 4,
+          "payload": {
+            "reverse": true,
+            "eyebrow": "Sastrería a la medida",
+            "title": "Agenda tu cita con el sastre",
+            "text": "Tomamos tus medidas en la tienda o en tu oficina y en tres semanas tienes tu traje.",
+            "button_label": "Agendar por WhatsApp",
+            "media": [
+              "flatlay",
+              "#9E937F",
+              [
+                "#1B2A41",
+                "#3C3F44",
+                "#C9B79C",
+                "#E4D9C6"
+              ]
+            ],
+            "target": {
+              "kind": "page",
+              "value": "/tienda/buscar"
+            }
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "product",
+          "sort_order": 0,
+          "payload": {
+            "title": "Combínalo con",
+            "source": "best_sellers",
+            "layout": "carousel",
+            "limit": 10,
+            "arrows": "top",
+            "scrollbar": true
+          }
+        },
+        {
+          "type": "benefits",
+          "page": "product",
+          "sort_order": 1,
+          "payload": {
+            "style": "inline",
+            "items": [
+              {
+                "icon": "Truck",
+                "title": "Envío a domicilio",
+                "text": "Lo llevamos a tu puerta"
+              },
+              {
+                "icon": "ArrowUUpLeft",
+                "title": "Cambios fáciles",
+                "text": "Desde «Mis pedidos»"
+              }
+            ]
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "cart",
+          "sort_order": 0,
+          "payload": {
+            "title": "Completa tu look",
+            "source": "on_sale",
+            "layout": "carousel",
+            "limit": 10,
+            "arrows": "top",
+            "scrollbar": true
+          }
+        }
+      ]
+    },
+    {
+      "slug": "botanica",
+      "name": "Botánica",
+      "description": "Salvia y crema, títulos en serif y botones píldora. Portada centrada con el nombre, producto grande en tres columnas con su descripción, tarjetas altas por línea y pie verde oscuro.",
+      "audience": "Cosmética natural, velas y hogar",
+      "audience_group": "Belleza y hogar",
+      "sort_order": 5,
+      "demo_store_name": "Raíz",
+      "preview_catalog": "home",
+      "palette_suggestion": {
+        "accent": "#3F5A45",
+        "deal_color": "#B5523B"
+      },
+      "theme": {
+        "scheme": "light",
+        "font_pair": "editorial",
+        "logo_font": "italiana",
+        "radius": "round",
+        "density": "cozy",
+        "button_style": "solid",
+        "button_shape": "pill",
+        "surface": "sage",
+        "heading_case": "normal",
+        "container": "normal"
+      },
+      "settings": {
+        "topbar": {
+          "enabled": false,
+          "tone": "accent",
+          "messages": []
+        },
+        "header": {
+          "style": "overlay",
+          "layout": "inline",
+          "overlay": true,
+          "sticky_style": "blur_light",
+          "search_style": "underline",
+          "logo_mode": "name",
+          "search_placeholder": "Buscar",
+          "show_location": false,
+          "cart_shows_total": false
+        },
+        "nav": {
+          "enabled": true,
+          "style": "text",
+          "items": [
+            {
+              "label": "Rostro",
+              "icon": null,
+              "highlight": false,
+              "target": {
+                "kind": "search",
+                "value": "rostro"
+              }
+            },
+            {
+              "label": "Cuerpo",
+              "icon": null,
+              "highlight": false,
+              "target": {
+                "kind": "search",
+                "value": "cuerpo"
+              }
+            },
+            {
+              "label": "Hogar",
+              "icon": null,
+              "highlight": false,
+              "target": {
+                "kind": "search",
+                "value": "hogar"
+              }
+            },
+            {
+              "label": "Regalos",
+              "icon": null,
+              "highlight": false,
+              "target": {
+                "kind": "search",
+                "value": "regalos"
+              }
+            }
+          ],
+          "active_style": "underline",
+          "show_deals_chip": false,
+          "deals_label": "Ofertas"
+        },
+        "card": {
+          "style": "photo",
+          "image_ratio": "4:5",
+          "image_fit": "contain",
+          "image_bg": "tint",
+          "show_brand": false,
+          "show_content": false,
+          "show_description": true,
+          "show_unit_price": false,
+          "deal_badge": "percent",
+          "add_button": "outline",
+          "price_size": "md",
+          "text_align": "left",
+          "show_swatches": false
+        },
+        "footer": {
+          "style": "full",
+          "tone": "brand",
+          "newsletter": true
+        },
+        "floating": {
+          "whatsapp": true
+        },
+        "mobile_nav": {
+          "enabled": true,
+          "items": [
+            "home",
+            "categories",
+            "search",
+            "account",
+            "cart"
+          ]
+        }
+      },
+      "blocks": [
+        {
+          "type": "hero",
+          "page": "home",
+          "sort_order": 0,
+          "payload": {
+            "layout": "cover_center",
+            "height": "high",
+            "wordmark": true,
+            "subtitle": "Cuidado natural · hecho a mano",
+            "slides": [
+              {
+                "media": [
+                  "leafy",
+                  "#9DB092",
+                  "#5F7A5C",
+                  null
+                ]
+              }
+            ],
+            "appearance": {
+              "height": "screen",
+              "frame": "bleed",
+              "pad_top": "none",
+              "align": "center",
+              "width": "full"
+            }
+          }
+        },
+        {
+          "type": "rich_text",
+          "page": "home",
+          "sort_order": 1,
+          "payload": {
+            "style": "serif",
+            "title": "Ingredientes que puedes pronunciar",
+            "button_label": "Conocer la tienda",
+            "body": "Aceites prensados en frío, ceras vegetales y aromas de plantas colombianas.",
+            "target": {
+              "kind": "page",
+              "value": "/tienda/buscar"
+            }
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "home",
+          "sort_order": 2,
+          "payload": {
+            "title": "Los favoritos",
+            "source": "best_sellers",
+            "layout": "carousel",
+            "columns_desktop": 3,
+            "columns_mobile": "row",
+            "limit": 6,
+            "arrows": "top",
+            "scrollbar": true
+          }
+        },
+        {
+          "type": "categories",
+          "page": "home",
+          "sort_order": 3,
+          "payload": {
+            "title": "Por línea",
+            "style": "tall_cards",
+            "title_position": "center",
+            "button_label": "Ver",
+            "source": "all",
+            "limit": 3,
+            "preview_media": [
+              {
+                "label": "Rostro",
+                "media": [
+                  "glow",
+                  "#E6E1D3",
+                  "#BFB49C",
+                  "#B5523B",
+                  "serum"
+                ]
+              },
+              {
+                "label": "Cuerpo",
+                "media": [
+                  "glow",
+                  "#E2E6DA",
+                  "#AEBBA2",
+                  "#EDE3D3",
+                  "cream"
+                ]
+              },
+              {
+                "label": "Hogar",
+                "media": [
+                  "leafy",
+                  "#E4DCCB",
+                  "#B9AC92",
+                  "#5E7A5A"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "type": "image_text",
+          "page": "home",
+          "sort_order": 4,
+          "payload": {
+            "reverse": false,
+            "eyebrow": "Taller",
+            "title": "Cada vela se vierte a mano en Envigado",
+            "text": "Lotes pequeños, mechas de algodón y frascos que puedes rellenar en la tienda.",
+            "button_label": "Ver velas",
+            "media": [
+              "leafy",
+              "#E7E0D0",
+              "#C8BBA0",
+              "#6B4A2E"
+            ],
+            "target": {
+              "kind": "page",
+              "value": "/tienda/buscar"
+            }
+          }
+        },
+        {
+          "type": "benefits",
+          "page": "home",
+          "sort_order": 5,
+          "payload": {
+            "style": "inline",
+            "items": [
+              {
+                "icon": "Leaf",
+                "title": "Vegano",
+                "text": "Sin ingredientes animales"
+              },
+              {
+                "icon": "Heart",
+                "title": "Sin pruebas en animales",
+                "text": "Certificado"
+              },
+              {
+                "icon": "ArrowUUpLeft",
+                "title": "Envases retornables",
+                "text": "10 % en tu recarga"
+              },
+              {
+                "icon": "Truck",
+                "title": "Envío gratis",
+                "text": "Desde $ 150.000"
+              }
+            ]
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "product",
+          "sort_order": 0,
+          "payload": {
+            "title": "También te puede gustar",
+            "source": "best_sellers",
+            "layout": "carousel",
+            "limit": 10,
+            "arrows": "top",
+            "scrollbar": true
+          }
+        },
+        {
+          "type": "benefits",
+          "page": "product",
+          "sort_order": 1,
+          "payload": {
+            "style": "inline",
+            "items": [
+              {
+                "icon": "Truck",
+                "title": "Envío a domicilio",
+                "text": "Lo llevamos a tu puerta"
+              },
+              {
+                "icon": "ShieldCheck",
+                "title": "Compra segura",
+                "text": "Si algo falla, lo devuelves"
+              }
+            ]
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "cart",
+          "sort_order": 0,
+          "payload": {
+            "title": "¿Te falta algo?",
+            "source": "on_sale",
+            "layout": "carousel",
+            "limit": 10,
+            "arrows": "top",
+            "scrollbar": true
+          }
+        }
+      ]
+    },
+    {
+      "slug": "ahorro",
+      "name": "Ahorro",
+      "description": "Inspirada en tiendas de descuento tipo D1: precio grande y primero, tarjetas con borde, mucha información por pantalla, rojo de marca y amarillo de oferta.",
+      "audience": "Supermercados de descuento y tiendas de precio bajo",
+      "audience_group": "Mercado",
+      "sort_order": 6,
+      "demo_store_name": "Precio Justo",
+      "preview_catalog": "grocery",
+      "palette_suggestion": {
+        "accent": "#D3192B",
+        "deal_color": "#B45309"
+      },
+      "theme": {
+        "scheme": "light",
+        "font_pair": "grotesca",
+        "radius": "soft",
+        "density": "compact",
+        "button_style": "solid",
+        "surface": "cool",
+        "heading_case": "upper",
+        "container": "wide"
+      },
+      "settings": {
+        "topbar": {
+          "enabled": true,
+          "tone": "deal",
+          "messages": [
+            {
+              "icon": "Tag",
+              "text": "Precios bajos todos los días",
+              "target": null
+            },
+            {
+              "icon": "Truck",
+              "text": "Domicilio gratis desde $ 60.000",
+              "target": null
+            },
+            {
+              "icon": "Clock",
+              "text": "Recíbelo hoy antes de las 8 p. m.",
+              "target": null
+            }
+          ]
+        },
+        "header": {
+          "style": "brand",
+          "layout": "search",
+          "logo_mode": "mark_name",
+          "search_placeholder": "Busca entre más de 1.200 productos",
+          "show_location": true,
+          "cart_shows_total": true
+        },
+        "nav": {
+          "enabled": true,
+          "style": "bar",
+          "show_deals_chip": true,
+          "deals_label": "Ofertas"
+        },
+        "card": {
+          "style": "boxed",
+          "image_ratio": "1:1",
+          "image_fit": "contain",
+          "image_bg": "white",
+          "show_brand": true,
+          "show_content": true,
+          "show_unit_price": true,
+          "deal_badge": "savings",
+          "add_button": "solid",
+          "price_size": "lg",
+          "text_align": "left",
+          "show_swatches": false
+        },
+        "footer": {
+          "style": "full"
+        },
+        "mobile_nav": {
+          "enabled": true,
+          "items": [
+            "home",
+            "categories",
+            "search",
+            "orders",
+            "cart"
+          ]
+        }
+      },
+      "blocks": [
+        {
+          "type": "hero",
+          "page": "home",
+          "sort_order": 0,
+          "payload": {
+            "layout": "full",
+            "height": "low",
+            "slides": [
+              {
+                "title": "Precios bajos, siempre",
+                "text": "Lo de toda la semana, sin pagar de más.",
+                "button_label": "Ver ofertas",
+                "text_color": "light",
+                "overlay": 0,
+                "media": [
+                  "pantry",
+                  "#B3121F",
+                  "#E0313F"
+                ],
+                "target": {
+                  "kind": "page",
+                  "value": "/tienda/buscar"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "categories",
+          "page": "home",
+          "sort_order": 1,
+          "payload": {
+            "title": "Categorías",
+            "style": "icon_circles",
+            "source": "all",
+            "limit": 8
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "home",
+          "sort_order": 2,
+          "payload": {
+            "title": "Lo más barato de la semana",
+            "source": "on_sale",
+            "layout": "carousel",
+            "columns_desktop": 6,
+            "columns_mobile": "row",
+            "limit": 12,
+            "see_all_label": "Ver todas"
+          }
+        },
+        {
+          "type": "banner_grid",
+          "page": "home",
+          "sort_order": 3,
+          "payload": {
+            "title": null,
+            "layout": "3",
+            "tiles": [
+              {
+                "kind": "color",
+                "tone": "deal",
+                "title": "Martes de aseo",
+                "text": "Hasta 30 % menos en limpieza",
+                "target": {
+                  "kind": "page",
+                  "value": "/tienda/buscar"
+                }
+              },
+              {
+                "kind": "color",
+                "tone": "accent",
+                "title": "Combos de despensa",
+                "text": "Arma tu mercado y ahorra",
+                "target": {
+                  "kind": "page",
+                  "value": "/tienda/buscar"
+                }
+              },
+              {
+                "kind": "color",
+                "tone": "dark",
+                "title": "Marca propia",
+                "text": "Misma calidad, menor precio",
+                "target": {
+                  "kind": "page",
+                  "value": "/tienda/buscar"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "deal_countdown",
+          "page": "home",
+          "sort_order": 4,
+          "payload": {
+            "title": "Oferta relámpago",
+            "source": "next_ending",
+            "limit": 8
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "home",
+          "sort_order": 5,
+          "payload": {
+            "title": "Despensa",
+            "source": "featured",
+            "layout": "grid",
+            "columns_desktop": 6,
+            "columns_mobile": "2",
+            "limit": 12,
+            "appearance": {
+              "bg_type": "color",
+              "bg_color": "soft"
+            }
+          }
+        },
+        {
+          "type": "benefits",
+          "page": "home",
+          "sort_order": 6,
+          "payload": {
+            "style": "cards",
+            "items": [
+              {
+                "icon": "Truck",
+                "title": "Domicilio el mismo día",
+                "text": "En pedidos antes de las 5 p. m."
+              },
+              {
+                "icon": "Tag",
+                "title": "Precio bajo garantizado",
+                "text": "Si lo ves más barato, te lo igualamos"
+              },
+              {
+                "icon": "CreditCard",
+                "title": "Paga como quieras",
+                "text": "Efectivo, Nequi, tarjeta o PSE"
+              },
+              {
+                "icon": "ArrowUUpLeft",
+                "title": "Cambios fáciles",
+                "text": "Desde «Mis pedidos»"
+              }
+            ]
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "product",
+          "sort_order": 0,
+          "payload": {
+            "title": "Otros clientes también llevaron",
+            "source": "best_sellers",
+            "layout": "carousel",
+            "limit": 10
+          }
+        },
+        {
+          "type": "benefits",
+          "page": "product",
+          "sort_order": 1,
+          "payload": {
+            "style": "cards",
+            "items": [
+              {
+                "icon": "Truck",
+                "title": "Domicilio rápido",
+                "text": "Hoy mismo en tu casa"
+              },
+              {
+                "icon": "ShieldCheck",
+                "title": "Devolución fácil",
+                "text": "Desde «Mis pedidos»"
+              }
+            ]
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "cart",
+          "sort_order": 0,
+          "payload": {
+            "title": "¿Se te olvidó algo?",
+            "source": "on_sale",
+            "layout": "carousel",
+            "limit": 10
+          }
+        }
+      ]
+    },
+    {
+      "slug": "despensa",
+      "name": "Despensa",
+      "description": "Mercado minimalista: fondo blanco, líneas finas, fotos pequeñas sobre gris claro y un botón «+» discreto. Se lee rápido y no cansa.",
+      "audience": "Mercados de barrio que quieren verse ordenados y modernos",
+      "audience_group": "Mercado",
+      "sort_order": 7,
+      "demo_store_name": "Despensa 17",
+      "preview_catalog": "grocery",
+      "palette_suggestion": {
+        "accent": "#1F6B4F",
+        "deal_color": "#C2410C"
+      },
+      "theme": {
+        "scheme": "light",
+        "font_pair": "minimal",
+        "radius": "soft",
+        "density": "cozy",
+        "button_style": "solid",
+        "surface": "white",
+        "heading_case": "normal",
+        "container": "normal"
+      },
+      "settings": {
+        "topbar": {
+          "enabled": true,
+          "tone": "neutral",
+          "messages": [
+            {
+              "icon": "Truck",
+              "text": "Domicilio gratis desde $ 80.000 en Chapinero y Teusaquillo",
+              "target": null
+            }
+          ]
+        },
+        "header": {
+          "style": "minimal",
+          "layout": "inline",
+          "logo_mode": "name",
+          "search_placeholder": "Buscar",
+          "show_location": false,
+          "cart_shows_total": false
+        },
+        "nav": {
+          "enabled": true,
+          "style": "text",
+          "show_deals_chip": false,
+          "deals_label": "Ofertas"
+        },
+        "card": {
+          "style": "flat",
+          "image_ratio": "1:1",
+          "image_fit": "contain",
+          "image_bg": "light",
+          "show_brand": false,
+          "show_content": true,
+          "show_unit_price": true,
+          "deal_badge": "percent",
+          "add_button": "icon",
+          "price_size": "md",
+          "text_align": "left",
+          "show_swatches": false
+        },
+        "footer": {
+          "style": "minimal"
+        },
+        "mobile_nav": {
+          "enabled": true,
+          "items": [
+            "home",
+            "categories",
+            "search",
+            "orders",
+            "account"
+          ]
+        }
+      },
+      "blocks": [
+        {
+          "type": "hero",
+          "page": "home",
+          "sort_order": 0,
+          "payload": {
+            "layout": "split",
+            "height": "medium",
+            "slides": [
+              {
+                "media": [
+                  "produce",
+                  "#E8EFE9",
+                  "#CFE0D3"
+                ]
+              }
+            ],
+            "eyebrow": "Mercado a domicilio",
+            "title": "Tu mercado, sin vueltas.",
+            "subtitle": "Escoge, paga y recíbelo hoy. Frutas de la plaza y todo lo de la casa.",
+            "button_label": "Empezar a comprar",
+            "target": {
+              "kind": "page",
+              "value": "/tienda/buscar"
+            }
+          }
+        },
+        {
+          "type": "categories",
+          "page": "home",
+          "sort_order": 1,
+          "payload": {
+            "title": "",
+            "style": "chips",
+            "source": "all",
+            "limit": 8
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "home",
+          "sort_order": 2,
+          "payload": {
+            "title": "Esta semana",
+            "source": "new_arrivals",
+            "layout": "grid",
+            "columns_desktop": 5,
+            "columns_mobile": "2",
+            "limit": 10,
+            "title_align": "left"
+          }
+        },
+        {
+          "type": "image_text",
+          "page": "home",
+          "sort_order": 3,
+          "payload": {
+            "reverse": false,
+            "eyebrow": "Domicilios",
+            "title": "Pide antes de las 2 p. m. y llega hoy",
+            "text": "Escoge una franja de entrega al pagar. Si algo no está, te llamamos antes de cambiarlo.",
+            "button_label": "Ver franjas",
+            "media": [
+              "clean",
+              "#DCEBE4",
+              "#B9D7C9"
+            ],
+            "target": {
+              "kind": "page",
+              "value": "/tienda/buscar"
+            }
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "home",
+          "sort_order": 4,
+          "payload": {
+            "title": "Lo que más se lleva",
+            "source": "best_sellers",
+            "layout": "carousel",
+            "columns_desktop": 5,
+            "columns_mobile": "row",
+            "limit": 10
+          }
+        },
+        {
+          "type": "benefits",
+          "page": "home",
+          "sort_order": 5,
+          "payload": {
+            "style": "inline",
+            "items": [
+              {
+                "icon": "Truck",
+                "title": "Llega hoy",
+                "text": "Franjas de 2 horas"
+              },
+              {
+                "icon": "Leaf",
+                "title": "Fresco",
+                "text": "De la plaza cada mañana"
+              },
+              {
+                "icon": "CreditCard",
+                "title": "Pagos",
+                "text": "Nequi, tarjeta o efectivo"
+              },
+              {
+                "icon": "ArrowUUpLeft",
+                "title": "Devoluciones",
+                "text": "Sin preguntas"
+              }
+            ]
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "product",
+          "sort_order": 0,
+          "payload": {
+            "title": "Otros clientes también llevaron",
+            "source": "best_sellers",
+            "layout": "carousel",
+            "limit": 10,
+            "title_align": "left"
+          }
+        },
+        {
+          "type": "benefits",
+          "page": "product",
+          "sort_order": 1,
+          "payload": {
+            "style": "inline",
+            "items": [
+              {
+                "icon": "Truck",
+                "title": "Domicilio rápido",
+                "text": "Hoy mismo en tu casa"
+              },
+              {
+                "icon": "ShieldCheck",
+                "title": "Devolución fácil",
+                "text": "Desde «Mis pedidos»"
+              }
+            ]
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "cart",
+          "sort_order": 0,
+          "payload": {
+            "title": "¿Se te olvidó algo?",
+            "source": "on_sale",
+            "layout": "carousel",
+            "limit": 10,
+            "title_align": "left"
+          }
+        }
+      ]
+    },
+    {
+      "slug": "lookbook",
+      "name": "Lookbook",
+      "description": "Moda con aire de revista: titulares en serif, fondo cálido, bloques asimétricos y tres columnas de producto grande. Cuenta la colección antes de vender.",
+      "audience": "Marcas de ropa con colecciones y campañas",
+      "audience_group": "Moda",
+      "sort_order": 8,
+      "demo_store_name": "Casa Olivo",
+      "preview_catalog": "fashion",
+      "palette_suggestion": {
+        "accent": "#5B4636",
+        "deal_color": "#B42318"
+      },
+      "theme": {
+        "scheme": "light",
+        "font_pair": "editorial",
+        "radius": "sharp",
+        "density": "cozy",
+        "button_style": "solid",
+        "surface": "warm",
+        "heading_case": "normal",
+        "container": "normal"
+      },
+      "settings": {
+        "topbar": {
+          "enabled": true,
+          "tone": "brand_dark",
+          "messages": [
+            {
+              "icon": null,
+              "text": "Nueva colección «Tierra» ya disponible",
+              "target": null
+            },
+            {
+              "icon": null,
+              "text": "3 cuotas sin interés con tarjeta",
+              "target": null
+            }
+          ]
+        },
+        "header": {
+          "style": "light",
+          "layout": "inline",
+          "logo_mode": "name",
+          "search_placeholder": "Buscar",
+          "show_location": false,
+          "cart_shows_total": false
+        },
+        "nav": {
+          "enabled": true,
+          "style": "text",
+          "show_deals_chip": false,
+          "deals_label": "Rebajas"
+        },
+        "card": {
+          "style": "minimal",
+          "image_ratio": "4:5",
+          "image_fit": "cover",
+          "image_bg": "tint",
+          "show_brand": false,
+          "show_content": false,
+          "show_unit_price": false,
+          "deal_badge": "percent",
+          "add_button": "none",
+          "price_size": "md",
+          "text_align": "center",
+          "show_swatches": true
+        },
+        "footer": {
+          "style": "full"
+        },
+        "mobile_nav": {
+          "enabled": true,
+          "items": [
+            "home",
+            "categories",
+            "search",
+            "account",
+            "cart"
+          ]
+        }
+      },
+      "blocks": [
+        {
+          "type": "hero",
+          "page": "home",
+          "sort_order": 0,
+          "payload": {
+            "layout": "split",
+            "height": "high",
+            "slides": [
+              {
+                "media": [
+                  "studio",
+                  "#E3D5C1",
+                  "#C4AF92",
+                  "#6E7553",
+                  "dress"
+                ]
+              }
+            ],
+            "eyebrow": "Colección Tierra",
+            "title": "Hecho para quedarse",
+            "subtitle": "Tonos de barro y oliva, en lino lavado y algodón orgánico.",
+            "button_label": "Descubrir",
+            "target": {
+              "kind": "page",
+              "value": "/tienda/buscar"
+            }
+          }
+        },
+        {
+          "type": "banner_grid",
+          "page": "home",
+          "sort_order": 1,
+          "payload": {
+            "title": null,
+            "layout": "1+2",
+            "tiles": [
+              {
+                "kind": "image",
+                "title": "Vestidos",
+                "text": "Para el calor de la tarde",
+                "media": [
+                  "studio",
+                  "#D8C7B0",
+                  "#B49C7E",
+                  "#A0522D",
+                  "dress"
+                ],
+                "target": {
+                  "kind": "page",
+                  "value": "/tienda/buscar"
+                }
+              },
+              {
+                "kind": "image",
+                "title": "Camisas",
+                "media": [
+                  "fold",
+                  "#EFE7DA",
+                  "#DCCFBC",
+                  [
+                    "#E4D9C6",
+                    "#C9B79C",
+                    "#6E7553",
+                    "#2F3A4A"
+                  ]
+                ],
+                "target": {
+                  "kind": "page",
+                  "value": "/tienda/buscar"
+                }
+              },
+              {
+                "kind": "color",
+                "tone": "accent",
+                "title": "Rebajas de mitad de año",
+                "text": "Hasta 40 %",
+                "target": {
+                  "kind": "page",
+                  "value": "/tienda/buscar"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "home",
+          "sort_order": 2,
+          "payload": {
+            "title": "Favoritos de la temporada",
+            "source": "best_sellers",
+            "layout": "grid",
+            "columns_desktop": 3,
+            "columns_mobile": "2",
+            "limit": 6,
+            "title_align": "center"
+          }
+        },
+        {
+          "type": "image_text",
+          "page": "home",
+          "sort_order": 3,
+          "payload": {
+            "reverse": true,
+            "eyebrow": "Nuestro lino",
+            "title": "Tejido en Colombia, lavado a mano",
+            "text": "Cada prenda pasa por tres lavados para que llegue suave desde el primer día y no encoja en tu casa.",
+            "button_label": "Conocer el proceso",
+            "media": [
+              "fold",
+              "#E9DFCF",
+              "#D2C2A8",
+              [
+                "#F3EFE7",
+                "#E4D9C6",
+                "#C9B79C",
+                "#A68E6E"
+              ]
+            ],
+            "target": {
+              "kind": "page",
+              "value": "/tienda/buscar"
+            }
+          }
+        },
+        {
+          "type": "categories",
+          "page": "home",
+          "sort_order": 4,
+          "payload": {
+            "title": "Compra por prenda",
+            "style": "image_tiles",
+            "source": "all",
+            "limit": 6
+          }
+        },
+        {
+          "type": "cta_band",
+          "page": "home",
+          "sort_order": 5,
+          "payload": {
+            "tone": "soft",
+            "title": "Entérate primero de cada colección",
+            "text": "Un correo al mes, sin relleno.",
+            "button_label": "Suscribirme",
+            "target": {
+              "kind": "page",
+              "value": "/tienda/registro"
+            }
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "product",
+          "sort_order": 0,
+          "payload": {
+            "title": "Combínalo con",
+            "source": "best_sellers",
+            "layout": "carousel",
+            "limit": 10,
+            "title_align": "center"
+          }
+        },
+        {
+          "type": "benefits",
+          "page": "product",
+          "sort_order": 1,
+          "payload": {
+            "items": [
+              {
+                "icon": "Truck",
+                "title": "Envío a domicilio",
+                "text": "Lo llevamos a tu puerta"
+              },
+              {
+                "icon": "ArrowUUpLeft",
+                "title": "Cambios fáciles",
+                "text": "Desde «Mis pedidos»"
+              }
+            ]
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "cart",
+          "sort_order": 0,
+          "payload": {
+            "title": "Completa tu look",
+            "source": "on_sale",
+            "layout": "carousel",
+            "limit": 10,
+            "title_align": "center"
+          }
+        }
+      ]
+    },
+    {
+      "slug": "barrio",
+      "name": "Barrio",
+      "description": "Cercana y fácil: botones grandes, esquinas redondas, amarillo de marca y el pedido por WhatsApp siempre a la vista. Pensada para clientes que compran desde el celular.",
+      "audience": "Tiendas de barrio y minimercados",
+      "audience_group": "Mercado",
+      "sort_order": 9,
+      "demo_store_name": "Tienda Doña Marta",
+      "preview_catalog": "grocery",
+      "palette_suggestion": {
+        "accent": "#F2B705",
+        "deal_color": "#D92D20"
+      },
+      "theme": {
+        "scheme": "light",
+        "font_pair": "cercana",
+        "radius": "round",
+        "density": "cozy",
+        "button_style": "solid",
+        "surface": "warm",
+        "heading_case": "normal",
+        "container": "normal"
+      },
+      "settings": {
+        "topbar": {
+          "enabled": false,
+          "tone": "accent",
+          "messages": []
+        },
+        "header": {
+          "style": "brand",
+          "layout": "search",
+          "logo_mode": "mark_name",
+          "search_placeholder": "¿Qué te hace falta?",
+          "show_location": true,
+          "cart_shows_total": true
+        },
+        "nav": {
+          "enabled": true,
+          "style": "bar",
+          "show_deals_chip": true,
+          "deals_label": "Ofertas del día"
+        },
+        "card": {
+          "style": "boxed",
+          "image_ratio": "1:1",
+          "image_fit": "contain",
+          "image_bg": "white",
+          "show_brand": false,
+          "show_content": true,
+          "show_unit_price": false,
+          "deal_badge": "percent",
+          "add_button": "solid",
+          "price_size": "lg",
+          "text_align": "center",
+          "show_swatches": false
+        },
+        "footer": {
+          "style": "full"
+        },
+        "mobile_nav": {
+          "enabled": true,
+          "items": [
+            "home",
+            "categories",
+            "search",
+            "orders",
+            "cart"
+          ]
+        }
+      },
+      "blocks": [
+        {
+          "type": "announcement",
+          "page": "home",
+          "sort_order": 0,
+          "payload": {
+            "icon": "Leaf",
+            "text": "Hoy llegó fruta fresca de la plaza: banano, mango y tomate."
+          }
+        },
+        {
+          "type": "hero",
+          "page": "home",
+          "sort_order": 1,
+          "payload": {
+            "layout": "main_side",
+            "height": "medium",
+            "slides": [
+              {
+                "title": "Todo lo de la casa, a dos cuadras",
+                "text": "Pide antes de las 7 p. m. y te lo llevamos en 30 minutos.",
+                "button_label": "Hacer pedido",
+                "text_color": "light",
+                "overlay": 10,
+                "media": [
+                  "produce",
+                  "#B7791F",
+                  "#E0A82E"
+                ],
+                "target": {
+                  "kind": "page",
+                  "value": "/tienda/buscar"
+                }
+              }
+            ],
+            "side": [
+              {
+                "kind": "color",
+                "tone": "deal",
+                "title": "Combo desayuno",
+                "text": "Pan, huevos y leche por $ 24.900"
+              },
+              {
+                "kind": "image",
+                "title": "Aseo",
+                "text": "Todo para la casa",
+                "media": [
+                  "clean",
+                  "#2E8A99",
+                  "#56C2CF"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "type": "categories",
+          "page": "home",
+          "sort_order": 2,
+          "payload": {
+            "title": "¿Qué buscas?",
+            "style": "icon_circles",
+            "source": "all",
+            "limit": 8
+          }
+        },
+        {
+          "type": "cta_band",
+          "page": "home",
+          "sort_order": 3,
+          "payload": {
+            "tone": "accent",
+            "title": "¿Prefieres pedir por WhatsApp?",
+            "text": "Escríbenos la lista y te la mandamos. Atendemos de 7 a. m. a 9 p. m.",
+            "button_label": "Escribir por WhatsApp",
+            "icon": "ChatCircle"
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "home",
+          "sort_order": 4,
+          "payload": {
+            "title": "Lo de siempre",
+            "source": "buy_again",
+            "layout": "grid",
+            "columns_desktop": 5,
+            "columns_mobile": "2",
+            "limit": 10
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "home",
+          "sort_order": 5,
+          "payload": {
+            "title": "Ofertas del día",
+            "source": "on_sale",
+            "layout": "carousel",
+            "columns_desktop": 5,
+            "columns_mobile": "row",
+            "limit": 10,
+            "appearance": {
+              "bg_type": "color",
+              "bg_color": "soft"
+            }
+          }
+        },
+        {
+          "type": "benefits",
+          "page": "home",
+          "sort_order": 6,
+          "payload": {
+            "style": "cards",
+            "items": [
+              {
+                "icon": "Clock",
+                "title": "En 30 minutos",
+                "text": "Dentro del barrio"
+              },
+              {
+                "icon": "ChatCircle",
+                "title": "Te llamamos",
+                "text": "Si falta algo, lo cambiamos contigo"
+              },
+              {
+                "icon": "CreditCard",
+                "title": "Fiado",
+                "text": "Con tu cupo de cliente"
+              },
+              {
+                "icon": "Heart",
+                "title": "De confianza",
+                "text": "Desde 1998 en el barrio"
+              }
+            ]
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "product",
+          "sort_order": 0,
+          "payload": {
+            "title": "Otros clientes también llevaron",
+            "source": "best_sellers",
+            "layout": "carousel",
+            "limit": 10
+          }
+        },
+        {
+          "type": "benefits",
+          "page": "product",
+          "sort_order": 1,
+          "payload": {
+            "style": "cards",
+            "items": [
+              {
+                "icon": "Truck",
+                "title": "Domicilio rápido",
+                "text": "Hoy mismo en tu casa"
+              },
+              {
+                "icon": "ShieldCheck",
+                "title": "Devolución fácil",
+                "text": "Desde «Mis pedidos»"
+              }
+            ]
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "cart",
+          "sort_order": 0,
+          "payload": {
+            "title": "¿Se te olvidó algo?",
+            "source": "on_sale",
+            "layout": "carousel",
+            "limit": 10
+          }
+        }
+      ]
+    },
+    {
+      "slug": "taller",
+      "name": "Taller",
+      "description": "Técnica y directa: encabezado oscuro, búsqueda por referencia, especificaciones visibles en la tarjeta, precios en tipografía monoespaciada y marcas que maneja la tienda.",
+      "audience": "Ferreterías, repuestos y materiales",
+      "audience_group": "Ferretería",
+      "sort_order": 10,
+      "demo_store_name": "Ferretería El Tornillo",
+      "preview_catalog": "hardware",
+      "palette_suggestion": {
+        "accent": "#F59E0B",
+        "deal_color": "#D33B3B"
+      },
+      "theme": {
+        "scheme": "light",
+        "font_pair": "tecnica",
+        "radius": "sharp",
+        "density": "compact",
+        "button_style": "solid",
+        "surface": "cool",
+        "heading_case": "normal",
+        "container": "wide"
+      },
+      "settings": {
+        "topbar": {
+          "enabled": true,
+          "tone": "dark",
+          "messages": [
+            {
+              "icon": "Truck",
+              "text": "Despachos a obra en Bogotá y Soacha",
+              "target": null
+            },
+            {
+              "icon": "Receipt",
+              "text": "Cotizaciones para empresas en 24 horas",
+              "target": null
+            }
+          ]
+        },
+        "header": {
+          "style": "dark",
+          "layout": "search",
+          "logo_mode": "mark_name",
+          "search_placeholder": "Busca por nombre, marca o referencia",
+          "show_location": true,
+          "cart_shows_total": true
+        },
+        "nav": {
+          "enabled": true,
+          "style": "bar",
+          "show_deals_chip": true,
+          "deals_label": "Liquidación"
+        },
+        "card": {
+          "style": "boxed",
+          "image_ratio": "1:1",
+          "image_fit": "contain",
+          "image_bg": "white",
+          "show_brand": true,
+          "show_content": true,
+          "show_unit_price": false,
+          "deal_badge": "savings",
+          "add_button": "outline",
+          "price_size": "md",
+          "text_align": "left",
+          "show_swatches": false
+        },
+        "footer": {
+          "style": "full"
+        },
+        "mobile_nav": {
+          "enabled": true,
+          "items": [
+            "home",
+            "categories",
+            "search",
+            "orders",
+            "cart"
+          ]
+        }
+      },
+      "blocks": [
+        {
+          "type": "hero",
+          "page": "home",
+          "sort_order": 0,
+          "payload": {
+            "layout": "main_side",
+            "height": "medium",
+            "slides": [
+              {
+                "title": "Herramienta eléctrica con 15 % menos",
+                "text": "Taladros, pulidoras y sierras de las marcas que usas en obra.",
+                "button_label": "Ver herramienta",
+                "text_color": "light",
+                "overlay": 0,
+                "media": [
+                  "workshop",
+                  "#1B1D21",
+                  "#2E3238",
+                  "#F59E0B"
+                ],
+                "target": {
+                  "kind": "page",
+                  "value": "/tienda/buscar"
+                }
+              }
+            ],
+            "side": [
+              {
+                "kind": "color",
+                "tone": "accent",
+                "title": "Cotiza tu obra",
+                "text": "Envía tu lista y te respondemos hoy"
+              },
+              {
+                "kind": "color",
+                "tone": "dark",
+                "title": "Pintura a la medida",
+                "text": "Mezclamos el color en tienda"
+              }
+            ]
+          }
+        },
+        {
+          "type": "categories",
+          "page": "home",
+          "sort_order": 1,
+          "payload": {
+            "title": "Departamentos",
+            "style": "image_tiles",
+            "source": "all",
+            "limit": 6
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "home",
+          "sort_order": 2,
+          "payload": {
+            "title": "Lo más vendido",
+            "source": "best_sellers",
+            "layout": "grid",
+            "columns_desktop": 5,
+            "columns_mobile": "2",
+            "limit": 10
+          }
+        },
+        {
+          "type": "brand_logos",
+          "page": "home",
+          "sort_order": 3,
+          "payload": {
+            "title": null,
+            "items": [
+              {
+                "text": "FUERTE",
+                "media_id": null
+              },
+              {
+                "text": "Colorplus",
+                "media_id": null
+              },
+              {
+                "text": "MEDIX",
+                "media_id": null
+              },
+              {
+                "text": "Fijax",
+                "media_id": null
+              },
+              {
+                "text": "PEGA",
+                "media_id": null
+              },
+              {
+                "text": "Voltra",
+                "media_id": null
+              }
+            ]
+          }
+        },
+        {
+          "type": "deal_countdown",
+          "page": "home",
+          "sort_order": 4,
+          "payload": {
+            "title": "Liquidación de bodega",
+            "source": "next_ending",
+            "limit": 8
+          }
+        },
+        {
+          "type": "benefits",
+          "page": "home",
+          "sort_order": 5,
+          "payload": {
+            "style": "inline",
+            "items": [
+              {
+                "icon": "Truck",
+                "title": "Despacho a obra",
+                "text": "Mismo día en pedidos grandes"
+              },
+              {
+                "icon": "Receipt",
+                "title": "Factura electrónica",
+                "text": "Para empresas y contratistas"
+              },
+              {
+                "icon": "ShieldCheck",
+                "title": "Garantía",
+                "text": "Directa con el fabricante"
+              },
+              {
+                "icon": "Wrench",
+                "title": "Asesoría",
+                "text": "Te ayudamos a elegir"
+              }
+            ]
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "product",
+          "sort_order": 0,
+          "payload": {
+            "title": "Otros también llevaron",
+            "source": "best_sellers",
+            "layout": "carousel",
+            "limit": 10
+          }
+        },
+        {
+          "type": "benefits",
+          "page": "product",
+          "sort_order": 1,
+          "payload": {
+            "style": "inline",
+            "items": [
+              {
+                "icon": "Truck",
+                "title": "Despacho a domicilio",
+                "text": "Coordinamos la entrega contigo"
+              },
+              {
+                "icon": "ChatCircle",
+                "title": "Asesoría",
+                "text": "Te ayudamos a elegir"
+              }
+            ]
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "cart",
+          "sort_order": 0,
+          "payload": {
+            "title": "No olvides los complementos",
+            "source": "on_sale",
+            "layout": "carousel",
+            "limit": 10
+          }
+        }
+      ]
+    },
+    {
+      "slug": "noir",
+      "name": "Noir",
+      "description": "Fondo oscuro con dorado sobrio y serif fina. El producto es el protagonista; todo lo demás se apaga.",
+      "audience": "Perfumerías, cosmética y joyería",
+      "audience_group": "Belleza y hogar",
+      "sort_order": 11,
+      "demo_store_name": "Ámbar",
+      "preview_catalog": "beauty",
+      "palette_suggestion": {
+        "accent": "#C8A46A",
+        "deal_color": "#A35A49"
+      },
+      "theme": {
+        "scheme": "dark",
+        "font_pair": "lujo",
+        "radius": "sharp",
+        "density": "cozy",
+        "button_style": "outline",
+        "surface": "white",
+        "heading_case": "normal",
+        "container": "normal"
+      },
+      "settings": {
+        "topbar": {
+          "enabled": true,
+          "tone": "neutral",
+          "messages": [
+            {
+              "icon": "Gift",
+              "text": "Empaque de regalo sin costo en todos los pedidos",
+              "target": null
+            }
+          ]
+        },
+        "header": {
+          "style": "minimal",
+          "layout": "center",
+          "logo_mode": "name",
+          "search_placeholder": "Buscar",
+          "show_location": false,
+          "cart_shows_total": false
+        },
+        "nav": {
+          "enabled": true,
+          "style": "text",
+          "show_deals_chip": false,
+          "deals_label": "Ofertas"
+        },
+        "card": {
+          "style": "minimal",
+          "image_ratio": "4:5",
+          "image_fit": "contain",
+          "image_bg": "tint",
+          "show_brand": true,
+          "show_content": false,
+          "show_unit_price": false,
+          "deal_badge": "percent",
+          "add_button": "outline",
+          "price_size": "md",
+          "text_align": "center",
+          "show_swatches": false
+        },
+        "footer": {
+          "style": "minimal"
+        },
+        "mobile_nav": {
+          "enabled": true,
+          "items": [
+            "home",
+            "categories",
+            "search",
+            "account",
+            "cart"
+          ]
+        }
+      },
+      "blocks": [
+        {
+          "type": "hero",
+          "page": "home",
+          "sort_order": 0,
+          "payload": {
+            "layout": "editorial",
+            "height": "high",
+            "slides": [
+              {
+                "text_color": "light",
+                "overlay": 0,
+                "media": [
+                  "glow",
+                  "#3A2C1C",
+                  "#0E0D0C",
+                  "#C98B3C",
+                  "perfume"
+                ]
+              }
+            ],
+            "eyebrow": "Nueva fragancia",
+            "title": "Ámbar & Cedro",
+            "subtitle": "Notas de vainilla tostada, cuero y madera.",
+            "button_label": "Descubrir",
+            "target": {
+              "kind": "page",
+              "value": "/tienda/buscar"
+            },
+            "appearance": {
+              "frame": "bleed",
+              "pad_top": "none",
+              "width": "full"
+            }
+          }
+        },
+        {
+          "type": "rich_text",
+          "page": "home",
+          "sort_order": 1,
+          "payload": {
+            "eyebrow": "Ámbar",
+            "title": "Perfumes y cuidado de la piel, escogidos uno por uno.",
+            "body": "Muestras gratis en cada pedido para que pruebes antes de decidir."
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "home",
+          "sort_order": 2,
+          "payload": {
+            "title": "Fragancias",
+            "source": "featured",
+            "layout": "grid",
+            "columns_desktop": 4,
+            "columns_mobile": "2",
+            "limit": 4,
+            "title_align": "center"
+          }
+        },
+        {
+          "type": "banner_grid",
+          "page": "home",
+          "sort_order": 3,
+          "payload": {
+            "title": null,
+            "layout": "2",
+            "tiles": [
+              {
+                "kind": "image",
+                "title": "Cuidado facial",
+                "button_label": "Ver rutina",
+                "media": [
+                  "glow",
+                  "#4A3A2A",
+                  "#151311",
+                  "#E8A35B",
+                  "serum"
+                ],
+                "target": {
+                  "kind": "page",
+                  "value": "/tienda/buscar"
+                }
+              },
+              {
+                "kind": "image",
+                "title": "Sets de regalo",
+                "button_label": "Regalar",
+                "media": [
+                  "glow",
+                  "#3B2A2A",
+                  "#141010",
+                  "#B5523B",
+                  "lipstick"
+                ],
+                "target": {
+                  "kind": "page",
+                  "value": "/tienda/buscar"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "image_text",
+          "page": "home",
+          "sort_order": 4,
+          "payload": {
+            "reverse": false,
+            "eyebrow": "Asesoría",
+            "title": "Encuentra tu fragancia en 5 preguntas",
+            "text": "Te recomendamos tres perfumes según lo que te gusta y te enviamos las muestras.",
+            "button_label": "Empezar",
+            "media": [
+              "glow",
+              "#2E2A20",
+              "#0F0E0C",
+              "#6E7F6A",
+              "mist"
+            ],
+            "target": {
+              "kind": "page",
+              "value": "/tienda/buscar"
+            }
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "home",
+          "sort_order": 5,
+          "payload": {
+            "title": "Cuidado de la piel",
+            "source": "featured",
+            "layout": "carousel",
+            "columns_desktop": 4,
+            "columns_mobile": "row",
+            "limit": 8,
+            "title_align": "center"
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "product",
+          "sort_order": 0,
+          "payload": {
+            "title": "También te puede gustar",
+            "source": "best_sellers",
+            "layout": "carousel",
+            "limit": 10,
+            "title_align": "center"
+          }
+        },
+        {
+          "type": "benefits",
+          "page": "product",
+          "sort_order": 1,
+          "payload": {
+            "items": [
+              {
+                "icon": "Truck",
+                "title": "Envío a domicilio",
+                "text": "Lo llevamos a tu puerta"
+              },
+              {
+                "icon": "ShieldCheck",
+                "title": "Compra segura",
+                "text": "Si algo falla, lo devuelves"
+              }
+            ]
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "cart",
+          "sort_order": 0,
+          "payload": {
+            "title": "¿Te falta algo?",
+            "source": "on_sale",
+            "layout": "carousel",
+            "limit": 10,
+            "title_align": "center"
+          }
+        }
+      ]
+    },
+    {
+      "slug": "huerta",
+      "name": "Huerta",
+      "description": "Verde suave y fotos grandes que llenan la tarjeta. Los beneficios van arriba porque aquí la confianza vende más que el precio.",
+      "audience": "Fruterías, orgánicos y productos de finca",
+      "audience_group": "Mercado",
+      "sort_order": 12,
+      "demo_store_name": "Huerta Viva",
+      "preview_catalog": "fresh",
+      "palette_suggestion": {
+        "accent": "#2F6B3A",
+        "deal_color": "#C2410C"
+      },
+      "theme": {
+        "scheme": "light",
+        "font_pair": "moderna",
+        "radius": "round",
+        "density": "cozy",
+        "button_style": "solid",
+        "surface": "sage",
+        "heading_case": "normal",
+        "container": "normal"
+      },
+      "settings": {
+        "topbar": {
+          "enabled": true,
+          "tone": "accent",
+          "messages": [
+            {
+              "icon": "Leaf",
+              "text": "Cosechado esta semana en fincas de Cundinamarca",
+              "target": null
+            }
+          ]
+        },
+        "header": {
+          "style": "light",
+          "layout": "inline",
+          "logo_mode": "mark_name",
+          "search_placeholder": "Buscar",
+          "show_location": false,
+          "cart_shows_total": true
+        },
+        "nav": {
+          "enabled": false,
+          "style": "text",
+          "show_deals_chip": false,
+          "deals_label": "Ofertas"
+        },
+        "card": {
+          "style": "flat",
+          "image_ratio": "1:1",
+          "image_fit": "cover",
+          "image_bg": "tint",
+          "show_brand": false,
+          "show_content": true,
+          "show_unit_price": true,
+          "deal_badge": "percent",
+          "add_button": "icon",
+          "price_size": "lg",
+          "text_align": "left",
+          "show_swatches": false
+        },
+        "footer": {
+          "style": "full"
+        },
+        "mobile_nav": {
+          "enabled": true,
+          "items": [
+            "home",
+            "categories",
+            "search",
+            "orders",
+            "cart"
+          ]
+        }
+      },
+      "blocks": [
+        {
+          "type": "benefits",
+          "page": "home",
+          "sort_order": 0,
+          "payload": {
+            "style": "inline",
+            "items": [
+              {
+                "icon": "Leaf",
+                "title": "Sin químicos",
+                "text": "Cultivo limpio y certificado"
+              },
+              {
+                "icon": "Truck",
+                "title": "De la finca a tu casa",
+                "text": "En menos de 48 horas"
+              },
+              {
+                "icon": "Heart",
+                "title": "Precio justo",
+                "text": "Pagamos bien al campesino"
+              },
+              {
+                "icon": "ArrowUUpLeft",
+                "title": "Si no te gusta",
+                "text": "Te devolvemos el dinero"
+              }
+            ]
+          }
+        },
+        {
+          "type": "hero",
+          "page": "home",
+          "sort_order": 1,
+          "payload": {
+            "layout": "split",
+            "height": "high",
+            "slides": [
+              {
+                "media": [
+                  "farm",
+                  "#E8EFE2",
+                  "#CFDFC2"
+                ]
+              }
+            ],
+            "eyebrow": "Mercado de temporada",
+            "title": "Lo que da la tierra esta semana",
+            "subtitle": "Fruta y verdura de 14 fincas, cosechada el martes y en tu casa el jueves.",
+            "button_label": "Armar mi canasta",
+            "target": {
+              "kind": "page",
+              "value": "/tienda/buscar"
+            }
+          }
+        },
+        {
+          "type": "categories",
+          "page": "home",
+          "sort_order": 2,
+          "payload": {
+            "title": "Escoge por categoría",
+            "style": "image_tiles",
+            "source": "all",
+            "limit": 6
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "home",
+          "sort_order": 3,
+          "payload": {
+            "title": "De temporada",
+            "source": "new_arrivals",
+            "layout": "grid",
+            "columns_desktop": 4,
+            "columns_mobile": "2",
+            "limit": 8
+          }
+        },
+        {
+          "type": "banner_grid",
+          "page": "home",
+          "sort_order": 4,
+          "payload": {
+            "title": null,
+            "layout": "1+2",
+            "tiles": [
+              {
+                "kind": "image",
+                "title": "Canasta semanal",
+                "text": "Llega cada jueves, la pausas cuando quieras",
+                "media": [
+                  "farm",
+                  "#DDE8D2",
+                  "#B9CFA6"
+                ],
+                "target": {
+                  "kind": "page",
+                  "value": "/tienda/buscar"
+                }
+              },
+              {
+                "kind": "color",
+                "tone": "accent",
+                "title": "Huevos campesinos",
+                "text": "De gallinas libres",
+                "target": {
+                  "kind": "page",
+                  "value": "/tienda/buscar"
+                }
+              },
+              {
+                "kind": "color",
+                "tone": "soft",
+                "title": "Miel de la sabana",
+                "text": "Pura, sin mezclas",
+                "target": {
+                  "kind": "page",
+                  "value": "/tienda/buscar"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "home",
+          "sort_order": 5,
+          "payload": {
+            "title": "Despensa natural",
+            "source": "featured",
+            "layout": "carousel",
+            "columns_desktop": 4,
+            "columns_mobile": "row",
+            "limit": 8
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "product",
+          "sort_order": 0,
+          "payload": {
+            "title": "Otros clientes también llevaron",
+            "source": "best_sellers",
+            "layout": "carousel",
+            "limit": 10
+          }
+        },
+        {
+          "type": "benefits",
+          "page": "product",
+          "sort_order": 1,
+          "payload": {
+            "style": "inline",
+            "items": [
+              {
+                "icon": "Truck",
+                "title": "Domicilio rápido",
+                "text": "Hoy mismo en tu casa"
+              },
+              {
+                "icon": "ShieldCheck",
+                "title": "Devolución fácil",
+                "text": "Desde «Mis pedidos»"
+              }
+            ]
+          }
+        },
+        {
+          "type": "product_grid",
+          "page": "cart",
+          "sort_order": 0,
+          "payload": {
+            "title": "¿Se te olvidó algo?",
+            "source": "on_sale",
+            "layout": "carousel",
+            "limit": 10
+          }
+        }
+      ]
+    }
+  ]
+}

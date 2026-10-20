@@ -131,6 +131,7 @@ class StockService
         }
 
         $stock->quantity = $newQuantity;
+        $this->stampAvailability($stock);
         $stock->save();
 
         // Los lotes siguen al saldo: lo que sale se toma del que vence antes. El traslado
@@ -316,6 +317,7 @@ class StockService
         }
 
         $stock->reserved_quantity = round($stock->reserved_quantity + $quantity, 3);
+        $this->stampAvailability($stock);
         $stock->save();
     }
 
@@ -324,6 +326,7 @@ class StockService
         $stock = $this->lockedStock($product, $warehouse);
 
         $stock->reserved_quantity = max(0, round($stock->reserved_quantity - $quantity, 3));
+        $this->stampAvailability($stock);
         $stock->save();
     }
 
@@ -363,6 +366,22 @@ class StockService
     public static function quantityText(float $quantity): string
     {
         return rtrim(rtrim(number_format($quantity, 3, ',', '.'), '0'), ',');
+    }
+
+    /**
+     * Desde cuando la fila no tiene disponible (`out_of_stock_since`): se llena la primera vez que
+     * existencia menos apartado llega a cero y vuelve a nulo apenas hay. Lo lee «Publicados sin
+     * stock» en la tienda en linea. Nadie mas escribe esa columna.
+     */
+    protected function stampAvailability(ProductStock $stock): void
+    {
+        $available = round((float) $stock->quantity - (float) $stock->reserved_quantity, 3);
+
+        if ($available > 0) {
+            $stock->out_of_stock_since = null;
+        } elseif ($stock->out_of_stock_since === null) {
+            $stock->out_of_stock_since = now();
+        }
     }
 
     protected function lockedStock(Product $product, Warehouse $warehouse): ProductStock

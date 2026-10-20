@@ -2,6 +2,7 @@
 
 namespace App\Settings;
 
+use App\Services\Catalog\CatalogImages;
 use Illuminate\Validation\Rule;
 
 /**
@@ -26,6 +27,8 @@ final class SettingsSchema
     public const TAB_RECEIPT = 'receipt';
 
     public const TAB_CREDIT = 'credit';
+
+    public const TAB_CATALOG = 'catalog';
 
     public const SCOPE_COMPANY = 'company';
 
@@ -145,6 +148,8 @@ final class SettingsSchema
             // `sometimes`: un guardado de antes, que solo trae las reglas de caja, no las pierde.
             'returns.max_days' => ['tab' => self::TAB_POS_RULES, 'scope' => self::SCOPE_COMPANY, 'rules' => ['sometimes', 'required', 'integer', 'min:1', 'max:365']],
             'returns.store_credit_days' => ['tab' => self::TAB_POS_RULES, 'scope' => self::SCOPE_COMPANY, 'rules' => ['sometimes', 'required', 'integer', 'min:0', 'max:1825']],
+            'payments.online_hold_minutes' => ['tab' => self::TAB_POS_RULES, 'scope' => self::SCOPE_COMPANY, 'rules' => ['sometimes', 'required', 'integer', 'min:5', 'max:1440']],
+            'payments.pos_link_minutes' => ['tab' => self::TAB_POS_RULES, 'scope' => self::SCOPE_COMPANY, 'rules' => ['sometimes', 'required', 'integer', 'min:2', 'max:120']],
 
             // Tiquete
             'receipt.paper_width' => ['tab' => self::TAB_RECEIPT, 'scope' => self::SCOPE_STORE, 'rules' => ['required', 'integer', $in(self::PAPER_WIDTHS)]],
@@ -159,6 +164,15 @@ final class SettingsSchema
 
             // Credito
             'credit.block_on_overdue_days' => ['tab' => self::TAB_CREDIT, 'scope' => self::SCOPE_COMPANY, 'rules' => ['required', 'integer', 'min:1', 'max:120']],
+
+            // Catalogo
+            'catalog.max_images' => ['tab' => self::TAB_CATALOG, 'scope' => self::SCOPE_COMPANY, 'rules' => ['required', 'integer', 'min:1', 'max:'.CatalogImages::MAX_LIMIT]],
+            // Lo que «Tienda en linea» llama lote por vencer, poca rotacion y margen bajo. Opcionales en
+            // el PUT: un formulario que solo manda las fotos no los borra.
+            'storefront_catalog.expiring_days' => ['tab' => self::TAB_CATALOG, 'scope' => self::SCOPE_COMPANY, 'rules' => ['sometimes', 'required', 'integer', 'min:1', 'max:90']],
+            'storefront_catalog.overstock_days' => ['tab' => self::TAB_CATALOG, 'scope' => self::SCOPE_COMPANY, 'rules' => ['sometimes', 'required', 'integer', 'min:7', 'max:365']],
+            'storefront_catalog.overstock_min_factor' => ['tab' => self::TAB_CATALOG, 'scope' => self::SCOPE_COMPANY, 'rules' => ['sometimes', 'required', 'integer', 'min:1', 'max:20']],
+            'storefront_catalog.low_margin_percent' => ['tab' => self::TAB_CATALOG, 'scope' => self::SCOPE_COMPANY, 'rules' => ['sometimes', 'required', 'integer', 'min:0', 'max:90']],
         ];
     }
 

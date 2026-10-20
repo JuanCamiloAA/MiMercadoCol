@@ -2,6 +2,7 @@ import { router, useForm } from '@inertiajs/react';
 import { CreditCardIcon, DownloadSimpleIcon, LockSimpleIcon, WarningCircleIcon } from '@phosphor-icons/react';
 import { type FormEvent, useEffect, useState } from 'react';
 import { MembershipBadge, UsageMeter } from '@/components/membership/MembershipParts';
+import { EntitlementTree } from '@/components/membership/PlanTree';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Checkbox, Input, Select, Toggle } from '@/components/ui/Field';
@@ -11,7 +12,7 @@ import { Table, TBody, TD, TH, THead, TR } from '@/components/ui/Table';
 import { cn } from '@/lib/cn';
 import { date, money } from '@/lib/format';
 import { TabHeader } from '../SettingField';
-import type { MembershipChargeRow, MembershipOverview, TabProps } from '../types';
+import type { MembershipChargeRow, MembershipOverview, PlanDiff, TabProps } from '../types';
 
 const CHARGE_TONES: Record<MembershipChargeRow['status'], BadgeTone> = {
     pending: 'info',
@@ -78,7 +79,7 @@ function MembershipPanel({ membership: m }: { membership: MembershipOverview }) 
                 <Card>
                     <CardHeader
                         title={m.plan ? `Plan ${m.plan.name}` : 'Sin plan asignado'}
-                        description={m.cycle ? `${m.cycle.name}${m.price !== null ? ` · ${money(m.price)}` : ''}` : 'La empresa no tiene un plan con cobro.'}
+                        description={m.cycle ? `${m.cycle.name}${m.price !== null ? ` · ${money(m.price)}` : ''}` : 'La empresa no tiene un plan con cobro: tiene todas las funciones.'}
                         action={<MembershipBadge status={m.status} label={m.status_label} />}
                     />
 
@@ -101,11 +102,18 @@ function MembershipPanel({ membership: m }: { membership: MembershipOverview }) 
                         </p>
                     )}
 
-                    {m.plan && m.plan.features.length > 0 && (
+                    {m.special_price && (
+                        <p className="mt-4 rounded-control bg-[var(--accent-soft)] px-3 py-2 text-[0.8125rem] font-medium text-[var(--accent)]">
+                            Precio especial ({m.special_price.description}){m.special_price.ends_at ? ` hasta el ${date(m.special_price.ends_at)}` : ''}.
+                        </p>
+                    )}
+
+                    {m.plan && m.plan.modules.length > 0 && (
                         <div className="mt-4 flex flex-wrap gap-1.5">
-                            {m.plan.features.map((feature) => (
-                                <Badge key={feature} tone="neutral">
-                                    {feature}
+                            {m.plan.modules.map((module) => (
+                                <Badge key={module.key} tone={module.state === 'all' ? 'neutral' : 'info'}>
+                                    {module.display}
+                                    {module.state === 'some' ? ' (en parte)' : ''}
                                 </Badge>
                             ))}
                         </div>
@@ -137,6 +145,29 @@ function MembershipPanel({ membership: m }: { membership: MembershipOverview }) 
                     </div>
                 </Card>
             </div>
+
+            {/* Lo que incluye: el arbol en solo lectura, con lo agregado y su vencimiento. */}
+            <Card>
+                <CardHeader
+                    title="Qué incluye tu plan"
+                    description="Lo que no está marcado no lo trae tu plan: nadie de la empresa lo puede usar, aunque lo tenga asignado. Los datos se conservan."
+                />
+                {m.entitlements.exceptions.length > 0 && (
+                    <ul className="mb-3 flex flex-col gap-1 text-[0.8125rem]">
+                        {m.entitlements.exceptions.map((exception) => (
+                            <li key={exception.id} className="flex flex-wrap items-center gap-1.5">
+                                <Badge tone={exception.effect === 'grant' ? 'accent' : 'danger'}>{exception.effect === 'grant' ? 'Agregado' : 'Quitado'}</Badge>
+                                <span>{exception.label}</span>
+                                <span className="text-[var(--muted)]">
+                                    {exception.starts_at && new Date(exception.starts_at) > new Date() ? `desde el ${date(exception.starts_at)} ` : ''}
+                                    {exception.ends_at ? `hasta el ${date(exception.ends_at)}` : 'sin vencimiento'}
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+                <EntitlementTree tree={m.entitlements.tree} />
+            </Card>
 
             {/* 3 y 4. Tarjeta y renovacion automatica */}
             {(gatewayOn || m.card) && (
@@ -559,9 +590,50 @@ function PlanDialog({ membership: m, onClose }: { membership: MembershipOverview
                     <p className="mt-1 text-[var(--muted)]">
                         Hasta {plan.limits.stores ?? 'ilimitadas'} sedes · {plan.limits.users ?? 'ilimitados'} usuarios · {plan.limits.registers ?? 'ilimitadas'} cajas
                     </p>
-                    {plan.features.length > 0 && <p className="mt-1">{plan.features.join(' · ')}</p>}
+                    {plan.modules.length > 0 && <p className="mt-1">{plan.modules.map((module) => module.display).join(' · ')}</p>}
                 </div>
             )}
+
+            {plan && plan.id !== m.plan?.id && <PlanDiffSummary diff={plan.diff} />}
         </Modal>
+    );
+}
+
+/** Que gana y que pierde la empresa con el plan elegido, comparando los dos arboles. */
+function PlanDiffSummary({ diff }: { diff: PlanDiff }) {
+    if (diff.gained === 0 && diff.lost === 0) {
+        return <p className="mt-3 text-[0.8125rem] text-[var(--muted)]">Incluye exactamente lo mismo que tu plan actual.</p>;
+    }
+
+    return (
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {diff.gained > 0 && (
+                <div className="rounded-control border border-[var(--line)] p-3 text-[0.8125rem]">
+                    <p className="mb-1 font-semibold text-[var(--accent)]">Ganas {diff.gained}</p>
+                    <ul className="flex max-h-[11rem] flex-col gap-1 overflow-y-auto">
+                        {diff.gains.map((group) => (
+                            <li key={group.module}>
+                                <span className="font-medium">{group.module}</span>
+                                <span className="block text-[var(--muted)]">{group.items.join(' · ')}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+            {diff.lost > 0 && (
+                <div className="rounded-control border border-[var(--danger)]/40 bg-[var(--danger-soft)] p-3 text-[0.8125rem]">
+                    <p className="mb-1 font-semibold text-[var(--danger)]">Pierdes {diff.lost}</p>
+                    <ul className="flex max-h-[11rem] flex-col gap-1 overflow-y-auto">
+                        {diff.losses.map((group) => (
+                            <li key={group.module}>
+                                <span className="font-medium">{group.module}</span>
+                                <span className="block text-[var(--muted)]">{group.items.join(' · ')}</span>
+                            </li>
+                        ))}
+                    </ul>
+                    <p className="mt-2 text-[0.75rem] text-[var(--muted)]">Los datos se conservan; lo que se corta es el acceso.</p>
+                </div>
+            )}
+        </div>
     );
 }

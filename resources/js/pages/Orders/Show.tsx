@@ -8,6 +8,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Badge, PageHeader } from '@/components/ui/Misc';
 import { Table, TBody, TD, TH, THead, TR } from '@/components/ui/Table';
 import AppLayout from '@/layouts/AppLayout';
+import type { PresentedPaymentMethod } from '@/components/payments/payment-icons';
 import PaymentDialog, { type PaymentPayload } from '@/pages/Pos/components/PaymentDialog';
 import { dateTime, money, number, time, UNIT_SHORT } from '@/lib/format';
 import { usePermission } from '@/lib/permissions';
@@ -76,13 +77,15 @@ interface OrderShowProps {
         allowed_transitions: string[];
     };
     couriers: { value: number; label: string }[];
+    /** Con que se cobra en la puerta: los medios activos que son plata (Medios de pago). */
+    collectMethods: PresentedPaymentMethod[];
     statusLabels: Record<string, string>;
     returns: { id: number; number: string; status_label: string; resolution_label: string | null; total: number; created_at: string }[];
     /** La venta del pedido, si se le puede registrar una devolución. */
     returnSaleId: number | null;
 }
 
-export default function OrderShow({ order, couriers, statusLabels, returns, returnSaleId }: OrderShowProps) {
+export default function OrderShow({ order, couriers, collectMethods, statusLabels, returns, returnSaleId }: OrderShowProps) {
     const { can } = usePermission();
     const [modal, setModal] = useState<'pick' | 'courier' | 'collect' | 'cancel' | null>(null);
 
@@ -123,6 +126,7 @@ export default function OrderShow({ order, couriers, statusLabels, returns, retu
             {
                 // Se rearma como objetos planos: es lo que Inertia sabe serializar.
                 payments: payments.map((payment) => ({
+                    payment_method_id: payment.payment_method_id,
                     method: payment.method,
                     amount: payment.amount,
                     received_amount: payment.received_amount,
@@ -502,7 +506,7 @@ export default function OrderShow({ order, couriers, statusLabels, returns, retu
                 onClose={() => setModal(null)}
                 title="Registrar el cobro"
                 subtitle={`Pedido ${order.number} · ${order.customer.name}`}
-                allowedMethods={['cash', 'card', 'transfer']}
+                methods={collectMethods}
                 confirmLabel="Registrar el cobro"
                 cancelLabel="Cancelar"
                 total={(order.sale?.total ?? order.total) - order.store_credit_amount}

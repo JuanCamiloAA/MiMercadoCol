@@ -12,7 +12,8 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
 /**
- * La plantilla base «Supermercado», publicada y por defecto.
+ * La plantilla base «Supermercado», publicada y por defecto, y despues el catalogo de las demas
+ * (`StorefrontTemplateCatalogSeeder`).
  *
  * Es solo diseño: banners con imagenes de plataforma, estantes por regla (ofertas, lo mas
  * vendido, lo nuevo, «vuelve a comprar»), categorias automaticas, la estructura global y el
@@ -28,7 +29,15 @@ class StorefrontTemplateSeeder extends Seeder
 
     public function run(): void
     {
-        if (StorefrontTemplate::query()->where('name', 'Supermercado')->exists()) {
+        $this->supermarket();
+
+        // Las doce del catalogo, despues: ninguna le quita el «por defecto» a esta.
+        $this->call(StorefrontTemplateCatalogSeeder::class);
+    }
+
+    protected function supermarket(): void
+    {
+        if (StorefrontTemplate::query()->where('slug', 'supermercado')->orWhere('name', 'Supermercado')->exists()) {
             return;
         }
 
@@ -40,7 +49,12 @@ class StorefrontTemplateSeeder extends Seeder
         }
 
         $media = $this->media();
-        $template = $this->templates->create('Supermercado', 'Encabezado de compra, banners con laterales, estantes de ofertas y lo más vendido, oferta relámpago y pie completo. Pensada para supermercados de barrio.');
+        $template = $this->templates->create(
+            'Supermercado',
+            'Encabezado de compra, banners con laterales, estantes de ofertas y lo más vendido, oferta relámpago y pie completo. Pensada para supermercados de barrio.',
+            'supermercado',
+            ['audience' => 'Supermercados y tiendas de barrio', 'audience_group' => 'Mercado', 'sort_order' => 0],
+        );
 
         $template->forceFill(['draft' => [
             'theme' => [
@@ -53,7 +67,7 @@ class StorefrontTemplateSeeder extends Seeder
             ],
             'blocks' => $this->blocks($media),
             'settings' => $this->templates->emptyDraft()['settings'],
-        ], 'preview_media_id' => $media['fresh']])->save();
+        ], 'preview_media_id' => $this->painter->thumbnail(['produce', '#0B5D3B', '#2E9E5B'], 'Supermercado', 'Supermercados y tiendas de barrio')?->id ?? $media['fresh']])->save();
 
         $this->templates->publish($template->refresh(), $author, 'Plantilla inicial');
         $this->templates->setDefault($template->refresh());

@@ -16,6 +16,7 @@
         "laravel/framework": "^12.0",
         "laravel/reverb": "^1.12",
         "laravel/tinker": "^2.10.1",
+        "league/flysystem-google-cloud-storage": "^3.0",
         "picqer/php-barcode-generator": "^3.3",
         "spatie/laravel-permission": "^6.16",
         "tightenco/ziggy": "^2.4"
@@ -59,7 +60,7 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "npx concurrently -c \"#93c5fd,#c4b5fd,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1\" \"npm run dev\" --names='server,queue,vite'"
+            "npx concurrently -c \"#93c5fd,#c4b5fd,#fdba74,#86efac\" \"php artisan serve\" \"php artisan queue:listen --tries=1\" \"npm run dev\" \"php artisan reverb:start\" --names='server,queue,vite,reverb'"
         ]
     },
     "extra": {

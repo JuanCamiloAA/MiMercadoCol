@@ -73,9 +73,12 @@ export function CategorySheet({ open, onClose, shell }: { open: boolean; onClose
  * (o los enlaces) que eligió la sede, con su ícono o su foto. En celular es una fila que se
  * desliza.
  */
-export function CategoryNav({ shell, onOpenSheet, currentPath }: { shell: StoreShell; onOpenSheet: () => void; currentPath: string }) {
+export function CategoryNav({ shell, onOpenSheet, currentPath, desktop = false }: { shell: StoreShell; onOpenSheet: () => void; currentPath: string; desktop?: boolean }) {
     const nav = shell.settings.nav;
     const [mega, setMega] = useState(false);
+    const text = nav.style === 'text';
+    // «Todo en una fila» con menú en texto: en computador el menú va dentro del encabezado.
+    const insideHeader = desktop && text && shell.settings.header.layout === 'inline';
     const { interactive } = usePreviewMode();
     const container = useRef<HTMLDivElement>(null);
 
@@ -95,15 +98,62 @@ export function CategoryNav({ shell, onOpenSheet, currentPath }: { shell: StoreS
         return () => document.removeEventListener('mousedown', close);
     }, [mega]);
 
-    if (!nav.enabled) {
+    if (!nav.enabled || insideHeader) {
         return null;
     }
 
     const hasTree = shell.settings.categories.length > 0;
+    const openMenu = () => interactive && (nav.mega_menu && desktop ? setMega((open) => !open) : onOpenSheet());
+
+    // «Texto en mayúsculas pequeñas»: sin chips ni bordes, centrado bajo el logo si va al centro.
+    if (text) {
+        return (
+            <nav ref={container} aria-label="Categorías" className="relative border-b border-[var(--line)] bg-[var(--surface)] text-[var(--text)]">
+                <div
+                    className={cn(
+                        'scrollbar-none mx-auto flex w-full max-w-[var(--store-max,1280px)] items-center gap-6 overflow-x-auto px-4 py-3 lg:px-[var(--store-gutter,1.5rem)]',
+                        shell.settings.header.layout === 'center' && 'md:justify-center',
+                    )}
+                >
+                    {nav.show_all_categories && hasTree && (
+                        <button type="button" onClick={openMenu} aria-expanded={mega} className="inline-flex shrink-0 items-center gap-1 text-[12.5px] font-semibold uppercase tracking-[0.08em] hover:opacity-70">
+                            Categorías
+                            <CaretDownIcon size={12} weight="bold" className={cn('transition-transform', mega && 'rotate-180')} />
+                        </button>
+                    )}
+                    {nav.show_deals_chip && (
+                        <StoreLink href="/tienda/ofertas" className="shrink-0 text-[12.5px] font-bold uppercase tracking-[0.08em] text-[var(--deal)] hover:underline">
+                            {nav.deals_label}
+                        </StoreLink>
+                    )}
+                    {nav.items.map((item, position) => {
+                        const active = currentPath === item.href;
+                        const className = cn(
+                            'shrink-0 text-[12.5px] font-semibold uppercase tracking-[0.08em] hover:opacity-70',
+                            active && nav.active_style === 'underline' && 'underline decoration-2 underline-offset-[6px]',
+                        );
+
+                        return item.opens_menu ? (
+                            <button key={`${item.href}-${position}`} type="button" onClick={openMenu} aria-expanded={mega} className={cn(className, 'inline-flex items-center gap-1')}>
+                                {item.label}
+                                <CaretDownIcon size={12} weight="bold" />
+                            </button>
+                        ) : (
+                            <StoreLink key={`${item.href}-${position}`} href={item.href} className={className}>
+                                {item.label}
+                            </StoreLink>
+                        );
+                    })}
+                </div>
+
+                {mega && <MegaMenu categories={shell.settings.categories} onClose={() => setMega(false)} />}
+            </nav>
+        );
+    }
 
     return (
         <nav ref={container} aria-label="Categorías" className="relative border-b border-[var(--line)] bg-[var(--surface)] text-[var(--text)]">
-            <div className="scrollbar-none mx-auto flex w-full max-w-[1280px] items-center gap-1.5 overflow-x-auto px-4 py-2 lg:px-6">
+            <div className="scrollbar-none mx-auto flex w-full max-w-[var(--store-max,1280px)] items-center gap-1.5 overflow-x-auto px-4 py-2 lg:px-[var(--store-gutter,1.5rem)]">
                 {nav.show_all_categories && hasTree && (
                     <>
                         {/* Computador: el menú grande. Celular: la hoja. */}
@@ -145,26 +195,35 @@ export function CategoryNav({ shell, onOpenSheet, currentPath }: { shell: StoreS
 
                 {nav.items.map((item, position) => {
                     const active = currentPath === item.href;
-
-                    return (
-                        <StoreLink
-                            key={`${item.href}-${position}`}
-                            href={item.href}
-                            className={cn(
-                                'flex h-10 shrink-0 items-center gap-2 rounded-full border px-3 text-[13.5px] font-semibold transition-colors',
-                                active
-                                    ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]'
-                                    : item.highlight
-                                      ? 'border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent-soft)]'
-                                      : 'border-[var(--line)] hover:border-[var(--accent)] hover:text-[var(--accent)]',
-                            )}
-                        >
+                    const className = cn(
+                        'flex h-10 shrink-0 items-center gap-2 rounded-full border px-3 text-[13.5px] font-semibold transition-colors',
+                        active
+                            ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]'
+                            : item.highlight
+                              ? 'border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent-soft)]'
+                              : 'border-[var(--line)] hover:border-[var(--accent)] hover:text-[var(--accent)]',
+                        active && nav.active_style === 'underline' && 'underline decoration-2 underline-offset-4',
+                    );
+                    const content = (
+                        <>
                             {item.image ? (
                                 <img src={item.image} alt="" className="size-6 rounded-full object-cover" />
                             ) : item.icon ? (
                                 <StoreIcon name={item.icon} size={17} weight={active ? 'fill' : 'regular'} />
                             ) : null}
                             {item.label}
+                        </>
+                    );
+
+                    // «Categorías ⌄»: abre el menú grande (en celular, la hoja) en vez de ir a una página.
+                    return item.opens_menu ? (
+                        <button key={`${item.href}-${position}`} type="button" onClick={openMenu} aria-expanded={mega} className={className}>
+                            {content}
+                            <CaretDownIcon size={13} weight="bold" />
+                        </button>
+                    ) : (
+                        <StoreLink key={`${item.href}-${position}`} href={item.href} className={className}>
+                            {content}
                         </StoreLink>
                     );
                 })}

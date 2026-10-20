@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Platform;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Storefront\Settings\SettingRequests;
+use App\Models\MediaAsset;
 use App\Models\StorefrontBlock;
 use App\Models\StorefrontTemplate;
 use App\Models\StorefrontTheme;
 use App\Storefront\BlockCatalogue;
 use App\Storefront\Blocks\BlockData;
+use App\Support\SectionAppearance;
 use Closure;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -38,6 +40,11 @@ class StoreTemplateDraftController extends Controller
             'radius' => ['sometimes', Rule::in(StorefrontTheme::OPTIONS['radius'])],
             'density' => ['sometimes', Rule::in(StorefrontTheme::OPTIONS['density'])],
             'button_style' => ['sometimes', Rule::in(StorefrontTheme::OPTIONS['button_style'])],
+            'logo_font' => ['sometimes', Rule::in(StorefrontTheme::OPTIONS['logo_font'])],
+            'surface' => ['sometimes', Rule::in(StorefrontTheme::OPTIONS['surface'])],
+            'heading_case' => ['sometimes', Rule::in(StorefrontTheme::OPTIONS['heading_case'])],
+            'container' => ['sometimes', Rule::in(StorefrontTheme::OPTIONS['container'])],
+            'button_shape' => ['sometimes', Rule::in(StorefrontTheme::OPTIONS['button_shape'])],
         ]);
 
         $this->mutate($template, function (array $draft) use ($validated) {
@@ -127,7 +134,17 @@ class StoreTemplateDraftController extends Controller
 
                 if (array_key_exists('payload', $validated)) {
                     $definition = BlockCatalogue::for($block['type']);
-                    $violations = $definition->violations($validated['payload']);
+                    $mediaIds = $definition->mediaIds($validated['payload']);
+                    $violations = [
+                        ...$definition->violations($validated['payload']),
+                        // El fondo de una plantilla solo puede ser un medio de plataforma.
+                        ...SectionAppearance::violations($validated['payload']['appearance'] ?? null, SectionAppearance::SURFACE_STORE, null, true),
+                        // Y cualquier imagen del bloque (los logos de marcas, las fotos de ejemplo): una
+                        // plantilla no puede mostrar lo que subió una empresa.
+                        ...($mediaIds !== [] && MediaAsset::query()->withoutGlobalScopes()->whereIn('id', $mediaIds)->whereNotNull('company_id')->exists()
+                            ? ['Una plantilla solo puede usar imágenes y videos de la plataforma.']
+                            : []),
+                    ];
 
                     // Se rechaza, no se limpia: quien edita tiene que saber que eso no va.
                     if ($violations !== []) {

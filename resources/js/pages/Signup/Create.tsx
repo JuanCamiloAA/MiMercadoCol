@@ -3,6 +3,7 @@ import { ArrowLeftIcon, CheckCircleIcon, CheckIcon } from '@phosphor-icons/react
 import { type FormEvent, type ReactNode, useState } from 'react';
 import { BrandStyle } from '@/components/brand/BrandStyle';
 import type { LandingCycle, LandingPlan, LandingSite } from '@/components/landing/LandingBlocks';
+import { landingIcon } from '@/components/landing/landing-icons';
 import { Button } from '@/components/ui/Button';
 import { Checkbox, Input, Textarea } from '@/components/ui/Field';
 import { useFlash } from '@/hooks/use-flash';
@@ -17,6 +18,8 @@ interface SignupCreateProps {
     selectedPlanId: number | null;
     selectedCycleId: number | null;
     gatewayEnabled: boolean;
+    /** Las clasificaciones activas: alimentos, textiles, belleza… */
+    categories: { id: number; name: string; icon: string }[];
 }
 
 type Mode = 'account' | 'contact';
@@ -25,7 +28,7 @@ type Mode = 'account' | 'contact';
  * Contratar la plataforma. Quien llena el formulario elige: crear la cuenta ya (pagando en la
  * pasarela, o en prueba gratis si el plan la tiene) o que lo contacten.
  */
-export default function SignupCreate({ site, plans, cycles, selectedPlanId, selectedCycleId, gatewayEnabled }: SignupCreateProps) {
+export default function SignupCreate({ site, plans, cycles, selectedPlanId, selectedCycleId, gatewayEnabled, categories }: SignupCreateProps) {
     useTheme('light');
     useFlash();
 
@@ -35,6 +38,7 @@ export default function SignupCreate({ site, plans, cycles, selectedPlanId, sele
         company_name: '',
         tax_id: '',
         city: '',
+        business_category_id: null as number | null,
         company_phone: '',
         company_email: '',
         admin_name: '',
@@ -72,6 +76,7 @@ export default function SignupCreate({ site, plans, cycles, selectedPlanId, sele
             company_name: values.company_name,
             tax_id: values.tax_id,
             city: values.city,
+            business_category_id: values.business_category_id,
             contact_name: `${values.admin_name} ${values.admin_last_name}`.trim(),
             email: values.admin_email || values.company_email,
             phone: values.company_phone,
@@ -96,7 +101,7 @@ export default function SignupCreate({ site, plans, cycles, selectedPlanId, sele
                     <ArrowLeftIcon size={16} /> {site.name}
                 </Link>
                 <h1 className="text-[2rem] leading-tight">Contrata {site.name}</h1>
-                <p className="mt-2 text-[var(--muted)]">Caja, inventario y tienda en línea para tu mercado.</p>
+                <p className="mt-2 text-[var(--muted)]">Caja, inventario y tienda en línea para tu negocio.</p>
 
                 {sent ? (
                     <div className="mt-8 flex items-start gap-3 rounded-card border border-[var(--accent)] bg-[var(--accent-soft)] p-6 text-[var(--accent)]">
@@ -148,13 +153,44 @@ export default function SignupCreate({ site, plans, cycles, selectedPlanId, sele
                                 {errors.membership_plan_id && <p className="mt-2 text-[0.8125rem] font-medium text-[var(--danger)]">{errors.membership_plan_id}</p>}
                             </Panel>
 
-                            <Panel title="2. Tu mercado">
+                            <Panel title="2. Tu negocio">
+                                <fieldset>
+                                    <legend className="mb-2 text-[0.875rem] font-medium">
+                                        ¿Qué tipo de comercio es?
+                                        {activeMode === 'account' && <span className="ml-0.5 text-[var(--danger)]">*</span>}
+                                    </legend>
+                                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Tipo de comercio">
+                                        {categories.map((category) => {
+                                            const CategoryIcon = landingIcon(category.icon);
+                                            const selected = data.business_category_id === category.id;
+
+                                            return (
+                                                <button
+                                                    key={category.id}
+                                                    type="button"
+                                                    role="radio"
+                                                    aria-checked={selected}
+                                                    onClick={() => setData('business_category_id', category.id)}
+                                                    className={cn(
+                                                        'flex items-center gap-2 rounded-control border px-3 py-2.5 text-left text-[0.8125rem] font-medium transition-colors',
+                                                        selected ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]' : 'border-[var(--line)] bg-[var(--surface)] hover:border-[var(--line-2)]',
+                                                    )}
+                                                >
+                                                    <CategoryIcon size={20} className="shrink-0" weight={selected ? 'fill' : 'regular'} />
+                                                    <span className="leading-tight">{category.name}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    {errors.business_category_id && <p className="mt-2 text-[0.8125rem] font-medium text-[var(--danger)]">{errors.business_category_id}</p>}
+                                    <p className="mt-2 text-[0.78125rem] text-[var(--muted)]">Con esto te ubicamos en la página de inicio, junto a los comercios de tu tipo.</p>
+                                </fieldset>
                                 <div className="grid gap-3 sm:grid-cols-2">
-                                    <Input label="Nombre del mercado" required={activeMode === 'account'} value={data.company_name} onChange={(e) => setData('company_name', e.target.value)} error={errors.company_name} containerClassName="sm:col-span-2" />
+                                    <Input label="Nombre del negocio" required={activeMode === 'account'} value={data.company_name} onChange={(e) => setData('company_name', e.target.value)} error={errors.company_name} containerClassName="sm:col-span-2" />
                                     <Input label="NIT" required={activeMode === 'account'} value={data.tax_id} onChange={(e) => setData('tax_id', e.target.value)} error={errors.tax_id} />
                                     <Input label="Ciudad" required={activeMode === 'account'} value={data.city} onChange={(e) => setData('city', e.target.value)} error={errors.city} />
                                     <Input label="Teléfono" value={data.company_phone} onChange={(e) => setData('company_phone', e.target.value)} error={errors.company_phone} />
-                                    <Input label="Correo del mercado" type="email" required={activeMode === 'account'} value={data.company_email} onChange={(e) => setData('company_email', e.target.value)} error={errors.company_email} />
+                                    <Input label="Correo del negocio" type="email" required={activeMode === 'account'} value={data.company_email} onChange={(e) => setData('company_email', e.target.value)} error={errors.company_email} />
                                     <Input label="¿Cuántas sedes tienes?" inputMode="numeric" value={data.estimated_stores} onChange={(e) => setData('estimated_stores', e.target.value.replace(/\D/g, ''))} error={errors.estimated_stores} />
                                 </div>
                             </Panel>
@@ -185,9 +221,9 @@ export default function SignupCreate({ site, plans, cycles, selectedPlanId, sele
                                     </p>
                                     <p className="font-mono text-[1.75rem] font-semibold text-[var(--accent)] tabular">{money(price)}</p>
                                     <ul className="mt-2 flex flex-col gap-1 text-[0.875rem]">
-                                        {plan.features.map((feature) => (
-                                            <li key={feature} className="flex items-center gap-1.5">
-                                                <CheckIcon size={14} weight="bold" className="text-[var(--accent)]" /> {feature}
+                                        {plan.highlights.map((highlight) => (
+                                            <li key={highlight} className="flex items-center gap-1.5">
+                                                <CheckIcon size={14} weight="bold" className="text-[var(--accent)]" /> {highlight}
                                             </li>
                                         ))}
                                     </ul>

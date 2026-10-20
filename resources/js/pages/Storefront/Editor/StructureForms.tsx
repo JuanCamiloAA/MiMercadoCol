@@ -24,6 +24,7 @@ export const STRUCTURE_LABELS: Record<string, { title: string; description: stri
     cart_bar: { title: 'Barra del carrito', description: 'La barra flotante con el total y lo que falta para el domicilio gratis.' },
     mobile_nav: { title: 'Navegación del celular', description: 'Los botones de abajo en el celular: de 3 a 5.' },
     footer: { title: 'Pie de página', description: 'Enlaces, contacto, redes, medios de pago y textos legales.' },
+    floating: { title: 'Botón de WhatsApp', description: 'Un botón flotante que abre el chat con la sede.' },
     card: { title: 'Tarjeta de producto', description: 'Cómo se ve cada artículo en toda la tienda.' },
     catalog: { title: 'Catálogo en línea', description: 'Qué artículos se muestran y con qué datos.' },
     category_page: { title: 'Página de categoría', description: 'Filtros, orden y paginación de categorías, ofertas y búsqueda.' },
@@ -147,8 +148,20 @@ function HeaderForm({ value, onChange, readOnly, options }: SectionProps<'header
             <div className="grid gap-3 sm:grid-cols-2">
                 <Choice label="Estilo" value={value.style} options={options.header_styles} disabled={readOnly} onChange={(style) => set({ style })} />
                 <Choice label="Marca" value={value.logo_mode} options={options.logo_modes} disabled={readOnly} onChange={(logo_mode) => set({ logo_mode })} hint="El logo y el isotipo se suben en Aspecto." />
+                <Choice label="Distribución" value={value.layout ?? 'search'} options={options.choices.header_layout ?? []} disabled={readOnly} onChange={(layout) => set({ layout })} />
+                <Choice label="Buscador" value={value.search_style ?? 'pill'} options={options.choices.search_style ?? []} disabled={readOnly} onChange={(search_style) => set({ search_style })} />
             </div>
             <Input label="Texto del buscador" maxLength={60} disabled={readOnly} value={value.search_placeholder} onChange={(event) => set({ search_placeholder: event.target.value })} />
+            <Group title="Sobre la portada y al bajar">
+                <Toggle
+                    label="Transparente sobre la portada"
+                    hint="Solo si el primer bloque de la portada es un banner principal de borde a borde (Diseño › Marco). En las demás páginas va sólido."
+                    checked={value.overlay ?? false}
+                    disabled={readOnly}
+                    onChange={(overlay) => set({ overlay })}
+                />
+                <Choice label="Al bajar" value={value.sticky_style ?? 'solid'} options={options.choices.sticky_style ?? []} disabled={readOnly || !value.sticky} onChange={(sticky_style) => set({ sticky_style })} hint="Cómo se ve el encabezado fijo cuando ya se bajó." />
+            </Group>
             <Group title="Qué lleva">
                 <Toggle label="Fijo arriba al desplazar" checked={value.sticky} disabled={readOnly} onChange={(sticky) => set({ sticky })} />
                 <Toggle label="Mostrar el lema" checked={value.show_tagline} disabled={readOnly} onChange={(show_tagline) => set({ show_tagline })} />
@@ -160,7 +173,7 @@ function HeaderForm({ value, onChange, readOnly, options }: SectionProps<'header
     );
 }
 
-function NavForm({ value, onChange, readOnly }: SectionProps<'nav'>) {
+function NavForm({ value, onChange, readOnly, options }: SectionProps<'nav'>) {
     const set = (patch: Partial<SettingsRow['nav']>) => onChange({ ...value, ...patch });
     const setItem = (index: number, patch: Partial<SettingsRow['nav']['items'][number]>) =>
         set({ items: value.items.map((item, position) => (position === index ? { ...item, ...patch } : item)) });
@@ -168,6 +181,10 @@ function NavForm({ value, onChange, readOnly }: SectionProps<'nav'>) {
     return (
         <div className="flex flex-col gap-4">
             <Toggle label="Mostrar el menú de categorías" checked={value.enabled} disabled={readOnly} onChange={(enabled) => set({ enabled })} />
+            <div className="grid gap-3 sm:grid-cols-2">
+                <Choice label="Estilo" value={value.style ?? 'bar'} options={options.choices.nav_style ?? []} disabled={readOnly} onChange={(style) => set({ style })} hint="En texto va dentro del encabezado si la distribución es «en una fila»." />
+                <Choice label="La página actual" value={value.active_style ?? 'none'} options={options.choices.nav_active_style ?? []} disabled={readOnly} onChange={(active_style) => set({ active_style })} />
+            </div>
             <Group title="Ofertas y categorías">
                 <Toggle label="Chip de ofertas en rojo" checked={value.show_deals_chip} disabled={readOnly} onChange={(show_deals_chip) => set({ show_deals_chip })} />
                 {value.show_deals_chip && <Input label="Texto del chip" maxLength={24} disabled={readOnly} value={value.deals_label} onChange={(event) => set({ deals_label: event.target.value })} />}
@@ -195,6 +212,13 @@ function NavForm({ value, onChange, readOnly }: SectionProps<'nav'>) {
                         <Input label="Texto" hint="Vacío: el nombre de la categoría." maxLength={30} disabled={readOnly} value={item.label} onChange={(event) => setItem(index, { label: event.target.value })} />
                         <IconField label="Ícono" value={item.icon ?? ''} allowEmpty readOnly={readOnly} onChange={(icon) => setItem(index, { icon })} />
                         <Toggle label="Resaltado" checked={item.highlight} disabled={readOnly} onChange={(highlight) => setItem(index, { highlight })} />
+                        <Toggle
+                            label="Abre el menú de categorías"
+                            hint="En computador, en vez de ir a la página abre el menú grande («Categorías ⌄»)."
+                            checked={item.opens_menu ?? false}
+                            disabled={readOnly}
+                            onChange={(opens_menu) => setItem(index, { opens_menu })}
+                        />
                     </div>
                 ))}
                 {!readOnly && value.items.length < 14 && (
@@ -216,8 +240,18 @@ function MobileNavForm({ value, onChange, readOnly, options }: SectionProps<'mob
     const label = (key: string) => options.mobile_nav_items.find((option) => option.value === key)?.label ?? key;
     const available = options.mobile_nav_items.filter((option) => !value.items.includes(option.value));
 
+    const enabled = value.enabled ?? true;
+
     return (
         <div className="flex flex-col gap-3">
+            <Toggle
+                label="Mostrar la navegación del celular"
+                hint="Apagada, el celular usa solo el encabezado y el menú."
+                checked={enabled}
+                disabled={readOnly}
+                onChange={(next) => onChange({ ...value, enabled: next, items: next && value.items.length < 3 ? ['home', 'categories', 'search'] : value.items })}
+            />
+            {enabled && (
             <ul className="flex flex-col gap-1.5">
                 {value.items.map((item, index) => (
                     <li key={item} className="flex items-center justify-between rounded-[10px] border border-[var(--line)] bg-[var(--surface-2)] px-3 py-1.5">
@@ -228,19 +262,20 @@ function MobileNavForm({ value, onChange, readOnly, options }: SectionProps<'mob
                             index={index}
                             total={value.items.length}
                             disabled={readOnly}
-                            onMove={(to) => onChange({ items: move(value.items, index, to) })}
-                            onRemove={() => value.items.length > 3 && onChange({ items: value.items.filter((entry) => entry !== item) })}
+                            onMove={(to) => onChange({ ...value, items: move(value.items, index, to) })}
+                            onRemove={() => value.items.length > 3 && onChange({ ...value, items: value.items.filter((entry) => entry !== item) })}
                         />
                     </li>
                 ))}
             </ul>
-            {!readOnly && value.items.length < 5 && available.length > 0 && (
+            )}
+            {enabled && !readOnly && value.items.length < 5 && available.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                     {available.map((option) => (
                         <button
                             key={option.value}
                             type="button"
-                            onClick={() => onChange({ items: [...value.items, option.value] })}
+                            onClick={() => onChange({ ...value, items: [...value.items, option.value] })}
                             className="flex min-h-[36px] items-center gap-1 rounded-[9px] border border-dashed border-[var(--line-2)] px-2.5 text-[12.5px] font-medium text-[var(--muted)] hover:text-[var(--text)]"
                         >
                             <PlusIcon size={12} weight="bold" />
@@ -284,6 +319,20 @@ function FooterForm({ value, onChange, readOnly, options, designLocked = false }
 
     return (
         <div className="flex flex-col gap-4">
+            <Group title="Aspecto">
+                <div className="grid gap-3 sm:grid-cols-2">
+                    <Choice label="Forma" value={value.style ?? 'full'} options={options.choices.footer_style ?? []} disabled={design} onChange={(style) => set({ style })} />
+                    <Choice label="Color" value={value.tone ?? 'light'} options={options.choices.footer_tone ?? []} disabled={design} onChange={(tone) => set({ tone })} />
+                </div>
+                <Toggle
+                    label="Formulario para recibir novedades por correo"
+                    hint="Opcional. Los correos quedan en Tienda en línea › Suscriptores, con su autorización de datos."
+                    checked={value.newsletter ?? false}
+                    disabled={design}
+                    onChange={(newsletter) => set({ newsletter })}
+                />
+            </Group>
+
             <Group title="Columnas de enlaces">
                 {value.columns.map((column, index) => (
                     <div key={index} className="flex flex-col gap-2.5 rounded-[11px] border border-[var(--line)] bg-[var(--surface-2)] p-2.5">
@@ -416,6 +465,10 @@ function CardForm({ value, onChange, readOnly, options }: SectionProps<'card'>) 
     return (
         <div className="flex flex-col gap-4">
             <div className="grid gap-3 sm:grid-cols-2">
+                <Choice label="Estilo" value={value.style ?? 'boxed'} options={choices.card_style ?? []} disabled={readOnly} onChange={(style) => set({ style })} />
+                <Choice label="Proporción de la foto" value={value.image_ratio ?? '1:1'} options={choices.image_ratio ?? []} disabled={readOnly} onChange={(image_ratio) => set({ image_ratio })} />
+                <Choice label="Texto" value={value.text_align ?? 'left'} options={choices.text_align ?? []} disabled={readOnly} onChange={(text_align) => set({ text_align })} />
+                <Choice label="Al pasar el mouse" value={value.image_hover ?? 'none'} options={choices.image_hover ?? []} disabled={readOnly} onChange={(image_hover) => set({ image_hover })} />
                 <Choice label="La foto" value={value.image_fit} options={choices.image_fit ?? []} disabled={readOnly} onChange={(image_fit) => set({ image_fit })} />
                 <Choice label="Fondo de la foto" value={value.image_bg} options={choices.image_bg ?? []} disabled={readOnly} onChange={(image_bg) => set({ image_bg })} />
                 <Choice label="Etiqueta de oferta" value={value.deal_badge} options={choices.deal_badge ?? []} disabled={readOnly} onChange={(deal_badge) => set({ deal_badge })} />
@@ -439,7 +492,24 @@ function CardForm({ value, onChange, readOnly, options }: SectionProps<'card'>) 
                 <Toggle label="La marca" checked={value.show_brand} disabled={readOnly} onChange={(show_brand) => set({ show_brand })} />
                 <Toggle label="La presentación (900 ml)" checked={value.show_content} disabled={readOnly} onChange={(show_content) => set({ show_content })} />
                 <Toggle label="El precio por unidad de medida ($ 12.778 x L)" checked={value.show_unit_price} disabled={readOnly} onChange={(show_unit_price) => set({ show_unit_price })} />
+                <Toggle label="Una línea de descripción" hint="La que ya tenga la ficha; si está vacía, no se pinta nada." checked={value.show_description ?? false} disabled={readOnly} onChange={(show_description) => set({ show_description })} />
+                <Toggle label="Los colores del artículo" hint="Hasta 4 muestras, en los artículos con subartículos por color." checked={value.show_swatches ?? false} disabled={readOnly} onChange={(show_swatches) => set({ show_swatches })} />
             </Group>
+        </div>
+    );
+}
+
+function FloatingForm({ value, onChange, readOnly, options }: SectionProps<'floating'>) {
+    return (
+        <div className="flex flex-col gap-3">
+            <Toggle
+                label="Mostrar el botón de WhatsApp"
+                hint="El número es el WhatsApp del contacto de la sede (Pie de página). Sin número, no aparece."
+                checked={value.whatsapp}
+                disabled={readOnly}
+                onChange={(whatsapp) => onChange({ ...value, whatsapp })}
+            />
+            <Choice label="Dónde" value={value.position} options={options.choices.floating_position ?? []} disabled={readOnly || !value.whatsapp} onChange={(position) => onChange({ ...value, position })} />
         </div>
     );
 }
@@ -447,9 +517,10 @@ function CardForm({ value, onChange, readOnly, options }: SectionProps<'card'>) 
 function CatalogForm({ value, onChange, readOnly }: SectionProps<'catalog'>) {
     return (
         <div className="flex flex-col gap-3">
-            <Toggle label="Mostrar los agotados" hint="Aparecen sin el botón de agregar, para que el cliente sepa que existen." checked={value.show_out_of_stock} disabled={readOnly} onChange={(show_out_of_stock) => onChange({ ...value, show_out_of_stock })} />
             <Toggle label="Mostrar el precio por unidad de medida" hint="Por ejemplo «$ 4.200 x L», para comparar presentaciones." checked={value.price_per_unit} disabled={readOnly} onChange={(price_per_unit) => onChange({ ...value, price_per_unit })} />
-            <p className="rounded-[10px] bg-[var(--surface-2)] px-3 py-2 text-[12px] text-[var(--muted)]">Un artículo con precio en cero nunca se muestra: sería un artículo que la tienda regala.</p>
+            <p className="rounded-[10px] bg-[var(--surface-2)] px-3 py-2 text-[12px] text-[var(--muted)]">
+                Un artículo con precio en cero nunca se muestra: sería un artículo que la tienda regala. Tampoco uno sin disponible en la bodega de la tienda: sigue publicado y vuelve solo cuando entra mercancía.
+            </p>
         </div>
     );
 }
@@ -586,6 +657,7 @@ const FORMS: { [K in SettingsKey]?: (props: SectionProps<K>) => ReactNode } = {
     mobile_nav: MobileNavForm,
     cart_bar: CartBarForm,
     footer: FooterForm,
+    floating: FloatingForm,
     card: CardForm,
     catalog: CatalogForm,
     category_page: CategoryPageForm,

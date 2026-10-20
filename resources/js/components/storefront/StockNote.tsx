@@ -14,7 +14,6 @@ export function StockNote({ stock, className }: { stock: StockInfo; className?: 
         <p
             className={cn(
                 'text-[11.5px] font-semibold',
-                stock.level === 'out' && 'text-[var(--danger)]',
                 stock.level === 'low' && 'text-[var(--warn)]',
                 stock.level === 'ok' && 'font-medium text-[var(--muted)]',
                 className,

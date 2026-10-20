@@ -9,5 +9,7 @@ return [
     'Storefront', 'MapPin', 'UserPlus', 'ShoppingCart', 'Basket', 'Truck', 'Package', 'Receipt',
     'CreditCard', 'CashRegister', 'ChartLineUp', 'Users', 'Buildings', 'Globe', 'DeviceMobile',
     'ShieldCheck', 'Lightning', 'Clock', 'Headset', 'Sparkle', 'Star', 'Heart', 'Tag', 'Percent',
-    'House', 'Calendar', 'Handshake', 'Rocket',
+    'House', 'Calendar', 'Handshake', 'Rocket', 'Image', 'PencilSimple',
+    // Las de las clasificaciones de empresa (textiles, belleza, droguería…).
+    'TShirt', 'FlowerLotus', 'FirstAidKit', 'Hammer', 'Armchair', 'PawPrint', 'Notebook', 'ForkKnife',
 ];

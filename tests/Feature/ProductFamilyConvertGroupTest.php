@@ -68,6 +68,36 @@ class ProductFamilyConvertGroupTest extends TestCase
         $this->assertSame(2, $family->variants()->count());
     }
 
+    public function test_las_casillas_vacias_del_formulario_no_rompen_la_conversion(): void
+    {
+        // Lo que manda el formulario con «Empaque de compra», mayorista y código vacíos.
+        $oil = $this->makeProduct(['name' => 'Aceite de girasol 1 L', 'sku' => 'DES-039', 'price' => 12500, 'tax_rate' => 19, 'purchase_pack_size' => 12]);
+        $row = fn (array $extra) => array_merge([
+            'barcode' => '', 'online_price' => null, 'wholesale_price' => null, 'cost' => 1000, 'content_amount' => null, 'content_unit' => null,
+            'min_stock' => 10, 'is_active' => true, 'is_online_visible' => true, 'unit' => 'unit', 'sold_by_weight' => false, 'track_lots' => false,
+            'allow_negative_stock' => false, 'purchase_pack_size' => null, 'description' => '',
+        ], $extra);
+
+        $this->actingAs($this->admin)->post(route('products.convert', $oil), [
+            'name' => 'Aceite de girasol',
+            'category_id' => $this->category->id,
+            'tax_rate' => 19,
+            'attribute_1_id' => $this->attribute('Volumen')->id,
+            'variants' => [
+                $row(['id' => $oil->id, 'value_1_id' => $this->value('Volumen', '1 L')->id, 'sku' => 'DES-039', 'price' => 12500, 'initial_stocks' => []]),
+                $row(['value_1_id' => $this->value('Volumen', '500 ml')->id, 'sku' => 'DES-039-500', 'price' => 18000, 'initial_stocks' => [['store_id' => $this->store->id, 'quantity' => 5]]]),
+            ],
+        ])->assertSessionHasNoErrors();
+
+        $family = ProductFamily::query()->sole();
+        $new = $family->variants()->where('sku', 'DES-039-500')->sole();
+
+        // El nuevo queda con el defecto de la base y el que ya existia conserva el suyo.
+        $this->assertSame(1, (int) $new->refresh()->purchase_pack_size);
+        $this->assertSame(12, (int) $oil->refresh()->purchase_pack_size);
+        $this->assertSame(5.0, (float) ProductStock::query()->where('product_id', $new->id)->sum('quantity'));
+    }
+
     public function test_agrupar_dos_articulos_existentes(): void
     {
         $small = $this->makeProduct(['name' => 'Aceite 500', 'sku' => 'A-500', 'price' => 7900, 'tax_rate' => 5]);

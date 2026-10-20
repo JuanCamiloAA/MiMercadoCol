@@ -39,6 +39,7 @@ interface ProductRow {
     is_online_visible: boolean;
     image_path: string | null;
     thumb_path: string | null;
+    thumb_url?: string | null;
     category: { id: number; name: string } | null;
     supplier_name: string | null;
     stock_quantity: number;
@@ -139,8 +140,8 @@ export default function ProductsIndex({ products, filters: initialFilters, categ
             </TD>
             <TD>
                 <div className={nested ? 'flex items-center gap-2.5 pl-11' : 'flex items-center gap-2.5'}>
-                    {product.thumb_path ? (
-                        <img src={`/storage/${product.thumb_path}`} alt="" loading="lazy" className="size-9 shrink-0 rounded-chip object-cover" />
+                    {product.thumb_url ? (
+                        <img src={product.thumb_url} alt="" loading="lazy" className="size-9 shrink-0 rounded-chip object-cover" />
                     ) : (
                         <span className="grid size-9 shrink-0 place-items-center rounded-chip bg-[var(--surface-2)] text-[var(--muted)]">
                             <PackageIcon size={16} />

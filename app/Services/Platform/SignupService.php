@@ -48,6 +48,7 @@ class SignupService
             'company_name' => trim($data['company_name']),
             'tax_id' => trim($data['tax_id']),
             'city' => $data['city'] ?? null,
+            'business_category_id' => ! empty($data['business_category_id']) ? (int) $data['business_category_id'] : null,
             'company_phone' => $data['company_phone'] ?? null,
             'company_email' => Str::lower(trim($data['company_email'])),
             'admin_name' => trim($data['admin_name']),
@@ -158,6 +159,7 @@ class SignupService
                 'email' => $signup->company_email,
                 'phone' => $signup->company_phone,
                 'city' => $signup->city,
+                'business_category_id' => $signup->business_category_id,
             ],
             'store' => ['city' => $signup->city],
             'admin' => [

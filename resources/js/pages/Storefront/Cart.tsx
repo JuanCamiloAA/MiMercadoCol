@@ -34,6 +34,9 @@ interface CartItemRow {
     line_total: number;
     substitution_policy: string;
     available: number | null;
+    /** Ya no se vende (se agotó en la bodega de la tienda o se despublicó): no se cobra y hay que quitarla. */
+    unavailable: boolean;
+    unavailable_reason: 'out_of_stock' | 'unpublished' | null;
 }
 
 interface CartProps {
@@ -48,6 +51,7 @@ interface CartProps {
         min_order_total: number;
         min_order_missing: number;
         delivery_note: string | null;
+        has_unavailable: boolean;
     };
     isLoggedIn: boolean;
     blocks: StoreBlock[];
@@ -83,7 +87,7 @@ export default function StorefrontCart({ store, items, summary, isLoggedIn, bloc
         router.patch(route('storefront.cart.update', item.id), { quantity: item.quantity, substitution_policy: policy }, { preserveScroll: true, only: ['items'] });
     };
 
-    const blocked = summary.min_order_missing > 0;
+    const blocked = summary.min_order_missing > 0 || summary.has_unavailable;
     const syncing = Object.keys(cart.pending).length > 0;
 
     return (
@@ -105,11 +109,18 @@ export default function StorefrontCart({ store, items, summary, isLoggedIn, bloc
                 <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
                     <ul className="flex flex-col divide-y divide-[var(--line)] rounded-[var(--store-radius)] border border-[var(--line)] bg-[var(--surface)]">
                         {items.map((item) => {
-                            const short = item.available !== null && item.available < item.quantity;
+                            const short = !item.unavailable && item.available !== null && item.available < item.quantity;
+                            const remove = () => setCartQuantity({ kind: item.kind, id: (item.product_id ?? item.service_id) as number, key: item.key, name: item.name }, 0);
 
                             return (
-                                <li key={item.key} className="flex gap-3 p-3 md:gap-4 md:p-4">
-                                    <Link href={item.href} className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-[12px] border border-[var(--line)] bg-white md:size-24">
+                                <li key={item.key} className={cn('flex gap-3 p-3 md:gap-4 md:p-4', item.unavailable && 'bg-[var(--surface-2)]')}>
+                                    <Link
+                                        href={item.href}
+                                        className={cn(
+                                            'grid size-20 shrink-0 place-items-center overflow-hidden rounded-[12px] border border-[var(--line)] bg-white md:size-24',
+                                            item.unavailable && 'opacity-50 grayscale',
+                                        )}
+                                    >
                                         {item.image ? (
                                             <img src={item.image} alt="" className="h-full w-full object-contain p-1.5" />
                                         ) : (
@@ -127,9 +138,7 @@ export default function StorefrontCart({ store, items, summary, isLoggedIn, bloc
                                             </div>
                                             <button
                                                 type="button"
-                                                onClick={() =>
-                                                    setCartQuantity({ kind: item.kind, id: (item.product_id ?? item.service_id) as number, key: item.key, name: item.name }, 0)
-                                                }
+                                                onClick={remove}
                                                 aria-label={`Quitar ${item.name} del carrito`}
                                                 className="grid size-10 shrink-0 place-items-center rounded-full text-[var(--muted)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"
                                             >
@@ -153,6 +162,22 @@ export default function StorefrontCart({ store, items, summary, isLoggedIn, bloc
                                             </p>
                                         )}
 
+                                        {item.unavailable ? (
+                                            <div className="mt-2 flex flex-wrap items-center gap-2" role="status">
+                                                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--danger-soft)] px-2.5 py-1 text-[12.5px] font-bold text-[var(--danger)]">
+                                                    <WarningCircleIcon size={14} weight="fill" />
+                                                    {item.unavailable_reason === 'out_of_stock' ? 'Se agotó' : 'Ya no está disponible'}
+                                                </span>
+                                                <span className="text-[12.5px] text-[var(--muted)]">No se cobra. Quítalo para seguir con el pedido.</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={remove}
+                                                    className="ml-auto h-9 rounded-full border border-[var(--line)] bg-[var(--surface)] px-4 text-[13px] font-bold hover:border-[var(--danger)] hover:text-[var(--danger)]"
+                                                >
+                                                    Quitar
+                                                </button>
+                                            </div>
+                                        ) : (
                                         <div className="mt-2.5 flex items-center gap-3">
                                             <AddToCartControl
                                                 item={{ kind: item.kind, id: (item.product_id ?? item.service_id) as number, key: item.key, name: item.name, step: item.step, sold_by_weight: item.sold_by_weight }}
@@ -160,8 +185,9 @@ export default function StorefrontCart({ store, items, summary, isLoggedIn, bloc
                                             />
                                             <span className={cn('ml-auto text-[17px] font-extrabold tabular-nums', syncing && 'opacity-60')}>{money(item.line_total)}</span>
                                         </div>
+                                        )}
 
-                                        {item.kind !== 'service' && (
+                                        {item.kind !== 'service' && !item.unavailable && (
                                             <fieldset className="mt-2.5">
                                                 <legend className="mb-1 text-[11.5px] font-semibold text-[var(--muted)]">Si no hay</legend>
                                                 <div className="flex gap-1">
@@ -225,7 +251,9 @@ export default function StorefrontCart({ store, items, summary, isLoggedIn, bloc
                                 <p className="flex items-start gap-2 rounded-[12px] bg-[var(--warn-soft)] px-3 py-2.5 text-[13px] font-semibold text-[var(--warn)]" role="status">
                                     <WarningCircleIcon size={18} weight="fill" className="mt-px shrink-0" />
                                     <span>
-                                        El pedido mínimo en esta sede es de {money(summary.min_order_total)}. Te faltan {money(summary.min_order_missing)} para poder pagar.
+                                        {summary.has_unavailable
+                                            ? 'Algo de tu carrito se agotó o ya no está disponible. Quítalo para poder pagar.'
+                                            : `El pedido mínimo en esta sede es de ${money(summary.min_order_total)}. Te faltan ${money(summary.min_order_missing)} para poder pagar.`}
                                     </span>
                                 </p>
                                 <button type="button" disabled aria-disabled className="h-12 w-full cursor-not-allowed rounded-full bg-[var(--surface-2)] text-[15px] font-bold text-[var(--muted)]">

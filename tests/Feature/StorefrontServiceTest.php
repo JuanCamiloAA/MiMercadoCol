@@ -80,16 +80,15 @@ class StorefrontServiceTest extends TestCase
         $this->get(route('storefront.service', $this->arreglo->id))->assertNotFound();
     }
 
-    public function test_sin_existencia_en_la_bodega_de_la_tienda_sale_agotado(): void
+    public function test_sin_existencia_en_la_bodega_de_la_tienda_no_se_ofrece(): void
     {
-        // Hay fresa, pero en otra bodega: la tienda no la ofrece.
+        // No alcanza la fresa para un arreglo: el servicio sigue publicado, pero no se muestra.
         ProductStock::query()->withoutGlobalScopes()->where('product_id', $this->fresa->id)->update(['quantity' => 1]);
 
-        $this->get(route('storefront.service', $this->arreglo->id))->assertOk()
-            ->assertInertia(fn (AssertableInertia $page) => $page->where('service.stock.out', true));
-
-        $this->post(route('storefront.cart.store'), ['service_id' => $this->arreglo->id, 'quantity' => 1])->assertSessionHas('error');
+        $this->get(route('storefront.service', $this->arreglo->id))->assertNotFound();
+        $this->post(route('storefront.cart.store'), ['service_id' => $this->arreglo->id, 'quantity' => 1])->assertNotFound();
         $this->assertSame(0, CartItem::query()->whereNotNull('service_id')->count());
+        $this->assertTrue($this->arreglo->refresh()->is_online_visible);
     }
 
     public function test_el_carrito_guarda_el_servicio_y_cobra_lo_que_mostro(): void

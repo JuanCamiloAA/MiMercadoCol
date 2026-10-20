@@ -20,7 +20,9 @@ export function ProductGridBlock({ data }: BlockProps) {
             layout={text(data.layout) === 'grid' ? 'grid' : 'carousel'}
             columnsDesktop={Number(data.columns_desktop ?? 5)}
             columnsMobile={String(data.columns_mobile ?? 'row') === '2' ? '2' : 'row'}
-            background={(text(data.background) || 'none') as 'none' | 'soft' | 'brand'}
+            titleAlign={text(data.title_align) === 'center' ? 'center' : 'left'}
+            arrows={text(data.arrows) === 'top' ? 'top' : 'side'}
+            scrollbar={data.scrollbar === true}
             empty={
                 data.placeholder ? (
                     <p className="rounded-[var(--store-radius)] border border-dashed border-[var(--line-2)] px-4 py-6 text-center text-[13px] text-[var(--muted)]">

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Company;
 use App\Models\Setting;
 use App\Models\StoreSettingOverride;
 use App\Settings\SettingsSchema;
@@ -87,10 +88,26 @@ class SettingsService
         // Credito.
         'credit.block_on_overdue_days' => 15,
 
+        // Catalogo: cuantas fotos se le montan a cada articulo, articulo principal o servicio.
+        'catalog.max_images' => 1,
+
+        // Tienda en linea (surtido): dias para avisar un lote por vencer, dias de inventario que
+        // ya son «poca rotacion», cuantas veces el minimo es «inventario alto» sin ventas, y el
+        // margen por debajo del cual un articulo se marca. Los leen las sugerencias y los filtros.
+        'storefront_catalog.expiring_days' => 7,
+        'storefront_catalog.overstock_days' => 60,
+        'storefront_catalog.overstock_min_factor' => 2,
+        'storefront_catalog.low_margin_percent' => 15,
+
         // Devoluciones de venta: dias para devolver desde la venta (o la entrega, en linea) y
         // dias que dura el saldo a favor. 0 en el saldo: no vence.
         'returns.max_days' => 30,
         'returns.store_credit_days' => 365,
+
+        // Pagos por pasarela: minutos que el pedido en linea espera el pago (aparta inventario y
+        // saldo mientras tanto) y minutos que vive un QR o link de la caja.
+        'payments.online_hold_minutes' => 30,
+        'payments.pos_link_minutes' => 15,
     ];
 
     /** @var array<int, array<string, mixed>> */
@@ -114,6 +131,16 @@ class SettingsService
             $stored = array_intersect_key($stored, self::DEFAULTS);
 
             $this->cache[$companyId] = array_merge(self::DEFAULTS, $stored);
+
+            // Sin nombre de marca propio, el de la empresa: el de fabrica es el de la primera
+            // empresa, y una empresa nueva salia en su panel llamandose «La Canasta».
+            if (! array_key_exists('brand.display_name', $stored)) {
+                $name = trim((string) Company::query()->whereKey($companyId)->value('name'));
+
+                if ($name !== '') {
+                    $this->cache[$companyId]['brand.display_name'] = mb_substr($name, 0, 40);
+                }
+            }
         }
 
         return $this->cache[$companyId];

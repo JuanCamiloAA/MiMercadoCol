@@ -88,6 +88,25 @@ class CustomerReturnOnlineTest extends TestCase
         $this->asCustomer()->get(route('storefront.returns.photo', [$return->id, 0]))->assertOk();
     }
 
+    public function test_con_firebase_la_foto_va_a_la_zona_privada_y_la_sirve_la_aplicacion(): void
+    {
+        config(['filesystems.private_uploads' => 'firebase_private']);
+        Storage::fake('firebase_private');
+        $order = $this->deliveredOrder([[$this->leche, 1]]);
+
+        $this->asCustomer()->post(route('storefront.returns.store', $order), [
+            'items' => [['sale_item_id' => $this->saleLine($order, $this->leche), 'quantity' => 1, 'reason' => 'damaged']],
+            'photos' => [UploadedFile::fake()->create('foto.jpg', 120, 'image/jpeg')],
+        ])->assertSessionHasNoErrors();
+
+        $return = CustomerReturn::query()->withoutGlobalScopes()->firstOrFail();
+        Storage::disk('firebase_private')->assertExists($return->photos[0]);
+        Storage::disk('local')->assertMissing($return->photos[0]);
+
+        $this->asCustomer()->get(route('storefront.returns.photo', [$return->id, 0]))->assertOk();
+        $this->asAdmin()->get(route('customer_returns.photo', [$return, 0]))->assertOk();
+    }
+
     public function test_fuera_de_plazo_ajeno_o_sin_entregar_no_se_puede(): void
     {
         $order = $this->deliveredOrder([[$this->leche, 1]]);

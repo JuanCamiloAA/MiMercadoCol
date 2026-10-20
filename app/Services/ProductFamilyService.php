@@ -32,6 +32,12 @@ class ProductFamilyService
         'purchase_pack_size', 'description',
     ];
 
+    /** Las de `VARIANT_FIELDS` que la base no deja en nulo. */
+    protected const NOT_NULL = [
+        'sku', 'price', 'cost', 'min_stock', 'is_active', 'is_online_visible', 'unit', 'sold_by_weight', 'track_lots',
+        'allow_negative_stock', 'purchase_pack_size',
+    ];
+
     /** Tablas donde un articulo deja rastro: con alguna de estas, no se borra. */
     protected const TRACES = [
         'stock_movements', 'sale_items', 'purchase_order_items', 'order_items', 'service_components', 'cart_items',
@@ -539,9 +545,13 @@ class ProductFamilyService
         [$v1, $v2] = $this->pick($family, $values, $row);
 
         foreach (self::VARIANT_FIELDS as $field) {
-            if (array_key_exists($field, $row)) {
-                $variant->{$field} = $row[$field];
+            // Una casilla vacia en una columna sin nulos («Empaque de compra», por ejemplo) deja lo
+            // que habia, o el defecto de la base si el subarticulo es nuevo.
+            if (! array_key_exists($field, $row) || ($row[$field] === null && in_array($field, self::NOT_NULL, true))) {
+                continue;
             }
+
+            $variant->{$field} = $row[$field];
         }
 
         $variant->unit ??= Product::UNIT_UNIT;

@@ -48,6 +48,25 @@ class CompanyMembershipEvent extends Model
 
     public const CARD_EXPIRING = 'card_expiring';
 
+    /** El super usuario cambio lo que incluye el plan de la empresa. */
+    public const PLAN_ENTITLEMENTS_CHANGED = 'plan_entitlements_changed';
+
+    public const ENTITLEMENT_ADDED = 'entitlement_added';
+
+    public const ENTITLEMENT_ENDED = 'entitlement_ended';
+
+    public const ENTITLEMENT_EXPIRED = 'entitlement_expired';
+
+    public const ENTITLEMENT_EXPIRING = 'entitlement_expiring';
+
+    public const SPECIAL_PRICE_SET = 'special_price_set';
+
+    public const SPECIAL_PRICE_ENDED = 'special_price_ended';
+
+    public const SPECIAL_PRICE_EXPIRED = 'special_price_expired';
+
+    public const SPECIAL_PRICE_EXPIRING = 'special_price_expiring';
+
     public const LABELS = [
         self::PROVISIONED => 'Empresa creada',
         self::PLAN_CHANGED => 'Cambio de plan',
@@ -67,6 +86,15 @@ class CompanyMembershipEvent extends Model
         self::CANCELLED => 'Cancelada',
         self::REMINDER_SENT => 'Recordatorio enviado',
         self::CARD_EXPIRING => 'Aviso de tarjeta por vencer',
+        self::PLAN_ENTITLEMENTS_CHANGED => 'Cambió lo que incluye el plan',
+        self::ENTITLEMENT_ADDED => 'Excepción al plan',
+        self::ENTITLEMENT_ENDED => 'Excepción terminada',
+        self::ENTITLEMENT_EXPIRED => 'Excepción vencida',
+        self::ENTITLEMENT_EXPIRING => 'Aviso de excepción por vencer',
+        self::SPECIAL_PRICE_SET => 'Precio especial',
+        self::SPECIAL_PRICE_ENDED => 'Precio especial terminado',
+        self::SPECIAL_PRICE_EXPIRED => 'Precio especial vencido',
+        self::SPECIAL_PRICE_EXPIRING => 'Aviso de precio especial por vencer',
     ];
 
     protected $fillable = ['company_id', 'type', 'data', 'user_id', 'created_at'];

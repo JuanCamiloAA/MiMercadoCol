@@ -8,16 +8,24 @@ use App\Http\Requests\Platform\StoreCompanyRequest;
 use App\Http\Requests\Platform\ToggleCompanyStatusRequest;
 use App\Http\Requests\Platform\UpdateCompanyRequest;
 use App\Models\BillingCycle;
+use App\Models\BusinessCategory;
 use App\Models\Company;
+use App\Models\CompanyEntitlement;
 use App\Models\CompanyMembershipEvent;
+use App\Models\CompanyPlanPrice;
 use App\Models\MembershipCharge;
 use App\Models\MembershipPlan;
 use App\Models\PlatformLead;
 use App\Models\User;
+use App\Services\Membership\Entitlements;
 use App\Services\Membership\MembershipBillingService;
 use App\Services\Membership\MembershipLimiter;
+use App\Services\Membership\MembershipPricing;
 use App\Services\Membership\MembershipService;
+use App\Services\Membership\PlanCatalogue;
+use App\Services\Platform\BusinessCategoryCatalog;
 use App\Services\Platform\CompanyProvisioner;
+use App\Support\Maps\MapConfig;
 use App\Support\StoreContext;
 use App\Support\TenantContext;
 use Illuminate\Database\Eloquent\Builder;
@@ -46,7 +54,7 @@ class CompanyController extends Controller
         $filters = $this->filters($request);
 
         $companies = $this->query($filters)
-            ->with(['plan:id,name,max_stores,max_users,max_registers', 'cycle:id,name'])
+            ->with(['plan:id,name,max_stores,max_users,max_registers', 'cycle:id,name', 'businessCategory:id,name'])
             ->withCount([
                 // Sin `CompanyScope`: con otra empresa elegida arriba contaria cero.
                 'stores as active_stores_count' => fn ($query) => $query->withoutGlobalScopes()->where('is_active', true),
@@ -68,6 +76,7 @@ class CompanyController extends Controller
                 'q' => $filters['q'],
                 'estado' => $filters['status'],
                 'plan' => $filters['plan'] ? (string) $filters['plan'] : '',
+                'clasificacion' => $filters['category'] ? (string) $filters['category'] : '',
                 'orden' => $filters['sort'] === 'name' ? '' : $filters['sort'],
             ],
             'counts' => [
@@ -77,6 +86,7 @@ class CompanyController extends Controller
             ],
             'statusOptions' => $this->statusOptions(),
             'planOptions' => MembershipPlan::query()->ordered()->get(['id', 'name'])->map(fn ($plan) => ['value' => $plan->id, 'label' => $plan->name]),
+            'categoryOptions' => BusinessCategory::query()->ordered()->get(['id', 'name'])->map(fn ($category) => ['value' => $category->id, 'label' => $category->name]),
             'sortOptions' => [['value' => '', 'label' => 'Por nombre'], ['value' => 'ends', 'label' => 'Vencen primero']],
             'activeCompanyId' => TenantContext::superAdminSelectedCompanyId(),
         ]);
@@ -89,7 +99,7 @@ class CompanyController extends Controller
     {
         $filters = $this->filters($request);
         $rows = $this->query($filters)
-            ->with(['plan:id,name,max_stores,max_users,max_registers', 'cycle:id,name'])
+            ->with(['plan:id,name,max_stores,max_users,max_registers', 'cycle:id,name', 'businessCategory:id,name'])
             ->withCount([
                 'stores as active_stores_count' => fn ($query) => $query->withoutGlobalScopes()->where('is_active', true),
                 'users as active_users_count' => fn ($query) => $query->where('is_active', true),
@@ -100,13 +110,14 @@ class CompanyController extends Controller
             $out = fopen('php://output', 'w');
             // BOM: Excel en espanol abre bien las tildes solo con esto.
             fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, ['Empresa', 'NIT', 'Ciudad', 'Correo', 'Plan', 'Ciclo', 'Estado', 'Vence', 'Sedes', 'Tope sedes', 'Usuarios', 'Tope usuarios', 'Activa'], ';');
+            fputcsv($out, ['Empresa', 'NIT', 'Ciudad', 'Clasificación', 'Correo', 'Plan', 'Ciclo', 'Estado', 'Vence', 'Sedes', 'Tope sedes', 'Usuarios', 'Tope usuarios', 'Activa'], ';');
 
             foreach ($rows as $company) {
                 fputcsv($out, [
                     $company->name,
                     $company->tax_id,
                     $company->city,
+                    $company->businessCategory?->name,
                     $company->email,
                     $company->plan?->name,
                     $company->cycle?->name,
@@ -130,12 +141,15 @@ class CompanyController extends Controller
 
         return Inertia::render('Platform/Companies/Create', [
             ...$this->membershipOptions(),
+            'categories' => app(BusinessCategoryCatalog::class)->options(),
+            'map' => MapConfig::current(),
             // Crear desde una solicitud: sus datos llegan puestos.
             'lead' => $lead ? [
                 'id' => $lead->id,
                 'company_name' => $lead->company_name,
                 'tax_id' => $lead->tax_id,
                 'city' => $lead->city,
+                'business_category_id' => $lead->business_category_id,
                 'contact_name' => $lead->contact_name,
                 'email' => $lead->email,
                 'phone' => $lead->phone,
@@ -168,6 +182,7 @@ class CompanyController extends Controller
 
         return Inertia::render('Platform/Companies/Edit', [
             ...$this->membershipOptions(),
+            'categories' => app(BusinessCategoryCatalog::class)->options($company->business_category_id),
             'company' => [
                 'id' => $company->id,
                 'name' => $company->name,
@@ -178,6 +193,7 @@ class CompanyController extends Controller
                 'phone' => $company->phone,
                 'address' => $company->address,
                 'city' => $company->city,
+                'business_category_id' => $company->business_category_id,
                 'is_active' => $company->is_active,
                 'show_on_landing' => $company->show_on_landing,
                 'deactivated_at' => $company->deactivated_at?->toIso8601String(),
@@ -201,6 +217,7 @@ class CompanyController extends Controller
                 ] : null,
             ],
             'usage' => $this->limiter->usage($company),
+            'planAccess' => $this->planAccess($company),
             'admins' => User::query()
                 ->where('company_id', $company->id)
                 ->whereHas('roles', fn ($query) => $query->where('name', 'admin'))
@@ -303,7 +320,7 @@ class CompanyController extends Controller
     }
 
     /**
-     * @return array{q: string, status: string, plan: ?int, sort: string}
+     * @return array{q: string, status: string, plan: ?int, category: ?int, sort: string}
      */
     protected function filters(Request $request): array
     {
@@ -314,12 +331,13 @@ class CompanyController extends Controller
             'q' => trim((string) $request->string('q')),
             'status' => in_array($status, [...Company::MEMBERSHIP_STATUSES, 'inactive'], true) ? $status : '',
             'plan' => $request->integer('plan') ?: null,
+            'category' => $request->integer('clasificacion') ?: null,
             'sort' => in_array($sort, ['name', 'ends'], true) ? $sort : 'name',
         ];
     }
 
     /**
-     * @param  array{q: string, status: string, plan: ?int, sort: string}  $filters
+     * @param  array{q: string, status: string, plan: ?int, category: ?int, sort: string}  $filters
      */
     protected function query(array $filters): Builder
     {
@@ -331,6 +349,7 @@ class CompanyController extends Controller
             ->when($filters['status'] === 'inactive', fn (Builder $query) => $query->where('is_active', false))
             ->when($filters['status'] !== '' && $filters['status'] !== 'inactive', fn (Builder $query) => $query->where('membership_status', $filters['status']))
             ->when($filters['plan'] !== null, fn (Builder $query) => $query->where('membership_plan_id', $filters['plan']))
+            ->when($filters['category'] !== null, fn (Builder $query) => $query->where('business_category_id', $filters['category']))
             ->when(
                 $filters['sort'] === 'ends',
                 fn (Builder $query) => $query->orderByRaw('membership_ends_at IS NULL')->orderBy('membership_ends_at'),
@@ -348,6 +367,7 @@ class CompanyController extends Controller
             'name' => $company->name,
             'tax_id' => $company->tax_id,
             'city' => $company->city,
+            'category' => $company->businessCategory?->name,
             'is_active' => $company->is_active,
             'plan' => $company->plan?->name,
             'cycle' => $company->cycle?->name,
@@ -357,6 +377,69 @@ class CompanyController extends Controller
             'days_left' => MembershipService::daysLeft($company),
             'stores' => ['used' => (int) $company->active_stores_count, 'limit' => $company->plan?->max_stores],
             'users' => ['used' => (int) $company->active_users_count, 'limit' => $company->plan?->max_users],
+        ];
+    }
+
+    /**
+     * La pestaña «Plan y funciones»: el arbol con el origen de cada nodo, las excepciones y los
+     * precios especiales (vigentes y su historia).
+     *
+     * @return array<string, mixed>
+     */
+    protected function planAccess(Company $company): array
+    {
+        $now = now();
+        $cycles = BillingCycle::query()->active()->ordered()->get();
+        $status = fn ($row) => match (true) {
+            $row->ends_at !== null && $row->ends_at->lte($now) => 'ended',
+            $row->starts_at->gt($now) => 'scheduled',
+            default => 'active',
+        };
+        $person = fn (?User $user) => $user ? trim($user->name.' '.$user->last_name) : null;
+
+        return [
+            'tree' => $company->entitlement()->tree(),
+            'catalogue' => app(PlanCatalogue::class)->editorCatalogue(),
+            'always' => Entitlements::alwaysPermissions(),
+            'exceptions' => $company->entitlementExceptions()
+                ->with(['createdBy:id,name,last_name', 'endedBy:id,name,last_name'])
+                ->limit(60)
+                ->get()
+                ->map(fn (CompanyEntitlement $exception) => [
+                    'id' => $exception->id,
+                    'node' => $exception->node,
+                    'label' => Entitlements::label($exception->node),
+                    'effect' => $exception->effect,
+                    'starts_at' => $exception->starts_at?->toIso8601String(),
+                    'ends_at' => $exception->ends_at?->toIso8601String(),
+                    'reason' => $exception->reason,
+                    'status' => $status($exception),
+                    'created_by' => $person($exception->createdBy),
+                    'ended_by' => $person($exception->endedBy),
+                ])->values()->all(),
+            'prices' => $company->planPrices()
+                ->with(['plan:id,name', 'createdBy:id,name,last_name'])
+                ->limit(30)
+                ->get()
+                ->map(fn (CompanyPlanPrice $price) => [
+                    'id' => $price->id,
+                    'plan' => $price->plan?->name,
+                    'membership_plan_id' => $price->membership_plan_id,
+                    'description' => $price->describe(),
+                    'monthly_price' => $price->monthly_price,
+                    'discount_percent' => $price->discount_percent,
+                    'starts_at' => $price->starts_at?->toIso8601String(),
+                    'ends_at' => $price->ends_at?->toIso8601String(),
+                    'reason' => $price->reason,
+                    'status' => $status($price),
+                    'created_by' => $person($price->createdBy),
+                ])->values()->all(),
+            // Lo que paga hoy en cada ciclo de su plan, con y sin el precio especial.
+            'pricing' => $company->plan ? $cycles->map(fn (BillingCycle $cycle) => [
+                'cycle' => $cycle->name,
+                'list' => MembershipPricing::priceFor($company->plan, $cycle),
+                'company' => MembershipPricing::priceFor($company->plan, $cycle, $company),
+            ])->values()->all() : [],
         ];
     }
 

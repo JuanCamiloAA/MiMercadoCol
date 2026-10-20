@@ -1,6 +1,7 @@
 import { CaretRightIcon, CheckIcon } from '@phosphor-icons/react';
 import { useMemo, useState } from 'react';
 import { AddToCartControl } from '@/components/storefront/AddToCartControl';
+import { ImageCarousel } from '@/components/storefront/ImageCarousel';
 import { StoreIcon } from '@/components/storefront/icons';
 import { Price } from '@/components/storefront/Price';
 import { StockNote } from '@/components/storefront/StockNote';
@@ -16,6 +17,8 @@ interface ServiceProps {
         category: { label: string; href: string } | null;
         tax_rate: number;
         pricing_mode: 'bundled' | 'itemized';
+        /** Todas sus fotos, la portada primero (el carrusel). */
+        images?: string[];
     };
     blocks: StoreBlock[];
 }
@@ -55,16 +58,20 @@ export default function StorefrontService({ service, blocks }: ServiceProps) {
             </nav>
 
             <article className="grid gap-5 rounded-[var(--store-radius)] border border-[var(--line)] bg-[var(--surface)] p-3 md:grid-cols-2 md:gap-8 md:p-6">
-                <div className="relative aspect-square overflow-hidden rounded-[var(--store-radius)] bg-white">
-                    <span className="absolute left-3 top-3 z-10 rounded-[8px] bg-[var(--accent)] px-2.5 py-1 text-[13px] font-bold text-[var(--accent-ink)]">Servicio</span>
-                    {service.image ? (
-                        <img src={service.image} alt={service.name} className="h-full w-full object-cover" />
-                    ) : (
+                <ImageCarousel
+                    images={service.images && service.images.length > 0 ? service.images : service.image ? [service.image] : []}
+                    alt={service.name}
+                    fit="cover"
+                    resetKey={service.id}
+                    fallback={
                         <span className="grid h-full w-full place-items-center text-[var(--muted)] opacity-50">
                             <StoreIcon name="Package" size={120} weight="duotone" />
                         </span>
-                    )}
-                </div>
+                    }
+                    overlay={
+                        <span className="absolute left-3 top-3 z-10 rounded-[8px] bg-[var(--accent)] px-2.5 py-1 text-[13px] font-bold text-[var(--accent-ink)]">Servicio</span>
+                    }
+                />
 
                 <div className="flex flex-col gap-3">
                     <h1 className="text-[24px] leading-tight md:text-[32px]">{service.name}</h1>

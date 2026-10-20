@@ -46,9 +46,49 @@ class StorefrontServiceCatalog
             ->with(['components.product', 'components.family']);
     }
 
+    /** Un servicio que el cliente puede pedir hoy: publicado y con existencias para una unidad. */
     public function find(Store $store, int $id): ?Service
     {
-        return $this->query($store)->find($id);
+        $service = $this->query($store)->find($id);
+
+        return $service && $this->available($service, $store) >= 1 ? $service : null;
+    }
+
+    /**
+     * Los que alcanzan para una unidad con la bodega de la tienda. Su disponible depende de sus
+     * articulos y no cabe en SQL, asi que se filtra aqui, con una sola consulta de existencias:
+     * la misma regla de los articulos (publicado sin disponible no se muestra) para los servicios.
+     *
+     * @param  Collection<int, Service>  $services
+     * @return Collection<int, Service>
+     */
+    public function onlyAvailable(Collection $services, Store $store): Collection
+    {
+        if ($services->isEmpty()) {
+            return $services;
+        }
+
+        $stock = $this->stockFor($services, $store);
+
+        return $services->filter(fn (Service $service) => $this->availableWith($service, $stock) >= 1)->values();
+    }
+
+    /**
+     * Cuantas unidades alcanzan de cada servicio, con una sola consulta de existencias. Es lo
+     * que lee el panel de la tienda para decir cual esta publicado pero oculto.
+     *
+     * @param  Collection<int, Service>  $services
+     * @return array<int, int>
+     */
+    public function availability(Collection $services, Store $store): array
+    {
+        if ($services->isEmpty()) {
+            return [];
+        }
+
+        $stock = $this->stockFor($services, $store);
+
+        return $services->mapWithKeys(fn (Service $service) => [$service->id => $this->availableWith($service, $stock)])->all();
     }
 
     /**

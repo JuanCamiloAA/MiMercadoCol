@@ -1,6 +1,7 @@
 import { router, useForm } from '@inertiajs/react';
-import { ArrowLeftIcon, ImageIcon, TrashIcon } from '@phosphor-icons/react';
+import { ArrowLeftIcon } from '@phosphor-icons/react';
 import { type FormEvent, useMemo } from 'react';
+import { type GalleryImage, ImageGalleryField } from '@/components/catalog/ImageGalleryField';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Checkbox, Input, Select, Textarea } from '@/components/ui/Field';
@@ -39,7 +40,9 @@ interface ProductFormProps {
     suppliers: { value: number; label: string }[];
     stores: { value: number; label: string }[];
     initialStocks: { store_id: number; store_name: string; quantity: number }[];
-    images?: { id: number; path: string }[];
+    images?: (GalleryImage & { path: string })[];
+    /** Cuántas fotos se le montan a cada artículo (Ajustes > Catálogo). */
+    imageLimit: number;
 }
 
 const UNITS = [
@@ -56,9 +59,9 @@ const TAX_RATES = [
     { value: 19, label: 'IVA 19 %' },
 ];
 
-export default function ProductForm({ mode, product, categories, suppliers, stores, initialStocks, images = [] }: ProductFormProps) {
+export default function ProductForm({ mode, product, categories, suppliers, stores, initialStocks, images = [], imageLimit }: ProductFormProps) {
     const family = product?.family ?? null;
-    const { data, setData, post, put, processing, errors } = useForm({
+    const { data, setData, post, processing, errors, transform } = useForm({
         category_id: product?.category_id ?? (categories[0]?.value ?? 0),
         supplier_id: product?.supplier_id ?? '',
         name: product?.name ?? '',
@@ -113,14 +116,12 @@ export default function ProductForm({ mode, product, categories, suppliers, stor
         event.preventDefault();
 
         if (mode === 'create') {
-            post(route('products.store'), { forceFormData: data.images.length > 0 });
+            post(route('products.store'), { forceFormData: data.images.length > 0, onSuccess: () => setData('images', []) });
         } else if (product) {
-            // Inertia no envia archivos con PUT: se usa POST con _method para no perder la subida.
-            router.post(
-                route('products.update', product.id),
-                { ...data, _method: 'put' },
-                { forceFormData: data.images.length > 0 },
-            );
+            // Inertia no envia archivos con PUT: se usa POST con _method para no perder la subida. Por el
+            // propio formulario, para que los errores (tambien el del tope de fotos) se vean.
+            transform((current) => ({ ...current, _method: 'put' }));
+            post(route('products.update', product.id), { forceFormData: data.images.length > 0, onSuccess: () => setData('images', []) });
         }
     };
 
@@ -344,54 +345,26 @@ export default function ProductForm({ mode, product, categories, suppliers, stor
                 </div>
 
                 <Card>
-                    <CardHeader
-                        title="Imagenes"
-                        description="La primera imagen es la portada: se ve en el listado, en el punto de venta y en la tienda."
+                    <CardHeader title="Fotos" description="La portada se ve en el listado, en el punto de venta y en la tarjeta de la tienda." />
+
+                    <ImageGalleryField
+                        images={images}
+                        files={data.images}
+                        limit={imageLimit}
+                        onAddFiles={(picked) => setData('images', [...data.images, ...picked])}
+                        onRemoveFile={(index) => setData('images', data.images.filter((_, position) => position !== index))}
+                        onRemove={
+                            product
+                                ? (image) => router.delete(route('products.images.destroy', [product.id, image.id]), { preserveScroll: true, preserveState: true })
+                                : undefined
+                        }
+                        onMakeCover={
+                            product
+                                ? (image) => router.patch(route('products.images.cover', [product.id, image.id]), {}, { preserveScroll: true, preserveState: true })
+                                : undefined
+                        }
+                        error={errors.images ?? (errors as Record<string, string | undefined>)['images.0']}
                     />
-
-                    {images.length > 0 && (
-                        <div className="mb-4 flex flex-wrap gap-2">
-                            {images.map((image) => (
-                                <div key={image.id} className="relative">
-                                    <img
-                                        src={`/storage/${image.path}`}
-                                        alt=""
-                                        className="size-24 rounded-control border border-[var(--line)] object-cover"
-                                    />
-                                    <button
-                                        type="button"
-                                        aria-label="Eliminar la imagen"
-                                        onClick={() =>
-                                            router.delete(route('products.images.destroy', [product!.id, image.id]), {
-                                                preserveScroll: true,
-                                            })
-                                        }
-                                        className="absolute -right-1.5 -top-1.5 grid size-6 place-items-center rounded-full border border-[var(--line)] bg-[var(--surface)] text-[var(--danger)] shadow-sm"
-                                    >
-                                        <TrashIcon size={13} />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    <label className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-card border border-dashed border-[var(--line-2)] px-4 py-6 text-center transition-colors hover:border-[var(--accent)] hover:bg-[var(--surface-2)]">
-                        <ImageIcon size={26} className="text-[var(--muted)]" />
-                        <span className="text-[0.84375rem] font-medium">
-                            {data.images.length > 0
-                                ? `${data.images.length} ${data.images.length === 1 ? 'imagen lista' : 'imagenes listas'} para subir`
-                                : 'Elegir imagenes'}
-                        </span>
-                        <span className="text-[0.75rem] text-[var(--muted)]">JPG, PNG o WebP · maximo 2 MB cada una</span>
-                        <input
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            multiple
-                            className="hidden"
-                            onChange={(event) => setData('images', Array.from(event.target.files ?? []))}
-                        />
-                    </label>
-                    {errors.images && <p className="mt-2 text-[0.78125rem] font-medium text-[var(--danger)]">{errors.images}</p>}
                 </Card>
 
                 {mode === 'create' && stores.length > 0 && (

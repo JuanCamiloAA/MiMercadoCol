@@ -1,5 +1,7 @@
 /** Tipos que comparten las tres pestañas del editor. */
 
+import type { FontPair } from '@/types/storefront';
+
 export type Dict = Record<string, unknown>;
 
 /** El editor de una sede o el de la plantilla de la plataforma: es el mismo editor. */
@@ -29,6 +31,14 @@ export interface FieldSchema {
     item?: Record<string, FieldSchema>;
     item_defaults?: Dict;
     kinds?: TargetKind[];
+    /** `design`: dentro de un repetidor, va en el grupo plegable «Diseño de esta lámina». */
+    group?: string;
+    /** Los campos de un `style` (`BannerStyle`): se guardan juntos en un objeto. */
+    fields?: Record<string, FieldSchema>;
+    /** Las versiones de una imagen o un video (`MediaVariants`): versión → clave hermana. */
+    variants?: Partial<Record<'mobile' | 'dark' | 'mobile_dark', string>>;
+    /** En una hermana: la clave del campo principal, que la edita junto con las demás. */
+    variant_of?: string;
 }
 
 export interface CatalogueEntry {
@@ -39,6 +49,8 @@ export interface CatalogueEntry {
     pages: string[];
     fields: Record<string, FieldSchema>;
     defaults: Dict;
+    /** El diseño de la sección de fábrica para este tipo (pestaña «Diseño»). */
+    appearance_defaults?: Dict;
 }
 
 export interface BlockRow {
@@ -81,10 +93,15 @@ export interface ThemeRow {
     deal_ink?: string;
     scheme: 'light' | 'dark' | 'auto';
     allow_scheme_toggle: boolean;
-    font_pair: 'moderna' | 'editorial' | 'cercana' | 'mercado';
+    font_pair: FontPair;
     radius: 'sharp' | 'soft' | 'round';
     density: 'compact' | 'cozy';
     button_style: 'solid' | 'outline';
+    logo_font: 'none' | 'italiana' | 'cormorant' | 'playfair' | 'anton';
+    surface: 'white' | 'warm' | 'cool' | 'sage' | 'sand';
+    heading_case: 'normal' | 'upper';
+    container: 'normal' | 'wide' | 'full';
+    button_shape: 'default' | 'pill' | 'square';
     logo: MediaRow | null;
     favicon: MediaRow | null;
     mark: MediaRow | null;
@@ -113,6 +130,8 @@ export interface NavItemRow {
     icon: string | null;
     target: TargetValue | null;
     highlight: boolean;
+    /** «Categorías ⌄»: abre el menú grande. */
+    opens_menu?: boolean;
 }
 
 export interface FooterLinkRow {
@@ -133,7 +152,8 @@ export interface SettingsRow {
     coverage: { mode: 'zones' | 'radius'; radius_km: number };
     slots: { enabled: boolean };
     payments: { cash_on_delivery: boolean; card_on_delivery: boolean; transfer: boolean; customer_credit: boolean };
-    catalog: { show_out_of_stock: boolean; price_per_unit: boolean; hide_zero_price?: boolean };
+    // `show_out_of_stock` quedó sin efecto: la tienda nunca muestra lo que no tiene disponible.
+    catalog: { show_out_of_stock?: boolean; price_per_unit: boolean; hide_zero_price?: boolean };
     texts: { delivery_note: string | null };
     seo: { title: string | null; description: string | null };
     topbar: {
@@ -151,6 +171,10 @@ export interface SettingsRow {
         cart_shows_total: boolean;
         search_placeholder: string;
         logo_mode: string;
+        layout: string;
+        overlay: boolean;
+        sticky_style: string;
+        search_style: string;
     };
     nav: {
         enabled: boolean;
@@ -159,8 +183,10 @@ export interface SettingsRow {
         items: NavItemRow[];
         show_all_categories: boolean;
         mega_menu: boolean;
+        style: string;
+        active_style: string;
     };
-    mobile_nav: { items: string[] };
+    mobile_nav: { enabled: boolean; items: string[] };
     card: {
         image_fit: string;
         image_bg: string;
@@ -172,7 +198,14 @@ export interface SettingsRow {
         stock_display: string;
         low_stock_threshold: number;
         price_size: string;
+        style: string;
+        image_ratio: string;
+        text_align: string;
+        show_swatches: boolean;
+        show_description: boolean;
+        image_hover: string;
     };
+    floating: { whatsapp: boolean; position: string };
     cart_bar: {
         enabled: boolean;
         show_free_delivery_progress: boolean;
@@ -199,13 +232,16 @@ export interface SettingsRow {
         terms_target: TargetValue | null;
         privacy_target: TargetValue | null;
         pqrs_target: TargetValue | null;
+        style: string;
+        tone: string;
+        newsletter: boolean;
     };
 }
 
 export type SettingsKey = keyof SettingsRow;
 
 /** Las piezas de la estructura global que se editan en Contenido. */
-export type StructureKey = 'topbar' | 'header' | 'nav' | 'cart_bar' | 'mobile_nav' | 'footer';
+export type StructureKey = 'topbar' | 'header' | 'nav' | 'cart_bar' | 'mobile_nav' | 'footer' | 'floating';
 
 export type Option = { value: string; label: string };
 
@@ -241,9 +277,27 @@ export interface Endpoints {
     products: string;
     media_index: string;
     media_store: string;
+    media_video_store: string;
     detach: string;
     reattach: string;
     preview_base?: string;
+}
+
+/** Los colores que sugiere una plantilla; los aplica la sede desde Aspecto, si quiere. */
+export interface PaletteSuggestion {
+    accent?: string;
+    deal_color?: string;
+}
+
+export interface TemplateOption {
+    id: number;
+    name: string;
+    description: string | null;
+    is_default: boolean;
+    audience?: string | null;
+    audience_group: string | null;
+    preview?: string | null;
+    palette?: PaletteSuggestion | null;
 }
 
 export interface TemplateInfo {
@@ -252,7 +306,9 @@ export interface TemplateInfo {
     name: string | null;
     is_default?: boolean;
     followers?: number;
-    available: { id: number; name: string; description: string | null; is_default: boolean }[];
+    /** Los colores sugeridos por la plantilla de la sede. */
+    palette?: PaletteSuggestion | null;
+    available: TemplateOption[];
 }
 
 export interface Issue {
@@ -300,4 +356,8 @@ export interface MediaConfig {
     accept: string;
     index: string;
     store: string;
+    /** Los videos (MP4 o WebM) de los bloques de video: otro tope y otra dirección de subida. */
+    video_max_kb: number;
+    video_accept: string;
+    video_store: string;
 }

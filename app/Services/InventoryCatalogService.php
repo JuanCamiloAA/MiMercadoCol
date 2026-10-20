@@ -145,6 +145,35 @@ class InventoryCatalogService
     }
 
     /**
+     * Unos articulos puntuales con su existencia, para precargar un formulario (una solicitud
+     * de traslado que llega desde «Tienda en linea»). En el orden en que se pidieron.
+     *
+     * @param  list<int>  $ids
+     * @return list<array<string, mixed>>
+     */
+    public function rowsFor(int $companyId, int $storeId, array $ids, ?int $warehouseId = null): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $products = Product::query()
+            ->withoutGlobalScopes()
+            ->where('company_id', $companyId)
+            ->where('is_active', true)
+            ->whereIn('id', $ids)
+            ->get()
+            ->keyBy('id');
+        $stock = $this->stockByProduct($companyId, $storeId, $products->keys()->all(), $warehouseId);
+
+        return collect($ids)
+            ->filter(fn (int $id) => $products->has($id))
+            ->map(fn (int $id) => $this->row($products->get($id), $stock[$id] ?? ['quantity' => 0.0, 'reserved' => 0.0]))
+            ->values()
+            ->all();
+    }
+
+    /**
      * Existencia y apartado de cada articulo en la sede.
      *
      * @param  list<int>  $productIds

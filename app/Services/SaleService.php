@@ -6,6 +6,9 @@ use App\Models\Customer;
 use App\Models\CustomerReturn;
 use App\Models\CustomerReturnItem;
 use App\Models\Employee;
+use App\Models\Order;
+use App\Models\PaymentMethod;
+use App\Models\PaymentTransaction;
 use App\Models\Product;
 use App\Models\RegisterSession;
 use App\Models\Sale;
@@ -16,6 +19,9 @@ use App\Models\Store;
 use App\Models\StoreCreditMovement;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Services\Payments\PaymentContext;
+use App\Services\Payments\PaymentMethodAvailability;
+use App\Services\Payments\PaymentMethodCatalog;
 use App\Support\Money;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
@@ -30,6 +36,9 @@ use Illuminate\Validation\ValidationException;
  */
 class SaleService
 {
+    /** Cuantos pagos admite un cobro: uno por medio configurado. */
+    public const MAX_PAYMENT_LINES = 10;
+
     /** De la accion mas restrictiva a la menos: quien la autorizo es quien queda en la venta. */
     public const APPROVAL_PRIORITY = ['service_add', 'credit', 'discount', 'service_remove', 'service_increase', 'service_reduce'];
 
@@ -43,6 +52,8 @@ class SaleService
         protected WarehouseService $warehouses,
         protected ServiceSaleBuilder $serviceLines,
         protected StoreCreditService $storeCredits,
+        protected PaymentMethodAvailability $paymentAvailability,
+        protected PaymentMethodCatalog $paymentCatalog,
     ) {}
 
     /**
@@ -218,14 +229,42 @@ class SaleService
             'discount' => $line['discount'],
         ], $computedLines));
 
+        $customer = null;
+
+        if (! empty($data['customer_id'])) {
+            $customer = Customer::query()
+                ->withoutGlobalScopes()
+                ->where('company_id', $store->company_id)
+                ->find($data['customer_id']);
+        }
+
+        // Cada pago con su medio configurado. En la caja el servidor revalida siempre que el medio
+        // valga aqui, a esta hora y por ese monto: lo que pinte el navegador es una sugerencia. Una
+        // venta en linea es la entrega de un pedido, cuyo medio se valido al tomarlo; tampoco se
+        // revalida lo que llega con `skip_payment_availability`.
+        $paymentContext = new PaymentContext(
+            $channel === Sale::CHANNEL_ONLINE ? PaymentMethod::CHANNEL_ONLINE : PaymentMethod::CHANNEL_POS,
+            $store->id,
+            $session?->register_id,
+            null,
+            null,
+            $customer,
+        );
+        $resolvedPayments = $this->paymentAvailability->resolve(
+            $store->company_id,
+            $paymentContext,
+            $data['payments'] ?? [],
+            enforce: $channel === Sale::CHANNEL_POS && ! ($data['skip_payment_availability'] ?? false),
+        );
+
         // Solo se redondea el efectivo del mostrador: con tarjeta, a credito o en un pedido en
-        // linea se cobra el valor exacto que el cliente ya vio.
+        // linea se cobra el valor exacto que el cliente ya vio. La regla es por `kind`.
         $step = $this->roundingStep($store->company_id);
-        $roundable = $channel === Sale::CHANNEL_POS && $this->isCashOnly($data['payments'] ?? []);
+        $roundable = $channel === Sale::CHANNEL_POS && $this->isCashOnly($resolvedPayments);
         $payable = $roundable ? $this->roundedTotal($totals['total'], $step) : $totals['total'];
         $rounding = $payable - $totals['total'];
 
-        $payments = $this->normalizePayments($data['payments'] ?? [], $payable);
+        $payments = $this->normalizePayments($resolvedPayments, $payable);
         $creditAmount = $this->creditAmount($payments);
         $storeCreditAmount = $this->methodAmount($payments, SalePayment::METHOD_STORE_CREDIT);
         $exchangeAmount = $this->methodAmount($payments, SalePayment::METHOD_EXCHANGE);
@@ -236,13 +275,12 @@ class SaleService
             throw ValidationException::withMessages(['payments' => ['El cambio por devolución solo se registra desde la devolución.']]);
         }
 
-        $customer = null;
-
-        if (! empty($data['customer_id'])) {
-            $customer = Customer::query()
-                ->withoutGlobalScopes()
-                ->where('company_id', $store->company_id)
-                ->find($data['customer_id']);
+        // Lo que entra por pasarela solo entra con su transaccion aprobada: la venta nace cuando
+        // la pasarela aprueba, no cuando el navegador lo dice.
+        // La caja valida el tiquete antes de abrir el cobro (`PosGatewayPayments::preview`), cuando
+        // la transaccion todavia no existe: esa venta se deshace y nunca se guarda.
+        if (empty($data['gateway_preview'])) {
+            $this->assertGatewayLines($payments, $store->company_id, isset($data['order_id']) ? (int) $data['order_id'] : null);
         }
 
         $storeCreditHeld = (bool) ($data['store_credit_held'] ?? false);
@@ -300,7 +338,7 @@ class SaleService
             }
 
             $prefix = $session?->register?->code ?? 'MOS';
-            $number = $this->numbers->nextSaleNumber($store->company_id, $store->id, $prefix);
+            $number = $this->numbers->nextSaleNumber($store->company_id, $prefix);
 
             $dueDate = null;
 
@@ -390,6 +428,8 @@ class SaleService
                 SalePayment::create([
                     'sale_id' => $sale->id,
                     'sequence' => $payment['sequence'],
+                    'payment_method_id' => $payment['payment_method_id'],
+                    'payment_transaction_id' => $payment['payment_transaction_id'],
                     'method' => $payment['method'],
                     'amount' => $payment['amount'],
                     'received_amount' => $payment['received_amount'],
@@ -602,7 +642,7 @@ class SaleService
 
         return DB::transaction(function () use ($original, $selected, $user, $store, $session, $method, $reason, $byId, $options) {
             $prefix = $session?->register?->code ?? 'MOS';
-            $number = $this->numbers->nextSaleNumber($store->company_id, $store->id, $prefix);
+            $number = $this->numbers->nextSaleNumber($store->company_id, $prefix);
 
             $total = 0;
             $base = 0;
@@ -693,12 +733,21 @@ class SaleService
                 }
             }
 
+            $refundChannel = $original->channel === Sale::CHANNEL_ONLINE ? PaymentMethod::CHANNEL_ONLINE : PaymentMethod::CHANNEL_POS;
+
             foreach ($payments as $sequence => $payment) {
+                $methodId = isset($payment['payment_method_id'])
+                    ? (int) $payment['payment_method_id']
+                    : $this->paymentCatalog->defaultFor($store->company_id, (string) $payment['method'], $refundChannel)->id;
+
                 SalePayment::create([
                     'sale_id' => $refund->id,
                     'sequence' => $sequence + 1,
+                    'payment_method_id' => $methodId,
+                    'payment_transaction_id' => $payment['payment_transaction_id'] ?? null,
                     'method' => $payment['method'],
                     'amount' => -(int) $payment['amount'],
+                    'reference' => $payment['reference'] ?? null,
                 ]);
             }
 
@@ -817,17 +866,27 @@ class SaleService
                 continue;
             }
 
-            // Repartir el cobro es combinar medios distintos, no cobrar dos veces por el mismo.
-            if (isset($seen[$method])) {
+            // Repartir el cobro es combinar medios distintos, no cobrar dos veces por el mismo. Un
+            // renglon por medio CONFIGURADO: Nequi y Daviplata, dos transferencias, valen juntos.
+            $methodId = isset($payment['payment_method_id']) && $payment['payment_method_id'] !== null ? (int) $payment['payment_method_id'] : null;
+            $key = $methodId !== null ? 'id:'.$methodId : 'kind:'.$method;
+            $name = ($payment['payment_method'] ?? null) instanceof PaymentMethod ? $payment['payment_method']->name : SalePayment::METHOD_LABELS[$method];
+
+            if (isset($seen[$key])) {
                 throw ValidationException::withMessages([
-                    'payments' => ['Hay dos pagos con el mismo medio ('.SalePayment::METHOD_LABELS[$method].').'],
+                    'payments' => ['Hay dos pagos con el mismo medio ('.$name.').'],
                 ]);
             }
 
-            $seen[$method] = true;
+            $seen[$key] = true;
             $received = isset($payment['received_amount']) ? (int) $payment['received_amount'] : null;
 
             if ($method === SalePayment::METHOD_CASH) {
+                // El cambio vive en la linea de efectivo: con dos no se sabria de cual sale.
+                if ($cashIndex !== null) {
+                    throw ValidationException::withMessages(['payments' => ['Un cobro admite un solo pago en efectivo.']]);
+                }
+
                 if ($received !== null && $received < $amount) {
                     throw ValidationException::withMessages([
                         'payments' => ['El efectivo recibido es menor que el monto asignado.'],
@@ -845,11 +904,13 @@ class SaleService
 
             $normalized[] = [
                 'sequence' => count($normalized) + 1,
+                'payment_method_id' => $methodId,
+                'payment_transaction_id' => isset($payment['payment_transaction_id']) ? (int) $payment['payment_transaction_id'] : null,
                 'method' => $method,
                 'amount' => $amount,
                 'received_amount' => $received,
                 'change_amount' => null,
-                'reference' => isset($payment['reference']) ? (string) $payment['reference'] : null,
+                'reference' => isset($payment['reference']) && $payment['reference'] !== '' ? (string) $payment['reference'] : null,
             ];
 
             $covered += $amount;
@@ -859,8 +920,8 @@ class SaleService
             throw ValidationException::withMessages(['payments' => ['Falta registrar el cobro.']]);
         }
 
-        if (count($normalized) > count(SalePayment::METHOD_LABELS)) {
-            throw ValidationException::withMessages(['payments' => ['Un cobro admite como maximo un pago por medio.']]);
+        if (count($normalized) > self::MAX_PAYMENT_LINES) {
+            throw ValidationException::withMessages(['payments' => ['Un cobro admite como maximo '.self::MAX_PAYMENT_LINES.' pagos.']]);
         }
 
         if ($covered < $total) {
@@ -1089,6 +1150,43 @@ class SaleService
         }
 
         return true;
+    }
+
+    /**
+     * Una linea de pasarela tiene que traer su transaccion: aprobada, de esta empresa, del mismo
+     * medio, por ese monto y todavia sin aplicar. Quien la aplica la tiene bloqueada.
+     *
+     * @param  list<array<string, mixed>>  $payments
+     */
+    protected function assertGatewayLines(array $payments, int $companyId, ?int $orderId = null): void
+    {
+        foreach ($payments as $payment) {
+            if (! in_array($payment['method'], PaymentMethod::GATEWAY_KINDS, true)) {
+                continue;
+            }
+
+            $transaction = $payment['payment_transaction_id']
+                ? PaymentTransaction::query()->withoutGlobalScopes()->where('company_id', $companyId)->find($payment['payment_transaction_id'])
+                : null;
+
+            $valid = $transaction
+                && $transaction->status === PaymentTransaction::STATUS_APPROVED
+                && (int) $transaction->payment_method_id === (int) $payment['payment_method_id'];
+
+            // La de un pedido ya se aplico al confirmarlo; al entregar se cobra lo alistado, que
+            // puede ser menos de lo pagado (la diferencia vuelve como saldo a favor).
+            $ofThisOrder = $valid && $orderId !== null
+                && $transaction->payable_type === (new Order)->getMorphClass()
+                && (int) $transaction->payable_id === $orderId;
+
+            $valid = $valid && ($ofThisOrder
+                ? (int) $payment['amount'] <= (int) $transaction->amount
+                : $transaction->applied_at === null && (int) $transaction->amount === (int) $payment['amount']);
+
+            if (! $valid) {
+                throw ValidationException::withMessages(['payments' => ['Lo que se cobra por pasarela entra solo cuando la pasarela lo aprueba.']]);
+            }
+        }
     }
 
     /**

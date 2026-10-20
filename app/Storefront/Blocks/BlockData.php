@@ -4,6 +4,9 @@ namespace App\Storefront\Blocks;
 
 use App\Models\StorefrontBlock;
 use App\Storefront\Targets;
+use App\Support\MediaVariants;
+use App\Support\SectionAppearance;
+use App\Support\VideoOptions;
 use Carbon\CarbonImmutable;
 
 /**
@@ -13,8 +16,12 @@ use Carbon\CarbonImmutable;
  * arma solo con `fields()`— y su renderizador en la tienda. Aqui viven las dos primeras.
  *
  * Tipos de campo que entiende el editor:
- *   text · textarea · markdown · number · toggle · select · media · icon · target · repeater
- *   categories · products · datetime
+ *   text · textarea · markdown · number · toggle · select · media · video · color · icon · target
+ *   repeater · categories · products · datetime
+ *
+ * `video` guarda el id de un video de la biblioteca, como `media` el de una imagen; su clave
+ * termina en `_media_id` (`video_media_id`) para que publicar, pintar e independizarse lo
+ * encuentren igual que a una imagen. `color` es un hexadecimal.
  *
  * Cada campo puede llevar `show_if` (`{field, value}`; `value` puede ser una lista) y los de
  * tipo `target`, los destinos que admite (`kinds`).
@@ -76,11 +83,12 @@ abstract class BlockData
      */
     public function normalize(array $payload, string $context = self::CONTEXT_STORE): array
     {
-        $payload = $this->upgrade($payload);
+        $payload = self::upgradeBackground($this->upgrade($payload));
         $fields = $this->fields($context);
         $clean = [];
 
-        foreach ($this->defaults() as $key => $default) {
+        // Las versiones de una imagen (celular, modo oscuro) no se repiten en los defectos de cada tipo.
+        foreach ($this->defaults() + MediaVariants::defaults($fields) as $key => $default) {
             if (! array_key_exists($key, $payload)) {
                 $clean[$key] = $default;
 
@@ -100,7 +108,68 @@ abstract class BlockData
         // Comun a todos: en la pagina de categoria, un bloque puede limitarse a unas categorias.
         $clean['only_categories'] = $context === self::CONTEXT_TEMPLATE ? [] : $this->ids($payload['only_categories'] ?? []);
 
+        // El diseño de la seccion: solo lo que alguien cambio. Un bloque que nunca toco la pestaña
+        // «Diseño» no lleva la clave, y su payload queda igual que antes de que existiera.
+        $appearance = SectionAppearance::normalize($payload['appearance'] ?? null, $this->appearanceDefaults(), SectionAppearance::SURFACE_STORE);
+
+        if ($appearance !== []) {
+            $clean['appearance'] = $appearance;
+        }
+
         return $clean;
+    }
+
+    /**
+     * El diseño de la seccion que tiene el tipo sin que nadie lo toque: lo que hoy pinta. Solo
+     * las claves que cambian respecto a lo neutro (`SectionAppearance::BASE`).
+     *
+     * @return array<string, mixed>
+     */
+    public function appearanceDefaults(): array
+    {
+        return [];
+    }
+
+    /**
+     * El fondo de antes (`background`: none/soft/dark/brand/custom + `background_color`) llevado a
+     * `appearance`. Lo usan `normalize()` con lo que llegue sin migrar (una version vieja que se
+     * restaura) y la migracion que paso los fondos guardados.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    public static function upgradeBackground(array $payload): array
+    {
+        if (! array_key_exists('background', $payload)) {
+            return $payload;
+        }
+
+        $appearance = is_array($payload['appearance'] ?? null) ? $payload['appearance'] : [];
+
+        if (! array_key_exists('bg_type', $appearance)) {
+            $appearance = array_merge($appearance, self::legacyBackground($payload['background'], $payload['background_color'] ?? null));
+        }
+
+        unset($payload['background'], $payload['background_color']);
+        $payload['appearance'] = $appearance;
+
+        return $payload;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function legacyBackground(mixed $background, mixed $color): array
+    {
+        return match ($background) {
+            'soft' => ['bg_type' => 'color', 'bg_color' => 'soft'],
+            'dark' => ['bg_type' => 'color', 'bg_color' => 'brand_dark'],
+            'brand' => ['bg_type' => 'color', 'bg_color' => 'brand'],
+            'custom' => is_string($color) && preg_match('/^#[0-9A-Fa-f]{6}$/', $color) === 1
+                ? ['bg_type' => 'color', 'bg_color' => strtoupper($color)]
+                : ['bg_type' => 'none'],
+            default => ['bg_type' => 'none'],
+        };
     }
 
     /**
@@ -242,6 +311,8 @@ abstract class BlockData
             'pages' => $this->pages(),
             'fields' => $this->fields($context),
             'defaults' => $this->normalize($this->defaults(), $context),
+            // Lo que vale cada clave del diseño sin tocarlo: la pestaña «Diseño» lo muestra.
+            'appearance_defaults' => SectionAppearance::defaults($this->appearanceDefaults(), SectionAppearance::SURFACE_STORE),
         ];
     }
 
@@ -283,6 +354,32 @@ abstract class BlockData
         }
 
         return $issues;
+    }
+
+    /**
+     * Revisa un video: que exista en la biblioteca y que no pese de mas. La descripcion se pide
+     * al subirlo, asi que aqui no puede faltar.
+     *
+     * @param  array<int, array{alt: string|null, bytes: int|null}>  $media
+     * @return list<array{level: 'block'|'warn', message: string}>
+     */
+    protected function videoIssues(mixed $id, array $media, string $where, bool $required = true): array
+    {
+        if (! is_numeric($id) || (int) $id <= 0) {
+            return $required ? [['level' => 'block', 'message' => $where.' no tiene video.']] : [];
+        }
+
+        $asset = $media[(int) $id] ?? null;
+
+        if ($asset === null) {
+            return [['level' => 'block', 'message' => $where.' usa un video que ya no está en la biblioteca.']];
+        }
+
+        if ((int) ($asset['bytes'] ?? 0) > VideoOptions::HEAVY_VIDEO_BYTES) {
+            return [['level' => 'warn', 'message' => $where.' pesa más de '.(VideoOptions::HEAVY_VIDEO_BYTES / 1048576).' MB: en celular tardará en arrancar.']];
+        }
+
+        return [];
     }
 
     /**
@@ -365,12 +462,14 @@ abstract class BlockData
                 : $default,
             'toggle' => filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? $default,
             'select' => $this->cleanSelect($field, $value, $default),
-            'media' => is_numeric($value) && (int) $value > 0 ? (int) $value : null,
+            'media', 'video' => is_numeric($value) && (int) $value > 0 ? (int) $value : null,
+            'color' => is_string($value) && preg_match('/^#[0-9A-Fa-f]{6}$/', $value) === 1 ? strtoupper($value) : $default,
             'icon' => is_string($value) && in_array($value, config('storefront_icons'), true) ? $value : $default,
             'target' => Targets::sanitize($value, $field['kinds'] ?? null),
             'categories', 'products' => $this->ids($value),
             'datetime' => $this->cleanDate($value),
             'repeater' => $this->cleanRepeater($field, $value),
+            'style' => BannerStyle::clean($value, $field['fields'] ?? []),
             default => $value,
         };
     }
@@ -428,6 +527,11 @@ abstract class BlockData
                 $clean[$key] = array_key_exists($key, $row)
                     ? $this->cleanField($item, $row[$key], $defaults[$key] ?? null)
                     : ($defaults[$key] ?? null);
+
+                // El diseño del banner sin cambios no se guarda: la fila queda como antes de existir.
+                if (($item['type'] ?? null) === 'style' && ($clean[$key] === [] || $clean[$key] === null)) {
+                    unset($clean[$key]);
+                }
             }
 
             // Lo que no se edita pero viaja con la fila (una imagen heredada) se conserva.
@@ -437,10 +541,105 @@ abstract class BlockData
                 }
             }
 
+            // El diseño de la lámina en modo oscuro: solo lo que alguien cambió; lo demás, como en claro.
+            $dark = $this->cleanDarkDesign($schema, $row['dark'] ?? null);
+
+            if ($dark !== []) {
+                $clean['dark'] = $dark;
+            }
+
             $rows[] = $clean;
         }
 
         return $rows;
+    }
+
+    /**
+     * Lo que cambia el diseño de una lámina en modo oscuro (`fila.dark`): los mismos campos de su
+     * grupo «Diseño» (color del texto, velo, estilo), limpios con su esquema. Lo vacío no se
+     * guarda: en modo oscuro vale lo de modo claro.
+     *
+     * @param  array<string, array<string, mixed>>  $schema
+     * @return array<string, mixed>
+     */
+    protected function cleanDarkDesign(array $schema, mixed $dark): array
+    {
+        if (! is_array($dark)) {
+            return [];
+        }
+
+        $clean = [];
+
+        foreach ($schema as $key => $field) {
+            if (($field['group'] ?? null) !== 'design' || ! array_key_exists($key, $dark) || $dark[$key] === null || $dark[$key] === '') {
+                continue;
+            }
+
+            $value = $this->cleanField($field, $dark[$key], null);
+
+            if ($value !== null && $value !== '' && $value !== []) {
+                $clean[$key] = $value;
+            }
+        }
+
+        return $clean;
+    }
+
+    /**
+     * Lo que conviene saber de las versiones de una imagen o un video (celular, modo oscuro):
+     * ninguna es obligatoria, pero la que esté puesta tiene que existir y describirse.
+     *
+     * @param  array<string, array<string, mixed>>  $fields  El esquema donde vive el campo (el bloque o el ítem de una lista).
+     * @param  array<string, mixed>  $data
+     * @param  array<int, array{alt: string|null, bytes: int|null}>  $media
+     * @return list<array{level: 'block'|'warn', message: string}>
+     */
+    protected function variantIssues(array $fields, string $key, array $data, array $media, string $where): array
+    {
+        $issues = [];
+        $video = ($fields[$key]['type'] ?? null) === 'video';
+
+        foreach ($fields[$key]['variants'] ?? [] as $variant => $sibling) {
+            $label = $where.' ('.mb_strtolower(MediaVariants::LABELS[$variant]).')';
+            array_push($issues, ...($video
+                ? $this->videoIssues($data[$sibling] ?? null, $media, $label, required: false)
+                : $this->imageIssues($data[$sibling] ?? null, $media, $label, required: false)));
+        }
+
+        return $issues;
+    }
+
+    /**
+     * Cuantas imagenes o videos del bloque no tienen version para modo oscuro. Lo usa la revision
+     * de publicar solo cuando la tienda se puede ver en los dos modos.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function missingDarkMedia(array $payload, string $context = self::CONTEXT_STORE): int
+    {
+        return MediaVariants::missingDark($this->fields($context), $payload);
+    }
+
+    /**
+     * «Diseño de esta lámina» de un banner que antes no lo tenía (un banner del mosaico, uno de
+     * los laterales): color del texto, velo y lo que diga `BannerStyle`. Vacíos, el banner se
+     * pinta como siempre (letra clara y el degradado de abajo).
+     *
+     * @param  list<string>  $styleKeys
+     * @return array<string, array<string, mixed>>
+     */
+    protected static function bannerDesign(array $styleKeys): array
+    {
+        return [
+            'text_color' => [
+                'type' => 'select',
+                'label' => 'Color del texto',
+                'group' => 'design',
+                'options' => self::options(['light' => 'Claro (sobre foto oscura)', 'dark' => 'Oscuro (sobre foto clara)']),
+            ],
+            'overlay' => ['type' => 'number', 'label' => 'Oscurecer la foto (%)', 'help' => 'Vacío: el degradado de siempre.', 'min' => 0, 'max' => 60, 'step' => 10, 'group' => 'design'],
+            'style' => BannerStyle::field($styleKeys, 'Diseño de este banner'),
+        ];
     }
 
     /**

@@ -31,6 +31,7 @@ class AnnouncementBlockData extends BlockData
     {
         return [
             'text' => ['type' => 'text', 'label' => 'Texto', 'max' => 120, 'required' => true],
+            'icon' => ['type' => 'icon', 'label' => 'Ícono', 'help' => 'Sin elegir: el megáfono.'],
             'link' => ['type' => 'target', 'label' => 'A dónde lleva', 'help' => 'Opcional.', 'kinds' => self::targetKinds($context)],
             'tone' => [
                 'type' => 'select',
@@ -46,7 +47,7 @@ class AnnouncementBlockData extends BlockData
 
     public function defaults(): array
     {
-        return ['text' => '', 'link' => null, 'tone' => 'accent'];
+        return ['text' => '', 'link' => null, 'tone' => 'accent', 'icon' => null];
     }
 
     public function pages(): array

@@ -7,8 +7,10 @@ use App\Models\Company;
 use App\Models\Store;
 use App\Models\Storefront;
 use App\Models\User;
+use App\Realtime\Topics;
 use App\Services\BrandThemeService;
 use App\Services\CartService;
+use App\Services\Membership\EntitlementService;
 use App\Services\Membership\MembershipService;
 use App\Services\SettingsService;
 use App\Services\Storefront\StorefrontRenderer;
@@ -98,7 +100,7 @@ class HandleInertiaRequests extends Middleware
             // Los canales que esta persona puede escuchar, ya armados. El navegador no compone
             // nombres de canal: si lo hiciera, un id mal puesto seria un intento de escuchar
             // otra empresa, y eso no deberia depender de codigo del navegador.
-            'realtime' => $this->realtime($user, $activeCompanyId, $activeStore),
+            'realtime' => $this->realtime($user, $activeCompanyId, $activeStore, $request->route()?->getName()),
             'activeCompany' => $this->activeCompany($activeCompanyId),
             // El selector de empresa del super usuario: «Todas» + la lista. Solo para el.
             'companiesForSelector' => fn () => $user?->isSuperAdmin()
@@ -134,8 +136,12 @@ class HandleInertiaRequests extends Middleware
                     ->all()
                 : [],
             'permissionMatrix' => fn () => $this->shouldSharePermissionMatrix($request)
-                ? PermissionHelper::catalogue()
+                ? PermissionHelper::catalogue(only: app(EntitlementService::class)->forCompanyId($activeCompanyId)?->permissions())
                 : null,
+            // Cuantas funciones del catalogo no trae el plan: la nota al pie del asignador.
+            'permissionMatrixHidden' => fn () => $this->shouldSharePermissionMatrix($request)
+                ? $this->hiddenByPlan($activeCompanyId)
+                : 0,
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
@@ -162,14 +168,15 @@ class HandleInertiaRequests extends Middleware
      *
      * @return array<string, mixed>
      */
-    protected function realtime(?User $user, ?int $companyId, ?Store $store): array
+    protected function realtime(?User $user, ?int $companyId, ?Store $store, ?string $routeName = null): array
     {
         if (! $user || $companyId === null) {
-            return ['enabled' => false, 'company_id' => null, 'store_id' => null, 'channels' => []];
+            return ['enabled' => false, 'company_id' => null, 'store_id' => null, 'channels' => [], 'topics' => []];
         }
 
-        // El catalogo es de la empresa: un precio nuevo lo es en todas las sedes.
-        $channels = ['catalog' => Channels::catalog($companyId)];
+        // El catalogo es de la empresa: un precio nuevo lo es en todas las sedes. `changes` es el
+        // aviso de que algo cambio en otra pestaña (`ResourcesChanged`).
+        $channels = ['catalog' => Channels::catalog($companyId), 'changes' => Channels::changes($companyId)];
 
         if ($store) {
             $channels += [
@@ -186,6 +193,8 @@ class HandleInertiaRequests extends Middleware
             'company_id' => $companyId,
             'store_id' => $store?->id,
             'channels' => $channels,
+            // Lo que esta pantalla muestra: un cambio de otro tema no la recarga.
+            'topics' => Topics::forRoute($routeName),
         ];
     }
 
@@ -393,6 +402,18 @@ class HandleInertiaRequests extends Middleware
             // Lo que el plan incluye: lo que no, no se pinta.
             'features' => $company->features(),
         ];
+    }
+
+    /** Cuantos permisos asignables deja fuera el plan de la empresa activa. */
+    protected function hiddenByPlan(?int $companyId): int
+    {
+        $entitlement = app(EntitlementService::class)->forCompanyId($companyId);
+
+        if (! $entitlement) {
+            return 0;
+        }
+
+        return count(array_diff(PermissionHelper::assignablePermissions(), $entitlement->permissions()));
     }
 
     /**

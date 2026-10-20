@@ -13,7 +13,6 @@ final class SettingRequests
         'delivery' => DeliverySettingRequest::class,
         'coverage' => CoverageSettingRequest::class,
         'slots' => SlotsSettingRequest::class,
-        'payments' => PaymentsSettingRequest::class,
         'catalog' => CatalogSettingRequest::class,
         'texts' => TextsSettingRequest::class,
         'seo' => SeoSettingRequest::class,
@@ -27,6 +26,7 @@ final class SettingRequests
         'product_page' => ProductPageSettingRequest::class,
         'search' => SearchSettingRequest::class,
         'footer' => FooterSettingRequest::class,
+        'floating' => FloatingSettingRequest::class,
     ];
 
     /**

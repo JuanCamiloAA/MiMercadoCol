@@ -10,14 +10,17 @@ interface LandingPublicProps {
     panel: { name: string; url: string } | null;
     blocks: LandingBlockView[];
     isPreview: boolean;
+    /** En la vista previa: el modo que el editor está revisando (Claro | Oscuro). */
+    previewScheme?: 'light' | 'dark' | null;
 }
 
 /**
  * La landing de la plataforma (`/`). La vista previa del editor pinta este mismo componente con
  * el borrador, dentro de un `iframe`.
  */
-export default function LandingPublic({ site, panel, blocks, isPreview }: LandingPublicProps) {
-    useTheme('light');
+export default function LandingPublic({ site, panel, blocks, isPreview, previewScheme = null }: LandingPublicProps) {
+    // En la vista previa manda el modo que revisa el editor, sin tocar lo que escogió quien mira.
+    useTheme(previewScheme ?? 'light', previewScheme !== null);
     useFlash();
 
     // En la vista previa los enlaces no navegan: el marco se quedaria en otra pagina.

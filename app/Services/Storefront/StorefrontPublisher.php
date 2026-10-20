@@ -5,10 +5,12 @@ namespace App\Services\Storefront;
 use App\Models\Category;
 use App\Models\Coupon;
 use App\Models\MediaAsset;
+use App\Models\PaymentMethod;
 use App\Models\Storefront;
 use App\Models\StorefrontBlock;
 use App\Models\StorefrontVersion;
 use App\Models\User;
+use App\Services\Payments\PaymentMethodAvailability;
 use App\Storefront\BlockCatalogue;
 use App\Storefront\Targets;
 use App\Support\Color;
@@ -53,6 +55,14 @@ class StorefrontPublisher
      *
      * @return array{blocking: list<array{message: string, hint: string|null}>, warnings: list<array{message: string, hint: string|null}>}
      */
+    /** El aviso de las imagenes sin version de modo oscuro. Avisa, no bloquea: en oscuro va la clara. */
+    public static function darkWarning(int $missing): string
+    {
+        return $missing === 1
+            ? '1 imagen o video no tiene versión para modo oscuro: en oscuro se verá la de modo claro.'
+            : $missing.' imágenes o videos no tienen versión para modo oscuro: en oscuro se verá la de modo claro.';
+    }
+
     public function validate(Storefront $storefront): array
     {
         $storefront->loadMissing(['theme', 'blocks', 'settings', 'zones', 'slots', 'template', 'store']);
@@ -60,12 +70,16 @@ class StorefrontPublisher
         $blocking = [];
         $warnings = [];
 
-        $payments = $storefront->setting('payments', []);
+        // Los medios de pago no se publican con la tienda (son operacion): se mira que la sede
+        // tenga al menos uno encendido para la tienda en linea.
+        $online = app(PaymentMethodAvailability::class)
+            ->configuredOnline((int) $storefront->company_id, (int) $storefront->store_id)
+            ->reject(fn (PaymentMethod $method) => $method->kind === PaymentMethod::KIND_STORE_CREDIT);
 
-        if (! collect($payments)->filter()->count()) {
+        if ($online->isEmpty()) {
             $blocking[] = [
-                'message' => 'No hay ningún medio de pago habilitado.',
-                'hint' => 'Funciones · Medios de pago',
+                'message' => 'No hay ningún medio de pago para la tienda en línea de esta sede.',
+                'hint' => 'Medios de pago · enciende uno para la tienda',
             ];
         }
 
@@ -94,6 +108,8 @@ class StorefrontPublisher
         $ownDesign = ! $storefront->usesTemplate();
         $blocks = $ownDesign ? $storefront->blocks : collect();
         $media = $this->mediaFacts($blocks, (int) $storefront->company_id);
+        // Las versiones de modo oscuro son opcionales: solo se avisa si la tienda puede verse en los dos modos.
+        $bothModes = ($storefront->theme?->scheme === 'auto') || (bool) $storefront->theme?->allow_scheme_toggle;
 
         foreach ($blocks as $block) {
             if (! BlockCatalogue::has($block->type)) {
@@ -117,6 +133,13 @@ class StorefrontPublisher
                 $warnings[] = [
                     'message' => $definition->summary($block->payload ?? []).' no tiene nada que mostrar.',
                     'hint' => 'Contenido',
+                ];
+            }
+
+            if ($bothModes && $block->is_visible && ($missing = $definition->missingDarkMedia($block->payload ?? [])) > 0) {
+                $warnings[] = [
+                    'message' => $definition->label().' ('.mb_strtolower($where).'): '.self::darkWarning($missing),
+                    'hint' => 'Contenido · '.$where,
                 ];
             }
         }

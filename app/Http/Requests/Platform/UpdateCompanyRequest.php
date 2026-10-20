@@ -38,6 +38,10 @@ class UpdateCompanyRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:40'],
             'address' => ['nullable', 'string', 'max:160'],
             'city' => ['nullable', 'string', 'max:80'],
+            // Una desactivada se puede conservar, no elegir de nuevo.
+            'business_category_id' => ['required', 'integer', Rule::exists('business_categories', 'id')->where(
+                fn ($query) => $query->where('is_active', true)->orWhere('id', $company->business_category_id)
+            )],
             'show_on_landing' => ['required', 'boolean'],
 
             'membership_plan_id' => ['nullable', 'integer', Rule::exists(MembershipPlan::class, 'id')],
@@ -85,7 +89,7 @@ class UpdateCompanyRequest extends FormRequest
      */
     public function legalData(): array
     {
-        return $this->safe()->only(['name', 'legal_name', 'tax_id', 'email', 'phone', 'address', 'city', 'show_on_landing']);
+        return $this->safe()->only(['name', 'legal_name', 'tax_id', 'email', 'phone', 'address', 'city', 'business_category_id', 'show_on_landing']);
     }
 
     /**

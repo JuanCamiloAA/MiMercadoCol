@@ -51,7 +51,7 @@
         </tr>
         @foreach ($summary['payments_by_method'] as $method)
             <tr>
-                <td>Ventas en {{ mb_strtolower($method['label']) }} ({{ $method['count'] }})</td>
+                <td>Ventas · {{ $method['label'] }} ({{ $method['count'] }})</td>
                 <td class="right num">$ {{ number_format($method['total'], 0, ',', '.') }}</td>
             </tr>
         @endforeach

@@ -4,7 +4,7 @@ import { type FormEvent, type ReactNode, useMemo, useState } from 'react';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Checkbox, Input } from '@/components/ui/Field';
-import { EmptyState } from '@/components/ui/Table';
+import { EmptyState, Table } from '@/components/ui/Table';
 import { PageHeader } from '@/components/ui/Misc';
 import AppLayout from '@/layouts/AppLayout';
 import { suggestedDisposition } from '@/lib/customer-returns';
@@ -213,80 +213,78 @@ export default function CustomerReturnCreate({ search, notFound, cancelled, sale
                         <div className="px-5 pt-5">
                             <CardHeader title="¿Qué devuelve?" description="Por artículo: cuánto y por qué. Un servicio vuelve con sus artículos, en proporción." />
                         </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full border-collapse text-sm">
-                                <thead className="bg-[var(--surface-2)] text-left">
-                                    <tr className="text-[0.75rem] uppercase tracking-wide text-[var(--muted)]">
-                                        <th className="px-4 py-2.5 font-semibold">Artículo</th>
-                                        <th className="px-4 py-2.5 text-right font-semibold">Quedan</th>
-                                        <th className="px-4 py-2.5 text-right font-semibold">Devuelve</th>
-                                        <th className="px-4 py-2.5 font-semibold">Motivo</th>
-                                        {form.data.received && <th className="px-4 py-2.5 font-semibold">Destino</th>}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {sale.items.map((item) => {
-                                        const line = lineFor(item.id);
-                                        const share = item.quantity > 0 ? line.quantity / item.quantity : 0;
+                        <Table className="mt-4 rounded-none border-x-0 border-b-0">
+                            <thead className="bg-[var(--surface-2)] text-left">
+                                <tr className="text-[0.75rem] uppercase tracking-wide text-[var(--muted)]">
+                                    <th className="px-4 py-2.5 font-semibold">Artículo</th>
+                                    <th className="px-4 py-2.5 text-right font-semibold">Quedan</th>
+                                    <th className="px-4 py-2.5 text-right font-semibold">Devuelve</th>
+                                    <th className="px-4 py-2.5 font-semibold">Motivo</th>
+                                    {form.data.received && <th className="px-4 py-2.5 font-semibold">Destino</th>}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {sale.items.map((item) => {
+                                    const line = lineFor(item.id);
+                                    const share = item.quantity > 0 ? line.quantity / item.quantity : 0;
 
-                                        return (
-                                            <ItemRow
-                                                key={item.id}
-                                                description={item.description}
-                                                detail={`Vendidas ${number(item.quantity)}${item.refunded > 0 ? ` · devueltas ${number(item.refunded)}` : ''}${item.held > 0 ? ` · ${number(item.held)} en otra devolución abierta` : ''}`}
-                                                available={item.available}
-                                                quantity={line.quantity}
-                                                onQuantity={(value) => setLine(item.id, { quantity: Math.min(item.available, Math.max(0, value)) })}
-                                                step={item.sold_by_weight ? '0.001' : '1'}
-                                                reason={line.reason}
-                                                reasons={reasons}
-                                                onReason={(value) => setLine(item.id, { reason: value })}
-                                                showDisposition={form.data.received}
-                                                disposition={item.product_id ? line.disposition : null}
-                                                dispositions={DISPOSITIONS.filter((option) => option.value !== 'none')}
-                                                onDisposition={(value) => setLine(item.id, { disposition: value })}
-                                            >
-                                                {line.quantity > 0 &&
-                                                    item.components.map((component) => {
-                                                        const own = lines[component.id];
-                                                        const value: Disposition = own?.disposition ?? (component.returnable_by_default ? suggestedDisposition(line.reason, wasteReasons) : 'none');
+                                    return (
+                                        <ItemRow
+                                            key={item.id}
+                                            description={item.description}
+                                            detail={`Vendidas ${number(item.quantity)}${item.refunded > 0 ? ` · devueltas ${number(item.refunded)}` : ''}${item.held > 0 ? ` · ${number(item.held)} en otra devolución abierta` : ''}`}
+                                            available={item.available}
+                                            quantity={line.quantity}
+                                            onQuantity={(value) => setLine(item.id, { quantity: Math.min(item.available, Math.max(0, value)) })}
+                                            step={item.sold_by_weight ? '0.001' : '1'}
+                                            reason={line.reason}
+                                            reasons={reasons}
+                                            onReason={(value) => setLine(item.id, { reason: value })}
+                                            showDisposition={form.data.received}
+                                            disposition={item.product_id ? line.disposition : null}
+                                            dispositions={DISPOSITIONS.filter((option) => option.value !== 'none')}
+                                            onDisposition={(value) => setLine(item.id, { disposition: value })}
+                                        >
+                                            {line.quantity > 0 &&
+                                                item.components.map((component) => {
+                                                    const own = lines[component.id];
+                                                    const value: Disposition = own?.disposition ?? (component.returnable_by_default ? suggestedDisposition(line.reason, wasteReasons) : 'none');
 
-                                                        return (
-                                                            <tr key={component.id} className="text-[0.78125rem] text-[var(--muted)]">
-                                                                <td className="px-4 py-1.5 pl-9">· {component.description}</td>
-                                                                <td />
-                                                                <td className="px-4 py-1.5 text-right font-mono tabular">{number(Math.round(component.quantity * share * 1000) / 1000)}</td>
-                                                                <td />
-                                                                {form.data.received && (
-                                                                    <td className="px-4 py-1.5">
-                                                                        <select
-                                                                            aria-label={`Destino de ${component.description}`}
-                                                                            value={value}
-                                                                            onChange={(event) =>
-                                                                                setLines((current) => ({
-                                                                                    ...current,
-                                                                                    [component.id]: { quantity: 0, reason: line.reason, disposition: event.target.value as Disposition },
-                                                                                }))
-                                                                            }
-                                                                            className="h-8 rounded-control border border-[var(--line)] bg-[var(--surface)] px-2 text-[0.75rem] focus:border-[var(--accent)] focus:outline-none"
-                                                                        >
-                                                                            {DISPOSITIONS.map((option) => (
-                                                                                <option key={option.value} value={option.value}>
-                                                                                    {option.label}
-                                                                                </option>
-                                                                            ))}
-                                                                        </select>
-                                                                    </td>
-                                                                )}
-                                                            </tr>
-                                                        );
-                                                    })}
-                                            </ItemRow>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
+                                                    return (
+                                                        <tr key={component.id} className="text-[0.78125rem] text-[var(--muted)]">
+                                                            <td className="px-4 py-1.5 pl-9">· {component.description}</td>
+                                                            <td />
+                                                            <td className="px-4 py-1.5 text-right font-mono tabular">{number(Math.round(component.quantity * share * 1000) / 1000)}</td>
+                                                            <td />
+                                                            {form.data.received && (
+                                                                <td className="px-4 py-1.5">
+                                                                    <select
+                                                                        aria-label={`Destino de ${component.description}`}
+                                                                        value={value}
+                                                                        onChange={(event) =>
+                                                                            setLines((current) => ({
+                                                                                ...current,
+                                                                                [component.id]: { quantity: 0, reason: line.reason, disposition: event.target.value as Disposition },
+                                                                            }))
+                                                                        }
+                                                                        className="h-8 rounded-control border border-[var(--line)] bg-[var(--surface)] px-2 text-[0.75rem] focus:border-[var(--accent)] focus:outline-none"
+                                                                    >
+                                                                        {DISPOSITIONS.map((option) => (
+                                                                            <option key={option.value} value={option.value}>
+                                                                                {option.label}
+                                                                            </option>
+                                                                        ))}
+                                                                    </select>
+                                                                </td>
+                                                            )}
+                                                        </tr>
+                                                    );
+                                                })}
+                                        </ItemRow>
+                                    );
+                                })}
+                            </tbody>
+                        </Table>
                     </Card>
 
                     <Card>

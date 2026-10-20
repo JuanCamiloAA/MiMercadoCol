@@ -3,7 +3,9 @@
 namespace App\Http\Requests;
 
 use App\Http\Controllers\Pos\AuthorizationController;
+use App\Models\PaymentMethod;
 use App\Models\SalePayment;
+use App\Services\SaleService;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -39,9 +41,16 @@ class StorePosSaleRequest extends FormRequest
             'items.*.discount' => ['nullable', 'integer', 'min:0'],
             // El cajero puede decidir no aplicarle la promocion a una linea.
             'items.*.skip_promotion' => ['nullable', 'boolean'],
-            // Hasta cuatro pagos: uno por medio. El reparto se combina, no se repite.
-            'payments' => ['required', 'array', 'min:1', 'max:'.count($this->paymentMethods())],
-            'payments.*.method' => ['required', 'distinct', Rule::in($this->paymentMethods())],
+            // Un pago por medio CONFIGURADO: Nequi y Daviplata son dos transferencias y valen juntos.
+            // Si el medio vale en esta caja, a esta hora y por ese monto lo decide el servidor
+            // (`PaymentMethodAvailability`); aqui solo se mira la forma.
+            'payments' => ['required', 'array', 'min:1', 'max:'.SaleService::MAX_PAYMENT_LINES],
+            'payments.*.payment_method_id' => [
+                'nullable', 'integer', 'distinct',
+                Rule::exists('payment_methods', 'id')->where(fn ($query) => $query->where('company_id', $companyId)),
+            ],
+            // Sin medio configurado se puede decir solo el `kind`: se usa el de fabrica de la caja.
+            'payments.*.method' => ['required_without:payments.*.payment_method_id', 'nullable', 'distinct', Rule::in($this->paymentMethods())],
             'payments.*.amount' => ['required', 'integer', 'min:1'],
             'payments.*.received_amount' => ['nullable', 'integer', 'min:0'],
             'payments.*.reference' => ['nullable', 'string', 'max:60'],
@@ -86,7 +95,9 @@ class StorePosSaleRequest extends FormRequest
     public function saleData(): array
     {
         $data = $this->validated();
-        $needsCredit = collect($data['payments'] ?? [])->contains(fn ($payment) => ($payment['method'] ?? null) === SalePayment::METHOD_CREDIT);
+        $creditMethods = PaymentMethod::query()->where('kind', PaymentMethod::KIND_CREDIT)->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $needsCredit = collect($data['payments'] ?? [])->contains(fn ($payment) => ($payment['method'] ?? null) === SalePayment::METHOD_CREDIT
+            || in_array((int) ($payment['payment_method_id'] ?? 0), $creditMethods, true));
         $action = $needsCredit ? 'credit' : 'discount';
 
         $data['approver'] = AuthorizationController::approverFor($this, $action);
@@ -125,7 +136,10 @@ class StorePosSaleRequest extends FormRequest
             'items.required' => 'El tiquete no tiene articulos.',
             'items.*.quantity.gt' => 'Las cantidades deben ser mayores que cero.',
             'payments.required' => 'Falta registrar el cobro.',
-            'payments.max' => 'Un cobro admite como maximo un pago por medio.',
+            'payments.max' => 'Un cobro admite como maximo '.SaleService::MAX_PAYMENT_LINES.' pagos.',
+            'payments.*.payment_method_id.distinct' => 'Hay dos pagos con el mismo medio.',
+            'payments.*.payment_method_id.exists' => 'Ese medio de pago no existe.',
+            'payments.*.method.in' => 'Medio de pago no reconocido.',
             'payments.*.method.distinct' => 'Hay dos pagos con el mismo medio.',
             'payments.*.amount.min' => 'Un pago en cero no se registra: quitalo del cobro.',
             'register_session_id.exists' => 'Esa caja ya no esta abierta. Recarga el punto de venta.',

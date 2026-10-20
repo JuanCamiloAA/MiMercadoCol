@@ -28,6 +28,21 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Archivos subidos y adjuntos
+    |--------------------------------------------------------------------------
+    |
+    | Donde quedan las fotos, logos y banners (`uploads`) y los adjuntos privados: fotos de
+    | devoluciones, archivos de importacion (`private_uploads`). En produccion, Firebase.
+    | Todo el codigo los usa por `App\Support\Uploads`, nunca por el nombre del disco.
+    |
+    */
+
+    'uploads' => env('UPLOADS_DISK', 'public'),
+
+    'private_uploads' => env('PRIVATE_UPLOADS_DISK', 'local'),
+
     'disks' => [
 
         'local' => [
@@ -43,6 +58,32 @@ return [
             'url' => env('APP_URL').'/storage',
             'visibility' => 'public',
             'throw' => false,
+        ],
+
+        /*
+         * Firebase Storage (un bucket de Cloud Storage). Lo publico va bajo `public/` y se sirve con
+         * el enlace de descarga de Firebase; lo privado, bajo `private/`, sin enlace: lo sirve la
+         * aplicacion con permiso. La llave es la de la cuenta de servicio del proyecto.
+         */
+        'firebase' => [
+            'driver' => 'firebase',
+            'credentials' => env('FIREBASE_CREDENTIALS'),
+            'bucket' => env('FIREBASE_STORAGE_BUCKET'),
+            'root' => 'public',
+            'public' => true,
+            // El token de los enlaces publicos. Vacio, sale de la llave de la aplicacion; cambiarlo
+            // exige `php artisan uploads:firebase --retag` para que los enlaces viejos sigan sirviendo.
+            'download_token' => env('FIREBASE_DOWNLOAD_TOKEN'),
+            'throw' => true,
+        ],
+
+        'firebase_private' => [
+            'driver' => 'firebase',
+            'credentials' => env('FIREBASE_CREDENTIALS'),
+            'bucket' => env('FIREBASE_STORAGE_BUCKET'),
+            'root' => 'private',
+            'public' => false,
+            'throw' => true,
         ],
 
         's3' => [

@@ -25,7 +25,7 @@ use Inertia\Response;
 class PreviewController extends Controller
 {
     /** Lo que el editor cambia sin pedir otra firma. */
-    public const FREE_PARAMETERS = ['device', 'page', 'category', 'product', 'v'];
+    public const FREE_PARAMETERS = ['device', 'page', 'category', 'product', 'scheme', 'v'];
 
     public function __construct(
         protected StorefrontRenderer $renderer,
@@ -46,6 +46,7 @@ class PreviewController extends Controller
             isset($validated['category']) ? (int) $validated['category'] : null,
             isset($validated['product']) ? (int) $validated['product'] : null,
             $validated['device'] ?? null,
+            $validated['scheme'] ?? null,
         ));
     }
 
@@ -59,6 +60,8 @@ class PreviewController extends Controller
             'page' => ['nullable', Rule::in(StorefrontPreviewBuilder::VIEWS)],
             'category' => ['nullable', 'integer'],
             'product' => ['nullable', 'integer'],
+            // El modo que el editor está revisando (Claro | Oscuro); sin él, el de la tienda.
+            'scheme' => ['nullable', Rule::in(['light', 'dark'])],
         ]);
     }
 }

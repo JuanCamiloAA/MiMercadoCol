@@ -20,6 +20,8 @@ class CustomerReturnItem extends Model
         'damaged' => 'Dañado o roto',
         'expired' => 'Vencido o en mal estado',
         'wrong_item' => 'No es lo que pidió',
+        // Lo primero que se devuelve en una tienda de ropa: vuelve al inventario, no es averia.
+        'wrong_size' => 'La talla o la medida no le quedó',
         'quality' => 'No cumple lo esperado',
         'changed_mind' => 'Ya no lo quiere',
         'other' => 'Otro',

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Support\Color;
+use App\Support\Uploads;
 
 /**
  * De los ajustes de marca a lo que necesitan el blade y el front: nombre, imagenes, tokens de
@@ -112,7 +113,8 @@ class BrandThemeService
 
     /**
      * Sin empresa (el ingreso con varias empresas, el consolidado del super usuario, la landing)
-     * manda la marca de plataforma: nombre, logo, color y fuentes de Plataforma > Landing.
+     * manda la marca de plataforma: nombre, logos, isotipo, favicon, color y fuentes de
+     * Plataforma > Landing. Va solo por aqui: una empresa sin logo no la hereda.
      *
      * @return array<string, mixed>
      */
@@ -120,12 +122,23 @@ class BrandThemeService
     {
         $platform = app(PlatformSettingsService::class);
         $accent = $platform->get('platform.brand_accent');
-        $logo = $platform->get('platform.brand_logo');
+        $path = function (string $key) use ($platform): ?string {
+            $value = $platform->get($key);
+
+            return is_string($value) && $value !== '' ? $value : null;
+        };
+        $logo = $path('platform.brand_logo');
+        $logoDark = $path('platform.brand_logo_dark');
+        $mark = $path('platform.brand_mark');
+        $favicon = $path('landing.favicon') ?? $mark;
 
         return array_merge(SettingsService::DEFAULTS, array_filter([
             'brand.display_name' => $platform->name(),
             'brand.accent' => Color::isHex($accent) ? strtoupper((string) $accent) : null,
-            'brand.logo_light' => is_string($logo) && $logo !== '' ? ['path' => $logo] : null,
+            'brand.logo_light' => $logo ? ['path' => $logo] : null,
+            'brand.logo_dark' => $logoDark ? ['path' => $logoDark] : null,
+            // El isotipo cuadrado sirve tambien de icono de iOS; la pestaña lleva el favicon.
+            'brand.mark' => $favicon !== null ? array_filter(['path' => $mark, 'favicon' => $favicon, 'touch' => $mark]) : null,
             'appearance.font_body' => $platform->get('platform.font_body'),
             'appearance.font_display' => $platform->get('platform.font_display'),
             'appearance.font_numeric' => $platform->get('platform.font_numeric'),
@@ -381,7 +394,7 @@ class BrandThemeService
 
     protected function url(?string $path): ?string
     {
-        return $path ? '/storage/'.ltrim($path, '/') : null;
+        return Uploads::url($path);
     }
 
     /**

@@ -1,11 +1,13 @@
 import { router } from '@inertiajs/react';
-import { ArrowLeftIcon, CaretDownIcon, CaretRightIcon, ImageIcon, PlusIcon, StarIcon, TrashIcon, WarningCircleIcon, XIcon } from '@phosphor-icons/react';
+import { ArrowLeftIcon, CaretDownIcon, CaretRightIcon, PlusIcon, StarIcon, TrashIcon, WarningCircleIcon } from '@phosphor-icons/react';
 import { type FormEvent, type KeyboardEvent, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { ImageGalleryField } from '@/components/catalog/ImageGalleryField';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Checkbox, Input, Select, Textarea } from '@/components/ui/Field';
 import { Badge, PageHeader } from '@/components/ui/Misc';
+import { Table } from '@/components/ui/Table';
 import AppLayout from '@/layouts/AppLayout';
 import { cn } from '@/lib/cn';
 import { money } from '@/lib/format';
@@ -59,7 +61,9 @@ interface Props {
     };
     rows: ExistingRow[];
     attributes: AttributeRow[];
-    images: { id: number; url: string; value_id: number | null }[];
+    images: { id: number; url: string; value_id: number | null; is_cover: boolean }[];
+    /** Cuántas fotos comunes se le montan (Ajustes > Catálogo). */
+    imageLimit: number;
     categories: SelectOption[];
     suppliers: SelectOption[];
     stores: SelectOption[];
@@ -450,7 +454,10 @@ export default function FamilyForm(props: Props) {
                 setErrors(bag);
                 toast.error('Revisa los datos: hay errores marcados.');
             },
-            onSuccess: () => setErrors({}),
+            onSuccess: () => {
+                setErrors({});
+                setFiles([]);
+            },
             onFinish: () => setProcessing(false),
         });
     };
@@ -614,58 +621,45 @@ export default function FamilyForm(props: Props) {
                         </Card>
 
                         <Card>
-                            <CardHeader title="Fotos comunes" description="Salen en la tienda si el subartículo no tiene las suyas. Marca una foto con un valor (un color) para mostrarla al elegirlo." />
-                            <div className="flex flex-wrap gap-2">
-                                {props.images.map((image) => (
-                                    <div key={image.id} className="relative">
-                                        <img src={image.url} alt="" className="size-20 rounded-control border border-[var(--line)] object-cover" />
-                                        {image.value_id && <span className="absolute bottom-1 left-1 rounded-chip bg-black/60 px-1 text-[0.6875rem] text-white">{valueOf(image.value_id)?.value}</span>}
-                                        {family.id && (
-                                            <button
-                                                type="button"
-                                                aria-label="Quitar foto"
-                                                onClick={() => router.delete(route('products.families.images.destroy', [family.id ?? 0, image.id]), { preserveScroll: true })}
-                                                className="absolute right-1 top-1 grid size-6 place-items-center rounded-full bg-black/60 text-white"
-                                            >
-                                                <XIcon size={12} />
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
-                                {files.map((entry, index) => (
-                                    <div key={index} className="flex flex-col gap-1">
-                                        <img src={URL.createObjectURL(entry.file)} alt="" className="size-20 rounded-control border border-[var(--line)] object-cover" />
-                                        <select
-                                            aria-label="A qué valor corresponde"
-                                            value={entry.value}
-                                            onChange={(event) => setFiles(files.map((item, position) => (position === index ? { ...item, value: event.target.value } : item)))}
-                                            className="w-20 rounded-chip border border-[var(--line)] bg-[var(--surface)] text-[0.6875rem]"
-                                        >
-                                            <option value="">Todas</option>
-                                            {[...selected1, ...selected2].map((id) => (
-                                                <option key={id} value={id}>
-                                                    {valueOf(id)?.value}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                ))}
-                                <label className="grid size-20 cursor-pointer place-items-center rounded-control border border-dashed border-[var(--line-2)] text-[var(--muted)] hover:border-[var(--accent)]">
-                                    <ImageIcon size={22} />
-                                    <input
-                                        type="file"
-                                        accept="image/jpeg,image/png,image/webp"
-                                        multiple
-                                        className="sr-only"
-                                        onChange={(event) => {
-                                            const picked = Array.from(event.target.files ?? []).map((file) => ({ file, value: '' }));
-                                            setFiles([...files, ...picked].slice(0, 8));
-                                            event.target.value = '';
-                                        }}
-                                    />
-                                </label>
-                            </div>
-                            {errors['images.0'] && <p className="mt-2 text-[0.75rem] text-[var(--danger)]">{errors['images.0']}</p>}
+                            <CardHeader
+                                title="Fotos comunes"
+                                description="Salen en la tienda si el subartículo no tiene las suyas. Marca una foto con un valor (un color) para mostrarla al elegirlo. Las propias de cada subartículo se suben al editarlo."
+                            />
+                            <ImageGalleryField
+                                images={props.images.map((image) => ({ ...image, badge: image.value_id ? (valueOf(image.value_id)?.value ?? null) : null }))}
+                                files={files.map((entry) => entry.file)}
+                                limit={props.imageLimit}
+                                onAddFiles={(picked) => setFiles([...files, ...picked.map((file) => ({ file, value: '' }))])}
+                                onRemoveFile={(index) => setFiles(files.filter((_, position) => position !== index))}
+                                onRemove={
+                                    family.id
+                                        ? (image) =>
+                                              router.delete(route('products.families.images.destroy', [family.id ?? 0, image.id]), { preserveScroll: true, preserveState: true })
+                                        : undefined
+                                }
+                                onMakeCover={
+                                    family.id
+                                        ? (image) =>
+                                              router.patch(route('products.families.images.cover', [family.id ?? 0, image.id]), {}, { preserveScroll: true, preserveState: true })
+                                        : undefined
+                                }
+                                renderFileExtra={(index) => (
+                                    <select
+                                        aria-label="A qué valor corresponde"
+                                        value={files[index]?.value ?? ''}
+                                        onChange={(event) => setFiles(files.map((item, position) => (position === index ? { ...item, value: event.target.value } : item)))}
+                                        className="w-24 rounded-chip border border-[var(--line)] bg-[var(--surface)] text-[0.6875rem]"
+                                    >
+                                        <option value="">Todas</option>
+                                        {[...selected1, ...selected2].map((id) => (
+                                            <option key={id} value={id}>
+                                                {valueOf(id)?.value}
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
+                                error={errors.images ?? errors['images.0']}
+                            />
                         </Card>
                     </div>
                 </div>
@@ -727,329 +721,327 @@ export default function FamilyForm(props: Props) {
                             {attr1 ? 'Marca los valores de arriba para armar los subartículos.' : 'Elige una característica y marca sus valores.'}
                         </p>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full min-w-[68rem] text-[0.8125rem]">
-                                <thead>
-                                    <tr className="border-b border-[var(--line)] text-left text-[0.75rem] uppercase tracking-wide text-[var(--muted)]">
-                                        <th className="w-8 px-2 py-2" />
-                                        <th className="px-2 py-2">Subartículo</th>
-                                        <th className="px-2 py-2">SKU</th>
-                                        <th className="px-2 py-2">Código de barras</th>
-                                        <th className="px-2 py-2 text-right">Precio</th>
-                                        <th className="px-2 py-2 text-right">En línea</th>
-                                        {canViewCost && <th className="px-2 py-2 text-right">Costo</th>}
-                                        <th className="px-2 py-2">Contenido</th>
-                                        <th className="px-2 py-2 text-right">Mínimo</th>
-                                        <th className="px-2 py-2 text-center">Activo</th>
-                                        <th className="px-2 py-2 text-center">En línea</th>
-                                        <th className="px-2 py-2 text-center" title="Se muestra primero en la tienda">
-                                            <StarIcon size={14} className="inline" />
-                                        </th>
-                                        <th className="w-10 px-2 py-2" />
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {rows.map(({ key, row }, index) => {
-                                        const measure = measureValue(row);
-                                        const priceLocked = row.id !== null && !canEditPrice;
-                                        const cell = (field: string) => rowError(key, field);
-                                        const previous = rows[index - 1]?.row;
-                                        const newGroup = attr2 && previous && previous.v1 !== row.v1;
+                        <Table className="rounded-none border-x-0 border-b-0" tableClassName="min-w-[68rem] text-[0.8125rem]">
+                            <thead>
+                                <tr className="border-b border-[var(--line)] text-left text-[0.75rem] uppercase tracking-wide text-[var(--muted)]">
+                                    <th className="w-8 px-2 py-2" />
+                                    <th className="px-2 py-2">Subartículo</th>
+                                    <th className="px-2 py-2">SKU</th>
+                                    <th className="px-2 py-2">Código de barras</th>
+                                    <th className="px-2 py-2 text-right">Precio</th>
+                                    <th className="px-2 py-2 text-right">En línea</th>
+                                    {canViewCost && <th className="px-2 py-2 text-right">Costo</th>}
+                                    <th className="px-2 py-2">Contenido</th>
+                                    <th className="px-2 py-2 text-right">Mínimo</th>
+                                    <th className="px-2 py-2 text-center">Activo</th>
+                                    <th className="px-2 py-2 text-center">En línea</th>
+                                    <th className="px-2 py-2 text-center" title="Se muestra primero en la tienda">
+                                        <StarIcon size={14} className="inline" />
+                                    </th>
+                                    <th className="w-10 px-2 py-2" />
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {rows.map(({ key, row }, index) => {
+                                    const measure = measureValue(row);
+                                    const priceLocked = row.id !== null && !canEditPrice;
+                                    const cell = (field: string) => rowError(key, field);
+                                    const previous = rows[index - 1]?.row;
+                                    const newGroup = attr2 && previous && previous.v1 !== row.v1;
 
-                                        return (
-                                            <FragmentRows
-                                                key={key}
-                                                expandedPanel={expanded === key}
-                                                separator={Boolean(newGroup)}
-                                                main={
-                                                    <tr className={cn('border-b border-[var(--line)] align-top', !row.is_active && 'bg-[var(--surface-2)]')}>
-                                                        <td className="px-2 py-2">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setExpanded(expanded === key ? null : key)}
-                                                                aria-label={expanded === key ? 'Cerrar el detalle' : 'Abrir el detalle'}
-                                                                aria-expanded={expanded === key}
-                                                                className="grid size-7 place-items-center rounded-chip text-[var(--muted)] hover:bg-[var(--surface-2)]"
-                                                            >
-                                                                {expanded === key ? <CaretDownIcon size={14} /> : <CaretRightIcon size={14} />}
-                                                            </button>
-                                                        </td>
-                                                        <td className="px-2 py-2">
-                                                            {perRowValues && row.id ? (
-                                                                <div className="flex min-w-44 flex-col gap-1">
-                                                                    <span className="text-[0.75rem] text-[var(--muted)]">{row.original}</span>
+                                    return (
+                                        <FragmentRows
+                                            key={key}
+                                            expandedPanel={expanded === key}
+                                            separator={Boolean(newGroup)}
+                                            main={
+                                                <tr className={cn('border-b border-[var(--line)] align-top', !row.is_active && 'bg-[var(--surface-2)]')}>
+                                                    <td className="px-2 py-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setExpanded(expanded === key ? null : key)}
+                                                            aria-label={expanded === key ? 'Cerrar el detalle' : 'Abrir el detalle'}
+                                                            aria-expanded={expanded === key}
+                                                            className="grid size-7 place-items-center rounded-chip text-[var(--muted)] hover:bg-[var(--surface-2)]"
+                                                        >
+                                                            {expanded === key ? <CaretDownIcon size={14} /> : <CaretRightIcon size={14} />}
+                                                        </button>
+                                                    </td>
+                                                    <td className="px-2 py-2">
+                                                        {perRowValues && row.id ? (
+                                                            <div className="flex min-w-44 flex-col gap-1">
+                                                                <span className="text-[0.75rem] text-[var(--muted)]">{row.original}</span>
+                                                                <select
+                                                                    aria-label={`Valor de ${attribute1?.name ?? 'la primera característica'}`}
+                                                                    value={row.v1 ?? ''}
+                                                                    onChange={(event) => updateRow(key, { v1: event.target.value ? Number(event.target.value) : null })}
+                                                                    className={cn('h-8 rounded-control border bg-[var(--surface)] px-2', cell('value_1_id') ? 'border-[var(--danger)]' : 'border-[var(--line)]')}
+                                                                >
+                                                                    <option value="">{attribute1 ? `${attribute1.name}…` : 'Elige la característica'}</option>
+                                                                    {valueOptions(attribute1).map((option) => (
+                                                                        <option key={option.value} value={option.value}>
+                                                                            {option.label}
+                                                                        </option>
+                                                                    ))}
+                                                                </select>
+                                                                {attribute2 && (
                                                                     <select
-                                                                        aria-label={`Valor de ${attribute1?.name ?? 'la primera característica'}`}
-                                                                        value={row.v1 ?? ''}
-                                                                        onChange={(event) => updateRow(key, { v1: event.target.value ? Number(event.target.value) : null })}
-                                                                        className={cn('h-8 rounded-control border bg-[var(--surface)] px-2', cell('value_1_id') ? 'border-[var(--danger)]' : 'border-[var(--line)]')}
+                                                                        aria-label={`Valor de ${attribute2.name}`}
+                                                                        value={row.v2 ?? ''}
+                                                                        onChange={(event) => updateRow(key, { v2: event.target.value ? Number(event.target.value) : null })}
+                                                                        className={cn('h-8 rounded-control border bg-[var(--surface)] px-2', cell('value_2_id') ? 'border-[var(--danger)]' : 'border-[var(--line)]')}
                                                                     >
-                                                                        <option value="">{attribute1 ? `${attribute1.name}…` : 'Elige la característica'}</option>
-                                                                        {valueOptions(attribute1).map((option) => (
+                                                                        <option value="">{attribute2.name}…</option>
+                                                                        {valueOptions(attribute2).map((option) => (
                                                                             <option key={option.value} value={option.value}>
                                                                                 {option.label}
                                                                             </option>
                                                                         ))}
                                                                     </select>
-                                                                    {attribute2 && (
-                                                                        <select
-                                                                            aria-label={`Valor de ${attribute2.name}`}
-                                                                            value={row.v2 ?? ''}
-                                                                            onChange={(event) => updateRow(key, { v2: event.target.value ? Number(event.target.value) : null })}
-                                                                            className={cn('h-8 rounded-control border bg-[var(--surface)] px-2', cell('value_2_id') ? 'border-[var(--danger)]' : 'border-[var(--line)]')}
-                                                                        >
-                                                                            <option value="">{attribute2.name}…</option>
-                                                                            {valueOptions(attribute2).map((option) => (
-                                                                                <option key={option.value} value={option.value}>
-                                                                                    {option.label}
-                                                                                </option>
-                                                                            ))}
-                                                                        </select>
-                                                                    )}
-                                                                </div>
-                                                            ) : (
-                                                                <div className="min-w-40">
-                                                                    <span className="font-semibold text-[var(--text)]">{label(row) || '—'}</span>
-                                                                    <span className="block truncate text-[0.75rem] text-[var(--muted)]">
-                                                                        {common.name || 'Nombre'} · {label(row)}
-                                                                    </span>
-                                                                    {row.id === null && <Badge tone="accent">Nuevo</Badge>}
-                                                                </div>
-                                                            )}
-                                                        </td>
-                                                        <td className="px-2 py-2">
-                                                            <CellInput
-                                                                value={row.sku}
-                                                                error={cell('sku')}
-                                                                ariaLabel={`SKU de ${label(row)}`}
-                                                                onChange={(value) => updateRow(key, { sku: value, skuAuto: false })}
-                                                                className="w-36"
-                                                            />
-                                                        </td>
-                                                        <td className="px-2 py-2">
-                                                            <CellInput
-                                                                inputRef={(element) => {
-                                                                    barcodeRefs.current[key] = element;
-                                                                }}
-                                                                value={row.barcode}
-                                                                error={cell('barcode')}
-                                                                ariaLabel={`Código de barras de ${label(row)}`}
-                                                                onChange={(value) => updateRow(key, { barcode: value })}
-                                                                onKeyDown={(event) => onBarcodeKey(event, index)}
-                                                                className="w-40 tabular-nums"
-                                                            />
-                                                        </td>
-                                                        <td className="px-2 py-2">
-                                                            <CellInput
-                                                                type="number"
-                                                                value={row.price}
-                                                                error={cell('price')}
-                                                                disabled={priceLocked}
-                                                                ariaLabel={`Precio de ${label(row)}`}
-                                                                onChange={(value) => updateRow(key, { price: value })}
-                                                                className="w-28 text-right tabular-nums"
-                                                            />
-                                                        </td>
-                                                        <td className="px-2 py-2">
-                                                            <CellInput
-                                                                type="number"
-                                                                value={row.online_price}
-                                                                error={cell('online_price')}
-                                                                disabled={priceLocked}
-                                                                placeholder="Igual"
-                                                                ariaLabel={`Precio en línea de ${label(row)}`}
-                                                                onChange={(value) => updateRow(key, { online_price: value })}
-                                                                className="w-28 text-right tabular-nums"
-                                                            />
-                                                        </td>
-                                                        {canViewCost && (
-                                                            <td className="px-2 py-2">
-                                                                <CellInput
-                                                                    type="number"
-                                                                    value={row.cost}
-                                                                    error={cell('cost')}
-                                                                    ariaLabel={`Costo de ${label(row)}`}
-                                                                    onChange={(value) => updateRow(key, { cost: value })}
-                                                                    className="w-24 text-right tabular-nums"
-                                                                />
-                                                            </td>
-                                                        )}
-                                                        <td className="px-2 py-2">
-                                                            {measure ? (
-                                                                <span className="text-[var(--muted)]" title="Lo pone la presentación">
-                                                                    {measure.value}
-                                                                </span>
-                                                            ) : (
-                                                                <div className="flex gap-1">
-                                                                    <CellInput
-                                                                        type="number"
-                                                                        value={row.content_amount}
-                                                                        ariaLabel={`Contenido de ${label(row)}`}
-                                                                        onChange={(value) => updateRow(key, { content_amount: value })}
-                                                                        className="w-20 text-right"
-                                                                    />
-                                                                    <select
-                                                                        aria-label={`Unidad del contenido de ${label(row)}`}
-                                                                        value={row.content_unit}
-                                                                        onChange={(event) => updateRow(key, { content_unit: event.target.value })}
-                                                                        className="h-8 rounded-control border border-[var(--line)] bg-[var(--surface)] px-1"
-                                                                    >
-                                                                        <option value="">—</option>
-                                                                        {props.contentUnits.map((unit) => (
-                                                                            <option key={unit.value} value={unit.value}>
-                                                                                {unit.label}
-                                                                            </option>
-                                                                        ))}
-                                                                    </select>
-                                                                </div>
-                                                            )}
-                                                        </td>
-                                                        <td className="px-2 py-2">
-                                                            <CellInput
-                                                                type="number"
-                                                                value={row.min_stock}
-                                                                ariaLabel={`Mínimo de ${label(row)}`}
-                                                                onChange={(value) => updateRow(key, { min_stock: value })}
-                                                                className="w-16 text-right"
-                                                            />
-                                                        </td>
-                                                        <td className="px-2 py-2 text-center">
-                                                            <input
-                                                                type="checkbox"
-                                                                aria-label={`${label(row)} activo`}
-                                                                checked={row.is_active}
-                                                                onChange={(event) => updateRow(key, { is_active: event.target.checked })}
-                                                                className="size-4 accent-[var(--accent)]"
-                                                            />
-                                                        </td>
-                                                        <td className="px-2 py-2 text-center">
-                                                            <input
-                                                                type="checkbox"
-                                                                aria-label={`${label(row)} visible en línea`}
-                                                                checked={row.is_online_visible}
-                                                                onChange={(event) => updateRow(key, { is_online_visible: event.target.checked })}
-                                                                className="size-4 accent-[var(--accent)]"
-                                                            />
-                                                        </td>
-                                                        <td className="px-2 py-2 text-center">
-                                                            <input
-                                                                type="radio"
-                                                                name="default-variant"
-                                                                aria-label={`${label(row)} se muestra primero`}
-                                                                checked={defaultKey === key || (defaultKey === null && index === 0)}
-                                                                onChange={() => setDefaultKey(key)}
-                                                                className="size-4 accent-[var(--accent)]"
-                                                            />
-                                                        </td>
-                                                        <td className="px-2 py-2">
-                                                            {row.has_movements ? (
-                                                                <span title="Tiene movimientos: no se quita, se desactiva." className="grid size-7 place-items-center text-[var(--muted)]">
-                                                                    <WarningCircleIcon size={15} />
-                                                                </span>
-                                                            ) : (
-                                                                <button
-                                                                    type="button"
-                                                                    aria-label={`Quitar ${label(row) || 'la fila'}`}
-                                                                    onClick={() => {
-                                                                        if (row.id !== null && mode !== 'edit') {
-                                                                            toast.info('Ese artículo es el que se está agrupando: para dejarlo por fuera, vuelve al listado.');
-
-                                                                            return;
-                                                                        }
-
-                                                                        if (row.id !== null) {
-                                                                            setRemoved(new Set([...removed, row.id]));
-                                                                        } else {
-                                                                            setExcluded(new Set([...excluded, key]));
-                                                                        }
-                                                                    }}
-                                                                    className="grid size-7 place-items-center rounded-chip text-[var(--muted)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"
-                                                                >
-                                                                    <TrashIcon size={14} />
-                                                                </button>
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                }
-                                                panel={
-                                                    <tr className="border-b border-[var(--line)] bg-[var(--surface-2)]">
-                                                        <td />
-                                                        <td colSpan={canViewCost ? 12 : 11} className="px-2 py-3">
-                                                            <div className="grid gap-3 md:grid-cols-4">
-                                                                <Select
-                                                                    label="Se vende por"
-                                                                    options={props.units}
-                                                                    value={row.unit}
-                                                                    onChange={(event) => updateRow(key, { unit: event.target.value })}
-                                                                />
-                                                                <Input
-                                                                    label="Empaque de compra"
-                                                                    type="number"
-                                                                    value={row.purchase_pack_size}
-                                                                    onChange={(event) => updateRow(key, { purchase_pack_size: event.target.value })}
-                                                                    hint="Unidades por caja al pedir."
-                                                                />
-                                                                <Input
-                                                                    label="Precio mayorista"
-                                                                    type="number"
-                                                                    value={row.wholesale_price}
-                                                                    disabled={priceLocked}
-                                                                    onChange={(event) => updateRow(key, { wholesale_price: event.target.value })}
-                                                                />
-                                                                <div className="flex flex-col gap-2 pt-1">
-                                                                    <Checkbox label="Se vende por peso" checked={row.sold_by_weight} onChange={(event) => updateRow(key, { sold_by_weight: event.target.checked })} />
-                                                                    <Checkbox label="Controla lotes" checked={row.track_lots} onChange={(event) => updateRow(key, { track_lots: event.target.checked })} />
-                                                                    <Checkbox
-                                                                        label="Permite vender sin existencia"
-                                                                        checked={row.allow_negative_stock}
-                                                                        onChange={(event) => updateRow(key, { allow_negative_stock: event.target.checked })}
-                                                                    />
-                                                                </div>
-                                                                <Textarea
-                                                                    label="Descripción propia"
-                                                                    rows={2}
-                                                                    value={row.description}
-                                                                    onChange={(event) => updateRow(key, { description: event.target.value })}
-                                                                    hint="Vacía: la común."
-                                                                    className="md:col-span-2"
-                                                                />
-                                                                {row.id === null ? (
-                                                                    <div className="md:col-span-2">
-                                                                        <p className="mb-1.5 text-[0.8125rem] font-medium">Existencia inicial por sede</p>
-                                                                        <div className="flex flex-wrap gap-2">
-                                                                            {stores.map((store) => (
-                                                                                <Input
-                                                                                    key={store.value}
-                                                                                    label={store.label}
-                                                                                    type="number"
-                                                                                    min="0"
-                                                                                    value={row.initial[Number(store.value)] ?? ''}
-                                                                                    onChange={(event) => updateRow(key, { initial: { ...row.initial, [Number(store.value)]: event.target.value } })}
-                                                                                    containerClassName="w-32"
-                                                                                />
-                                                                            ))}
-                                                                        </div>
-                                                                    </div>
-                                                                ) : (
-                                                                    <p className="text-[0.75rem] text-[var(--muted)] md:col-span-2">
-                                                                        Fotos propias, lotes y la existencia se manejan en la ficha del subartículo.{' '}
-                                                                        {mode === 'edit' && (
-                                                                            <a href={route('products.edit', row.id)} className="font-semibold text-[var(--accent)] hover:underline">
-                                                                                Abrir su ficha
-                                                                            </a>
-                                                                        )}
-                                                                    </p>
                                                                 )}
                                                             </div>
+                                                        ) : (
+                                                            <div className="min-w-40">
+                                                                <span className="font-semibold text-[var(--text)]">{label(row) || '—'}</span>
+                                                                <span className="block truncate text-[0.75rem] text-[var(--muted)]">
+                                                                    {common.name || 'Nombre'} · {label(row)}
+                                                                </span>
+                                                                {row.id === null && <Badge tone="accent">Nuevo</Badge>}
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-2 py-2">
+                                                        <CellInput
+                                                            value={row.sku}
+                                                            error={cell('sku')}
+                                                            ariaLabel={`SKU de ${label(row)}`}
+                                                            onChange={(value) => updateRow(key, { sku: value, skuAuto: false })}
+                                                            className="w-36"
+                                                        />
+                                                    </td>
+                                                    <td className="px-2 py-2">
+                                                        <CellInput
+                                                            inputRef={(element) => {
+                                                                barcodeRefs.current[key] = element;
+                                                            }}
+                                                            value={row.barcode}
+                                                            error={cell('barcode')}
+                                                            ariaLabel={`Código de barras de ${label(row)}`}
+                                                            onChange={(value) => updateRow(key, { barcode: value })}
+                                                            onKeyDown={(event) => onBarcodeKey(event, index)}
+                                                            className="w-40 tabular-nums"
+                                                        />
+                                                    </td>
+                                                    <td className="px-2 py-2">
+                                                        <CellInput
+                                                            type="number"
+                                                            value={row.price}
+                                                            error={cell('price')}
+                                                            disabled={priceLocked}
+                                                            ariaLabel={`Precio de ${label(row)}`}
+                                                            onChange={(value) => updateRow(key, { price: value })}
+                                                            className="w-28 text-right tabular-nums"
+                                                        />
+                                                    </td>
+                                                    <td className="px-2 py-2">
+                                                        <CellInput
+                                                            type="number"
+                                                            value={row.online_price}
+                                                            error={cell('online_price')}
+                                                            disabled={priceLocked}
+                                                            placeholder="Igual"
+                                                            ariaLabel={`Precio en línea de ${label(row)}`}
+                                                            onChange={(value) => updateRow(key, { online_price: value })}
+                                                            className="w-28 text-right tabular-nums"
+                                                        />
+                                                    </td>
+                                                    {canViewCost && (
+                                                        <td className="px-2 py-2">
+                                                            <CellInput
+                                                                type="number"
+                                                                value={row.cost}
+                                                                error={cell('cost')}
+                                                                ariaLabel={`Costo de ${label(row)}`}
+                                                                onChange={(value) => updateRow(key, { cost: value })}
+                                                                className="w-24 text-right tabular-nums"
+                                                            />
                                                         </td>
-                                                    </tr>
-                                                }
-                                            />
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
+                                                    )}
+                                                    <td className="px-2 py-2">
+                                                        {measure ? (
+                                                            <span className="text-[var(--muted)]" title="Lo pone la presentación">
+                                                                {measure.value}
+                                                            </span>
+                                                        ) : (
+                                                            <div className="flex gap-1">
+                                                                <CellInput
+                                                                    type="number"
+                                                                    value={row.content_amount}
+                                                                    ariaLabel={`Contenido de ${label(row)}`}
+                                                                    onChange={(value) => updateRow(key, { content_amount: value })}
+                                                                    className="w-20 text-right"
+                                                                />
+                                                                <select
+                                                                    aria-label={`Unidad del contenido de ${label(row)}`}
+                                                                    value={row.content_unit}
+                                                                    onChange={(event) => updateRow(key, { content_unit: event.target.value })}
+                                                                    className="h-8 rounded-control border border-[var(--line)] bg-[var(--surface)] px-1"
+                                                                >
+                                                                    <option value="">—</option>
+                                                                    {props.contentUnits.map((unit) => (
+                                                                        <option key={unit.value} value={unit.value}>
+                                                                            {unit.label}
+                                                                        </option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-2 py-2">
+                                                        <CellInput
+                                                            type="number"
+                                                            value={row.min_stock}
+                                                            ariaLabel={`Mínimo de ${label(row)}`}
+                                                            onChange={(value) => updateRow(key, { min_stock: value })}
+                                                            className="w-16 text-right"
+                                                        />
+                                                    </td>
+                                                    <td className="px-2 py-2 text-center">
+                                                        <input
+                                                            type="checkbox"
+                                                            aria-label={`${label(row)} activo`}
+                                                            checked={row.is_active}
+                                                            onChange={(event) => updateRow(key, { is_active: event.target.checked })}
+                                                            className="size-4 accent-[var(--accent)]"
+                                                        />
+                                                    </td>
+                                                    <td className="px-2 py-2 text-center">
+                                                        <input
+                                                            type="checkbox"
+                                                            aria-label={`${label(row)} visible en línea`}
+                                                            checked={row.is_online_visible}
+                                                            onChange={(event) => updateRow(key, { is_online_visible: event.target.checked })}
+                                                            className="size-4 accent-[var(--accent)]"
+                                                        />
+                                                    </td>
+                                                    <td className="px-2 py-2 text-center">
+                                                        <input
+                                                            type="radio"
+                                                            name="default-variant"
+                                                            aria-label={`${label(row)} se muestra primero`}
+                                                            checked={defaultKey === key || (defaultKey === null && index === 0)}
+                                                            onChange={() => setDefaultKey(key)}
+                                                            className="size-4 accent-[var(--accent)]"
+                                                        />
+                                                    </td>
+                                                    <td className="px-2 py-2">
+                                                        {row.has_movements ? (
+                                                            <span title="Tiene movimientos: no se quita, se desactiva." className="grid size-7 place-items-center text-[var(--muted)]">
+                                                                <WarningCircleIcon size={15} />
+                                                            </span>
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                aria-label={`Quitar ${label(row) || 'la fila'}`}
+                                                                onClick={() => {
+                                                                    if (row.id !== null && mode !== 'edit') {
+                                                                        toast.info('Ese artículo es el que se está agrupando: para dejarlo por fuera, vuelve al listado.');
+
+                                                                        return;
+                                                                    }
+
+                                                                    if (row.id !== null) {
+                                                                        setRemoved(new Set([...removed, row.id]));
+                                                                    } else {
+                                                                        setExcluded(new Set([...excluded, key]));
+                                                                    }
+                                                                }}
+                                                                className="grid size-7 place-items-center rounded-chip text-[var(--muted)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"
+                                                            >
+                                                                <TrashIcon size={14} />
+                                                            </button>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            }
+                                            panel={
+                                                <tr className="border-b border-[var(--line)] bg-[var(--surface-2)]">
+                                                    <td />
+                                                    <td colSpan={canViewCost ? 12 : 11} className="px-2 py-3">
+                                                        <div className="grid gap-3 md:grid-cols-4">
+                                                            <Select
+                                                                label="Se vende por"
+                                                                options={props.units}
+                                                                value={row.unit}
+                                                                onChange={(event) => updateRow(key, { unit: event.target.value })}
+                                                            />
+                                                            <Input
+                                                                label="Empaque de compra"
+                                                                type="number"
+                                                                value={row.purchase_pack_size}
+                                                                onChange={(event) => updateRow(key, { purchase_pack_size: event.target.value })}
+                                                                hint="Unidades por caja al pedir."
+                                                            />
+                                                            <Input
+                                                                label="Precio mayorista"
+                                                                type="number"
+                                                                value={row.wholesale_price}
+                                                                disabled={priceLocked}
+                                                                onChange={(event) => updateRow(key, { wholesale_price: event.target.value })}
+                                                            />
+                                                            <div className="flex flex-col gap-2 pt-1">
+                                                                <Checkbox label="Se vende por peso" checked={row.sold_by_weight} onChange={(event) => updateRow(key, { sold_by_weight: event.target.checked })} />
+                                                                <Checkbox label="Controla lotes" checked={row.track_lots} onChange={(event) => updateRow(key, { track_lots: event.target.checked })} />
+                                                                <Checkbox
+                                                                    label="Permite vender sin existencia"
+                                                                    checked={row.allow_negative_stock}
+                                                                    onChange={(event) => updateRow(key, { allow_negative_stock: event.target.checked })}
+                                                                />
+                                                            </div>
+                                                            <Textarea
+                                                                label="Descripción propia"
+                                                                rows={2}
+                                                                value={row.description}
+                                                                onChange={(event) => updateRow(key, { description: event.target.value })}
+                                                                hint="Vacía: la común."
+                                                                className="md:col-span-2"
+                                                            />
+                                                            {row.id === null ? (
+                                                                <div className="md:col-span-2">
+                                                                    <p className="mb-1.5 text-[0.8125rem] font-medium">Existencia inicial por sede</p>
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        {stores.map((store) => (
+                                                                            <Input
+                                                                                key={store.value}
+                                                                                label={store.label}
+                                                                                type="number"
+                                                                                min="0"
+                                                                                value={row.initial[Number(store.value)] ?? ''}
+                                                                                onChange={(event) => updateRow(key, { initial: { ...row.initial, [Number(store.value)]: event.target.value } })}
+                                                                                containerClassName="w-32"
+                                                                            />
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <p className="text-[0.75rem] text-[var(--muted)] md:col-span-2">
+                                                                    Fotos propias, lotes y la existencia se manejan en la ficha del subartículo.{' '}
+                                                                    {mode === 'edit' && (
+                                                                        <a href={route('products.edit', row.id)} className="font-semibold text-[var(--accent)] hover:underline">
+                                                                            Abrir su ficha
+                                                                        </a>
+                                                                    )}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        />
+                                    );
+                                })}
+                            </tbody>
+                        </Table>
                     )}
 
                     {(excluded.size > 0 || removed.size > 0) && (

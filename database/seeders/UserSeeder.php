@@ -39,7 +39,7 @@ class UserSeeder extends Seeder
             ['email' => 'super@lacanasta.co'],
             [
                 'name' => 'Soporte',
-                'last_name' => 'MiMercadoCol',
+                'last_name' => 'AgoraShop',
                 'password' => Hash::make(self::PASSWORD),
                 'is_active' => true,
                 'job_title' => 'Super administrador',

@@ -48,6 +48,10 @@ interface StatCardProps {
     caption?: ReactNode;
     icon?: ReactNode;
     tone?: 'accent' | 'warn' | 'danger' | 'neutral';
+    /** Para una tarjeta que avisa algo (fondo o borde de otro tono). */
+    className?: string;
+    /** El color de la cifra, cuando el número mismo dice algo (verde, rojo). */
+    valueClassName?: string;
 }
 
 const TONES: Record<NonNullable<StatCardProps['tone']>, string> = {
@@ -57,17 +61,17 @@ const TONES: Record<NonNullable<StatCardProps['tone']>, string> = {
     neutral: 'bg-[var(--surface-2)] text-[var(--muted)]',
 };
 
-export function StatCard({ label, value, change, caption, icon, tone = 'accent' }: StatCardProps) {
+export function StatCard({ label, value, change, caption, icon, tone = 'accent', className, valueClassName }: StatCardProps) {
     const hasChange = change !== null && change !== undefined;
     const positive = (change ?? 0) >= 0;
 
     return (
-        <div className="rounded-card border border-[var(--line)] bg-[var(--surface)] p-[calc(1rem*var(--density))]">
+        <div className={cn('h-full rounded-card border border-[var(--line)] bg-[var(--surface)] p-[calc(1rem*var(--density))]', className)}>
             <div className="flex items-start justify-between gap-3">
                 <p className="text-[0.75rem] font-medium uppercase tracking-wide text-[var(--muted)]">{label}</p>
                 {icon && <span className={cn('grid size-8 place-items-center rounded-control', TONES[tone])}>{icon}</span>}
             </div>
-            <p className="mt-2 font-mono text-[1.625rem] font-semibold leading-none tracking-tight text-[var(--text)] tabular">
+            <p className={cn('mt-2 font-mono text-[1.625rem] font-semibold leading-none tracking-tight text-[var(--text)] tabular', valueClassName)}>
                 {value}
             </p>
             <div className="mt-2 flex items-center gap-2 text-[0.75rem]">

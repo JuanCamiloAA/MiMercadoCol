@@ -30,6 +30,9 @@ class FooterSettingRequest extends StorefrontSettingRequest
             'value.terms_target' => $this->targetRule(),
             'value.privacy_target' => $this->targetRule(),
             'value.pqrs_target' => $this->targetRule(),
+            'value.style' => ['sometimes', Rule::in(array_keys(StorefrontStructure::CHOICES['footer_style']))],
+            'value.tone' => ['sometimes', Rule::in(array_keys(StorefrontStructure::CHOICES['footer_tone']))],
+            'value.newsletter' => ['sometimes', 'boolean'],
         ];
     }
 

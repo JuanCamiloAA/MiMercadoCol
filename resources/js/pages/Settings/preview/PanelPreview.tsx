@@ -147,7 +147,7 @@ export function PanelPreview({ draft, theme, tokens, sample, entries = 7 }: Pane
                         </Card>
 
                         {products.length > 0 && (
-                            <Table className="mt-3 text-[0.71875rem]">
+                            <Table className="mt-3 text-[0.71875rem]" switchable={false}>
                                 <THead>
                                     <tr>
                                         <TH>Artículo</TH>

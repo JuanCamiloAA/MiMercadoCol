@@ -11,16 +11,20 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Service;
 use App\Models\ServiceComponent;
+use App\Models\ServiceImage;
+use App\Services\Catalog\CatalogImages;
 use App\Services\PromotionService;
 use App\Services\ServiceManager;
 use App\Services\ServicePricing;
 use App\Services\WarehouseService;
 use App\Support\StoreContext;
 use App\Support\TenantContext;
+use App\Support\Uploads;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -37,6 +41,7 @@ class ServiceController extends Controller
         protected ServiceManager $manager,
         protected ServicePricing $pricing,
         protected WarehouseService $warehouses,
+        protected CatalogImages $catalogImages,
     ) {}
 
     public function index(Request $request): Response
@@ -147,12 +152,14 @@ class ServiceController extends Controller
             'taxRates' => array_map(fn ($rate) => ['value' => $rate, 'label' => "{$rate} %"], Product::TAX_RATES),
             'canViewCost' => $request->user()->can('services.show.view_cost'),
             'canEditPrice' => true,
+            // Cuantas fotos se le montan a cada servicio (Ajustes > Catalogo).
+            'imageLimit' => $this->catalogImages->limit($companyId),
         ]);
     }
 
     public function store(StoreServiceRequest $request): RedirectResponse
     {
-        $service = $this->manager->save(null, $request->serviceData(), TenantContext::requireCompanyId(), $request->file('image'));
+        $service = $this->manager->save(null, $request->serviceData(), TenantContext::requireCompanyId(), $request->uploadedImages());
 
         return redirect()->route('services.show', $service)->with('success', "El servicio {$service->name} quedó creado.");
     }
@@ -200,6 +207,7 @@ class ServiceController extends Controller
                 ...$this->row($service, $canViewCost),
                 'description' => $service->description,
                 'image_path' => $service->image_path,
+                'image_url' => Uploads::url($service->image_path),
                 'tax_rate' => (float) $service->tax_rate,
                 'is_featured' => (bool) $service->is_featured,
                 'online_price' => $service->online_price,
@@ -262,7 +270,7 @@ class ServiceController extends Controller
     {
         $this->authorizeCompany($service);
 
-        $service->load('components.product');
+        $service->load(['components.product', 'images']);
         $canViewCost = $request->user()->can('services.show.view_cost');
 
         return Inertia::render('Services/Form', [
@@ -275,6 +283,12 @@ class ServiceController extends Controller
                 'category_id' => $service->category_id,
                 'description' => $service->description,
                 'image_path' => $service->thumb(),
+                'image_url' => Uploads::url($service->thumb()),
+                'images' => $service->images->map(fn (ServiceImage $image) => [
+                    'id' => $image->id,
+                    'url' => Uploads::url($image->thumb()),
+                    'is_cover' => $image->path === $service->image_path,
+                ])->values(),
                 'price' => $service->price,
                 'online_price' => $service->online_price,
                 'cost' => $canViewCost ? $service->cost : null,
@@ -299,6 +313,7 @@ class ServiceController extends Controller
             'taxRates' => array_map(fn ($rate) => ['value' => $rate, 'label' => "{$rate} %"], Product::TAX_RATES),
             'canViewCost' => $canViewCost,
             'canEditPrice' => $request->user()->can('services.show.edit_price'),
+            'imageLimit' => $this->catalogImages->limit((int) $service->company_id),
         ]);
     }
 
@@ -306,9 +321,45 @@ class ServiceController extends Controller
     {
         $this->authorizeCompany($service);
 
-        $this->manager->save($service, $request->serviceData(), $service->company_id, $request->file('image'));
+        $this->manager->save($service, $request->serviceData(), $service->company_id, $request->uploadedImages());
 
         return redirect()->route('services.show', $service)->with('success', 'El servicio quedó actualizado.');
+    }
+
+    public function destroyImage(Service $service, ServiceImage $image): RedirectResponse
+    {
+        $this->authorizeCompany($service);
+
+        abort_if($image->service_id !== $service->id, 403, 'Esa foto no es de este servicio.');
+
+        DB::transaction(function () use ($service, $image) {
+            $this->catalogImages->deleteFiles($image);
+
+            // Si se borra la portada, la siguiente foto toma su lugar.
+            if ($service->image_path === $image->path) {
+                $next = $service->images()->whereKeyNot($image->id)->first();
+                $service->update(['image_path' => $next?->path, 'thumb_path' => $next?->thumb_path]);
+            }
+
+            $image->delete();
+        });
+
+        return back()->with('success', 'La foto quedó eliminada.');
+    }
+
+    /** La portada: la del listado, la caja y la tarjeta de la tienda, y la que abre el carrusel. */
+    public function coverImage(Service $service, ServiceImage $image): RedirectResponse
+    {
+        $this->authorizeCompany($service);
+
+        abort_if($image->service_id !== $service->id, 403, 'Esa foto no es de este servicio.');
+
+        DB::transaction(function () use ($service, $image) {
+            $this->catalogImages->makeFirst($service->images(), $image);
+            $service->update(['image_path' => $image->path, 'thumb_path' => $image->thumb_path]);
+        });
+
+        return back()->with('success', 'La portada quedó cambiada.');
     }
 
     /** Publicar u ocultar en la tienda desde el listado. */
@@ -360,6 +411,7 @@ class ServiceController extends Controller
             'barcode' => $service->barcode,
             'name' => $service->name,
             'thumb' => $service->thumb(),
+            'thumb_url' => Uploads::url($service->thumb()),
             'category' => $service->category ? ['id' => $service->category->id, 'name' => $service->category->name] : null,
             'price' => $service->price,
             'price_total' => $pos['total'],

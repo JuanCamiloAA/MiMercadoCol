@@ -14,8 +14,10 @@ import {
     TrashIcon,
     WarningCircleIcon,
 } from '@phosphor-icons/react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { type DesignCatalogue, DesignPanel } from '@/components/sections/DesignPanel';
+import { type EditorScheme, EditorSchemeContext, SchemeSwitch, useEditorScheme } from '@/components/sections/editor-scheme';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Input, Select, Textarea } from '@/components/ui/Field';
@@ -23,10 +25,11 @@ import { Badge, PageHeader } from '@/components/ui/Misc';
 import { ConfirmDialog, Modal } from '@/components/ui/Modal';
 import AppLayout from '@/layouts/AppLayout';
 import { cn } from '@/lib/cn';
+import { isHex, mix, normalize } from '@/lib/color';
 import { dateTime } from '@/lib/format';
 import { csrfHeaders, errorMessage } from '@/lib/http';
 import { usePermission } from '@/lib/permissions';
-import { type FieldSchema, ImageField, LandingField, type Values } from './Fields';
+import { applies, type FieldSchema, ImageField, LandingFieldRow, type Values, VideoField } from './Fields';
 
 interface BlockRow {
     id: number;
@@ -47,6 +50,9 @@ interface CatalogueEntry {
     deletable: boolean;
     hideable: boolean;
     hide_warning: string | null;
+    /** Lleva la pestaña «Diseño» (el encabezado y el pie no). */
+    supports_appearance: boolean;
+    appearance_defaults: Values;
 }
 
 interface Status {
@@ -63,6 +69,10 @@ interface Settings {
     brand_accent: string;
     brand_logo: string | null;
     brand_logo_url: string | null;
+    brand_logo_dark: string | null;
+    brand_logo_dark_url: string | null;
+    brand_mark: string | null;
+    brand_mark_url: string | null;
     font_body: string;
     font_display: string;
     font_numeric: string;
@@ -81,6 +91,7 @@ interface Settings {
 interface EditorProps {
     blocks: BlockRow[];
     catalogue: CatalogueEntry[];
+    appearanceCatalogue: DesignCatalogue;
     icons: string[];
     settings: Settings;
     fontOptions: Record<'body' | 'display' | 'numeric', { value: string; label: string }[]>;
@@ -94,7 +105,7 @@ interface EditorProps {
  * Plataforma > Landing. Se edita el borrador (se guarda solo); el público ve la última versión
  * publicada. La vista previa va en un `iframe`: `md:`/`lg:` miden el ancho de la ventana.
  */
-export default function LandingEditor({ blocks, catalogue, icons, settings, fontOptions, versions, status: initialStatus, previewUrl, publicUrl }: EditorProps) {
+export default function LandingEditor({ blocks, catalogue, appearanceCatalogue, icons, settings, fontOptions, versions, status: initialStatus, previewUrl, publicUrl }: EditorProps) {
     const { can } = usePermission();
     const canEdit = can('platform.landing.edit');
     const canPublish = can('platform.landing.publish');
@@ -111,6 +122,11 @@ export default function LandingEditor({ blocks, catalogue, icons, settings, font
     const [history, setHistory] = useState(false);
     const [removing, setRemoving] = useState<BlockRow | null>(null);
     const [hiding, setHiding] = useState<BlockRow | null>(null);
+    // «Contenido» o «Diseño» del bloque elegido.
+    const [pane, setPane] = useState<'content' | 'design'>('content');
+    // El modo que se revisa (Claro | Oscuro): lo comparten la vista previa, «Diseño» y las imágenes.
+    const [scheme, setScheme] = useState<EditorScheme>('light');
+    const schemeContext = useMemo(() => ({ scheme, setScheme }), [scheme]);
     const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
     // Lo que llega del servidor (agregar, borrar, reordenar, publicar) reemplaza el borrador local,
@@ -127,7 +143,7 @@ export default function LandingEditor({ blocks, catalogue, icons, settings, font
         setSelected((current) => added?.uuid ?? (current && blocks.some((block) => block.uuid === current) ? current : (blocks[0]?.uuid ?? null)));
     }, [blocks, initialStatus]);
 
-    const save = useCallback((uuid: string, data: Values) => {
+    const save = useCallback((uuid: string, data: Values, selects: string[]) => {
         clearTimeout(timers.current[uuid]);
         timers.current[uuid] = setTimeout(async () => {
             setSaving(true);
@@ -146,9 +162,28 @@ export default function LandingEditor({ blocks, catalogue, icons, settings, font
                     return;
                 }
 
-                const result = (await response.json()) as { status: Status };
+                const result = (await response.json()) as { status: Status; block?: { data: Values } };
                 setStatus(result.status);
                 setVersion((current) => current + 1);
+
+                // El servidor manda: si corrigió un select (el mapa que admite el diseño), el
+                // formulario lo muestra. Solo selects, y solo si nadie lo cambió mientras se guardaba:
+                // un texto recortado a medio escribir le movería las letras a quien teclea.
+                const saved = result.block?.data;
+                const corrected = saved ? selects.filter((key) => typeof saved[key] === 'string' && saved[key] !== data[key]) : [];
+
+                if (saved && corrected.length > 0) {
+                    setDrafts((current) => {
+                        const block = current[uuid];
+                        const untouched = block ? corrected.filter((key) => block.data[key] === data[key]) : [];
+
+                        if (!block || untouched.length === 0) {
+                            return current;
+                        }
+
+                        return { ...current, [uuid]: { ...block, data: { ...block.data, ...Object.fromEntries(untouched.map((key) => [key, saved[key]])) } } };
+                    });
+                }
             } catch {
                 toast.error('No se pudo guardar. Revisa la conexión.');
             } finally {
@@ -157,18 +192,32 @@ export default function LandingEditor({ blocks, catalogue, icons, settings, font
         }, 600);
     }, []);
 
-    const change = (uuid: string, key: string, value: unknown, imageUrl?: string | null) => {
+    const change = (uuid: string, key: string, value: unknown, imageUrl?: string | null, urls?: Record<string, string | null>) => {
         setDrafts((current) => {
             const block = current[uuid];
             const data = { ...block.data, [key]: value };
-            save(uuid, data);
+            const selects = Object.entries(types[block.type]?.fields ?? {})
+                .filter(([, field]) => field.type === 'select')
+                .map(([name]) => name);
+            save(uuid, data, selects);
 
             return {
                 ...current,
-                [uuid]: { ...block, data, image_urls: imageUrl !== undefined ? { ...block.image_urls, [key]: imageUrl } : block.image_urls },
+                [uuid]: {
+                    ...block,
+                    data,
+                    image_urls: { ...block.image_urls, ...(imageUrl !== undefined ? { [key]: imageUrl } : {}), ...urls },
+                },
             };
         });
     };
+
+    // Los colores con nombre de la pestaña «Diseño», con el acento de la plataforma.
+    const landingSwatches = useMemo(() => {
+        const accent = isHex(settings.brand_accent) ? normalize(settings.brand_accent) : '#0E6E4E';
+
+        return { page: '#FFFFFF', band: '#F2F4F3', soft: mix('#FFFFFF', accent, 0.12), brand: accent, dark: '#0B1220', light: '#FFFFFF' };
+    }, [settings.brand_accent]);
 
     const ordered = blocks.map((block) => drafts[block.uuid] ?? block);
     const current = selected ? drafts[selected] : null;
@@ -194,6 +243,7 @@ export default function LandingEditor({ blocks, catalogue, icons, settings, font
 
     return (
         <AppLayout title="Landing pública">
+            <EditorSchemeContext.Provider value={schemeContext}>
             <PageHeader
                 title="Landing pública"
                 description="La página de entrada de la plataforma: buscador de tiendas, planes y contratación."
@@ -300,19 +350,85 @@ export default function LandingEditor({ blocks, catalogue, icons, settings, font
                         {current && definition ? (
                             <>
                                 <CardHeader title={definition.label} description={definition.help} />
+                                {definition.supports_appearance && (
+                                    <div className="mb-4 flex gap-0.5 rounded-control bg-[var(--surface-2)] p-0.5" role="tablist" aria-label="Qué se edita del bloque">
+                                        {(['content', 'design'] as const).map((item) => (
+                                            <button
+                                                key={item}
+                                                type="button"
+                                                role="tab"
+                                                aria-selected={pane === item}
+                                                onClick={() => setPane(item)}
+                                                className={cn('h-9 flex-1 rounded-[0.5rem] text-[0.8125rem] font-medium', pane === item ? 'bg-[var(--surface)] shadow-sm' : 'text-[var(--muted)]')}
+                                            >
+                                                {item === 'content' ? 'Contenido' : 'Diseño'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                                {definition.supports_appearance && pane === 'design' ? (
+                                    <DesignPanel
+                                        key={current.uuid}
+                                        catalogue={appearanceCatalogue}
+                                        defaults={definition.appearance_defaults}
+                                        value={(current.data.appearance as Values | undefined) ?? {}}
+                                        readOnly={!canEdit}
+                                        swatches={landingSwatches}
+                                        onChange={(next) => canEdit && change(current.uuid, 'appearance', next)}
+                                        renderMedia={(key, field, value, set) => {
+                                            const path = typeof value === 'string' ? value : null;
+                                            const url = path ? (current.image_urls[path] ?? null) : null;
+                                            // Las direcciones de los fondos van por ruta, como las de las listas.
+                                            const pick = (next: unknown, nextUrl?: string | null) => {
+                                                if (typeof next === 'string' && nextUrl) {
+                                                    setDrafts((drafts) => {
+                                                        const block = drafts[current.uuid];
+
+                                                        return block ? { ...drafts, [current.uuid]: { ...block, image_urls: { ...block.image_urls, [next]: nextUrl } } } : drafts;
+                                                    });
+                                                }
+
+                                                set(next);
+                                            };
+
+                                            return field.type === 'video' ? (
+                                                <VideoField name={key} label={field.label} help={field.help} path={path} url={url} onChange={pick} />
+                                            ) : (
+                                                <ImageField name={key} label={field.label} help={field.help} path={path} url={url} onChange={pick} />
+                                            );
+                                        }}
+                                    />
+                                ) : (
                                 <div className="flex flex-col gap-3">
-                                    {Object.entries(definition.fields).map(([key, field]) => (
-                                        <LandingField
-                                            key={`${current.uuid}-${key}`}
-                                            name={key}
-                                            field={field}
-                                            value={current.data[key]}
-                                            imageUrl={current.image_urls[key] ?? null}
-                                            icons={icons}
-                                            onChange={(value, imageUrl) => canEdit && change(current.uuid, key, value, imageUrl)}
-                                        />
-                                    ))}
+                                    {/* Solo los campos que valen con lo elegido (`when`); los demás conservan su valor. */}
+                                    {Object.entries(definition.fields)
+                                        // Las versiones de una imagen (`variant_of`) van dentro de su campo principal.
+                                        .filter(([, field]) => applies(field.when, current.data) && !field.variant_of)
+                                        .map(([key, field], index, shown) => (
+                                            <Fragment key={`${current.uuid}-${key}`}>
+                                                {field.section && field.section !== shown[index - 1]?.[1].section && (
+                                                    <h3
+                                                        className={cn(
+                                                            'text-[0.75rem] font-semibold uppercase tracking-wide text-[var(--muted)]',
+                                                            index > 0 && 'mt-2 border-t border-[var(--line)] pt-4',
+                                                        )}
+                                                    >
+                                                        {field.section}
+                                                    </h3>
+                                                )}
+                                                <LandingFieldRow
+                                                    name={key}
+                                                    field={field}
+                                                    values={current.data}
+                                                    urlOf={(slot) => current.image_urls[slot] ?? null}
+                                                    mediaUrls={current.image_urls}
+                                                    icons={icons}
+                                                    onChange={(slot, value, imageUrl, urls) => canEdit && change(current.uuid, slot, value, imageUrl, urls)}
+                                                />
+                                            </Fragment>
+                                        ))}
                                 </div>
+                                )}
                                 {canEdit && (
                                     <div className="mt-5 flex flex-wrap gap-2 border-t border-[var(--line)] pt-4">
                                         {!definition.unique && (
@@ -412,6 +528,7 @@ export default function LandingEditor({ blocks, catalogue, icons, settings, font
                 message={hiding ? types[hiding.type]?.hide_warning ?? '' : ''}
                 confirmLabel="Ocultar de todas formas"
             />
+            </EditorSchemeContext.Provider>
         </AppLayout>
     );
 }
@@ -433,6 +550,8 @@ function SmallButton({ label, onClick, disabled, children }: { label: string; on
 
 function PreviewFrame({ url, version }: { url: string; version: number }) {
     const [device, setDevice] = useState<'mobile' | 'desktop'>('desktop');
+    // El modo que se revisa (Claro | Oscuro), el mismo de la pestaña «Diseño».
+    const { scheme } = useEditorScheme();
     const [scale, setScale] = useState(1);
     const box = useRef<HTMLDivElement>(null);
     const width = device === 'mobile' ? 390 : 1280;
@@ -451,6 +570,7 @@ function PreviewFrame({ url, version }: { url: string; version: number }) {
         <div className="flex min-h-[32rem] flex-col rounded-card border border-[var(--line)] bg-[var(--surface)]">
             <div className="flex items-center justify-between gap-2 border-b border-[var(--line)] px-3 py-2">
                 <p className="text-[0.75rem] font-semibold uppercase tracking-wide text-[var(--muted)]">Vista previa del borrador</p>
+                <SchemeSwitch compact className="ml-auto" />
                 <div className="flex items-center gap-0.5 rounded-[0.5rem] bg-[var(--surface-2)] p-0.5">
                     {(['mobile', 'desktop'] as const).map((item) => (
                         <button
@@ -469,9 +589,9 @@ function PreviewFrame({ url, version }: { url: string; version: number }) {
             <div ref={box} className="min-h-0 flex-1 overflow-auto bg-[var(--surface-2)] p-3">
                 <div style={{ height: height * scale, width: width * scale }} className="mx-auto">
                     <iframe
-                        key={`${device}-${version}`}
+                        key={`${device}-${scheme}-${version}`}
                         title="Vista previa de la landing"
-                        src={`${url}?v=${version}`}
+                        src={`${url}?v=${version}&scheme=${scheme}`}
                         style={{ width, height, transform: `scale(${scale})`, transformOrigin: 'top left', border: '1px solid var(--line)', borderRadius: 14, background: 'white' }}
                     />
                 </div>
@@ -516,6 +636,8 @@ function SettingsForm({ settings, fontOptions, canEdit }: { settings: Settings; 
         leads_notify_email: settings.leads_notify_email,
         brand_accent: settings.brand_accent,
         brand_logo: settings.brand_logo,
+        brand_logo_dark: settings.brand_logo_dark,
+        brand_mark: settings.brand_mark,
         font_body: settings.font_body,
         font_display: settings.font_display,
         font_numeric: settings.font_numeric,
@@ -527,10 +649,16 @@ function SettingsForm({ settings, fontOptions, canEdit }: { settings: Settings; 
         terms_text: settings.terms_text,
         privacy_text: settings.privacy_text,
     });
-    const [urls, setUrls] = useState({ brand_logo: settings.brand_logo_url, seo_image: settings.seo_image_url, favicon: settings.favicon_url });
+    const [urls, setUrls] = useState({
+        brand_logo: settings.brand_logo_url,
+        brand_logo_dark: settings.brand_logo_dark_url,
+        brand_mark: settings.brand_mark_url,
+        seo_image: settings.seo_image_url,
+        favicon: settings.favicon_url,
+    });
     const { data, setData, errors } = form;
 
-    const image = (key: 'brand_logo' | 'seo_image' | 'favicon') => (value: unknown, url?: string | null) => {
+    const image = (key: keyof typeof urls) => (value: unknown, url?: string | null) => {
         setData(key, typeof value === 'string' ? value : null);
         setUrls((current) => ({ ...current, [key]: url ?? null }));
     };
@@ -544,7 +672,10 @@ function SettingsForm({ settings, fontOptions, canEdit }: { settings: Settings; 
             className="grid max-w-[64rem] gap-4 lg:grid-cols-2"
         >
             <Card>
-                <CardHeader title="Marca de la plataforma" description="La de la landing, el ingreso con varias empresas y el consolidado del super usuario." />
+                <CardHeader
+                    title="Marca de la plataforma"
+                    description="La de la landing, el ingreso con varias empresas y el consolidado del super usuario. Cada empresa usa la suya: esta no la reemplaza."
+                />
                 <div className="flex flex-col gap-3">
                     <Input label="Nombre de la plataforma" placeholder={settings.default_name} value={data.platform_name} onChange={(e) => setData('platform_name', e.target.value)} error={errors.platform_name} disabled={!canEdit} />
                     <label className="flex flex-col gap-1.5 text-[0.8125rem] font-medium">
@@ -555,7 +686,17 @@ function SettingsForm({ settings, fontOptions, canEdit }: { settings: Settings; 
                         </span>
                         {errors.brand_accent && <span className="text-[0.75rem] text-[var(--danger)]">{errors.brand_accent}</span>}
                     </label>
-                    <ImageField name="brand_logo" label="Logo" path={data.brand_logo} url={urls.brand_logo} onChange={image('brand_logo')} />
+                    <ImageField name="brand_logo" label="Logo" help="Horizontal, para fondo claro. PNG con fondo transparente." preview="logo" path={data.brand_logo} url={urls.brand_logo} onChange={image('brand_logo')} />
+                    <ImageField
+                        name="brand_logo_dark"
+                        label="Logo para fondo oscuro"
+                        help="El del menú oscuro y el tema oscuro. Sin él se usa el de fondo claro."
+                        preview="logo-dark"
+                        path={data.brand_logo_dark}
+                        url={urls.brand_logo_dark}
+                        onChange={image('brand_logo_dark')}
+                    />
+                    <ImageField name="brand_mark" label="Isotipo" help="Cuadrado, mínimo 512 × 512 px. Menú angosto e ícono de iOS." path={data.brand_mark} url={urls.brand_mark} onChange={image('brand_mark')} />
                     <Select label="Letra del texto" value={data.font_body} options={fontOptions.body} onChange={(e) => setData('font_body', e.target.value)} disabled={!canEdit} />
                     <Select label="Letra de los títulos" value={data.font_display} options={fontOptions.display} onChange={(e) => setData('font_display', e.target.value)} disabled={!canEdit} />
                     <Select label="Letra de las cifras" value={data.font_numeric} options={fontOptions.numeric} onChange={(e) => setData('font_numeric', e.target.value)} disabled={!canEdit} />
@@ -570,8 +711,8 @@ function SettingsForm({ settings, fontOptions, canEdit }: { settings: Settings; 
                     <Input label="WhatsApp de contacto" placeholder="+57 300 123 4567" value={data.whatsapp} onChange={(e) => setData('whatsapp', e.target.value)} error={errors.whatsapp} disabled={!canEdit} />
                     <Input label="Título para buscadores" maxLength={70} value={data.seo_title} onChange={(e) => setData('seo_title', e.target.value)} error={errors.seo_title} disabled={!canEdit} />
                     <Textarea label="Descripción para buscadores" maxLength={170} rows={2} value={data.seo_description} onChange={(e) => setData('seo_description', e.target.value)} error={errors.seo_description} disabled={!canEdit} />
-                    <ImageField name="seo_image" label="Imagen al compartir" path={data.seo_image} url={urls.seo_image} onChange={image('seo_image')} />
-                    <ImageField name="favicon" label="Ícono de la pestaña" path={data.favicon} url={urls.favicon} onChange={image('favicon')} />
+                    <ImageField name="seo_image" label="Imagen al compartir" help="1200 × 630 px: la vista previa de WhatsApp y las redes." preview="logo" path={data.seo_image} url={urls.seo_image} onChange={image('seo_image')} />
+                    <ImageField name="favicon" label="Ícono de la pestaña" help="Cuadrado, 32 × 32 px. Landing, ingreso y panel del super usuario." path={data.favicon} url={urls.favicon} onChange={image('favicon')} />
                 </div>
             </Card>
 

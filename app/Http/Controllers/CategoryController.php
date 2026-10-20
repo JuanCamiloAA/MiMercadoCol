@@ -7,6 +7,7 @@ use App\Models\MediaAsset;
 use App\Services\ImageService;
 use App\Services\Storefront\StorefrontStructure;
 use App\Support\TenantContext;
+use App\Support\Uploads;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -141,7 +142,7 @@ class CategoryController extends Controller
         $asset = MediaAsset::query()->withoutGlobalScopes()->create([
             'company_id' => $category->company_id,
             'path' => $stored['path'],
-            'disk' => 'public',
+            'disk' => Uploads::diskName(),
             'mime' => $file->getMimeType(),
             'width' => $stored['width'],
             'height' => $stored['height'],

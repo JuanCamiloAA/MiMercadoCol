@@ -39,6 +39,11 @@ class ThemeController extends Controller
             'radius' => ['sometimes', Rule::in(StorefrontTheme::OPTIONS['radius'])],
             'density' => ['sometimes', Rule::in(StorefrontTheme::OPTIONS['density'])],
             'button_style' => ['sometimes', Rule::in(StorefrontTheme::OPTIONS['button_style'])],
+            'logo_font' => ['sometimes', Rule::in(StorefrontTheme::OPTIONS['logo_font'])],
+            'surface' => ['sometimes', Rule::in(StorefrontTheme::OPTIONS['surface'])],
+            'heading_case' => ['sometimes', Rule::in(StorefrontTheme::OPTIONS['heading_case'])],
+            'container' => ['sometimes', Rule::in(StorefrontTheme::OPTIONS['container'])],
+            'button_shape' => ['sometimes', Rule::in(StorefrontTheme::OPTIONS['button_shape'])],
             // La marca es de la empresa: nada de medios de otra empresa ni de la plataforma.
             'logo_media_id' => ['sometimes', 'nullable', 'integer', $companyMedia()],
             'favicon_media_id' => ['sometimes', 'nullable', 'integer', $companyMedia()],

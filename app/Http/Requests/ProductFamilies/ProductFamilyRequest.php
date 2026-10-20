@@ -4,6 +4,8 @@ namespace App\Http\Requests\ProductFamilies;
 
 use App\Models\Product;
 use App\Models\ProductAttributeValue;
+use App\Models\ProductFamilyImage;
+use App\Services\Catalog\CatalogImages;
 use App\Support\ScanCodeGuard;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Http\FormRequest;
@@ -42,8 +44,9 @@ abstract class ProductFamilyRequest extends FormRequest
             'is_online_visible' => ['boolean'],
             'is_featured' => ['boolean'],
             'default_index' => ['nullable', 'integer', 'min:0'],
-            'images' => ['nullable', 'array', 'max:8'],
-            'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            // Cuantas, lo decide la empresa (Ajustes > Catalogo): se mide en `after` con las que ya tiene.
+            'images' => ['nullable', 'array'],
+            'images.*' => CatalogImages::FILE_RULES,
             'image_values' => ['nullable', 'array'],
             'image_values.*' => ['nullable', 'integer'],
             'variants' => ['required', 'array', 'min:1', 'max:200'],
@@ -86,13 +89,21 @@ abstract class ProductFamilyRequest extends FormRequest
             'variants.max' => 'Máximo 200 subartículos por artículo.',
             'variants.*.sku.required' => 'Cada subartículo necesita su SKU.',
             'variants.*.price.required' => 'Cada subartículo necesita su precio.',
-            'images.*.max' => 'Cada foto debe pesar menos de 4 MB.',
+            ...CatalogImages::fileMessages(),
         ];
     }
 
     public function after(): array
     {
-        return [fn (Validator $validator) => $this->checkMatrix($validator)];
+        return [
+            fn (Validator $validator) => $this->checkMatrix($validator),
+            fn (Validator $validator) => app(CatalogImages::class)->check(
+                $validator,
+                (int) TenantContext::activeCompanyId(),
+                $this->familyId() ? ProductFamilyImage::query()->where('product_family_id', $this->familyId())->count() : 0,
+                count((array) $this->file('images', [])),
+            ),
+        ];
     }
 
     /**

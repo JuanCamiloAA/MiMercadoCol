@@ -6,15 +6,22 @@ use App\Storefront\Blocks\AnnouncementBlockData;
 use App\Storefront\Blocks\BannerGridBlockData;
 use App\Storefront\Blocks\BenefitsBlockData;
 use App\Storefront\Blocks\BlockData;
+use App\Storefront\Blocks\BrandLogosBlockData;
 use App\Storefront\Blocks\CategoriesBlockData;
 use App\Storefront\Blocks\CtaBandBlockData;
 use App\Storefront\Blocks\DealCountdownBlockData;
 use App\Storefront\Blocks\FaqBlockData;
 use App\Storefront\Blocks\HeroBlockData;
+use App\Storefront\Blocks\ImageTextBlockData;
+use App\Storefront\Blocks\LookBlockData;
+use App\Storefront\Blocks\MediaCarouselBlockData;
 use App\Storefront\Blocks\ProductGridBlockData;
 use App\Storefront\Blocks\PromoCarouselBlockData;
 use App\Storefront\Blocks\RichTextBlockData;
 use App\Storefront\Blocks\StoreInfoBlockData;
+use App\Storefront\Blocks\TickerBlockData;
+use App\Storefront\Blocks\VideoBlockData;
+use App\Storefront\Blocks\VideoShowcaseBlockData;
 
 /**
  * Los tipos de bloque que existen.
@@ -33,9 +40,16 @@ class BlockCatalogue
         ProductGridBlockData::class,
         DealCountdownBlockData::class,
         PromoCarouselBlockData::class,
+        MediaCarouselBlockData::class,
+        VideoBlockData::class,
+        VideoShowcaseBlockData::class,
         CtaBandBlockData::class,
         BenefitsBlockData::class,
         RichTextBlockData::class,
+        ImageTextBlockData::class,
+        LookBlockData::class,
+        BrandLogosBlockData::class,
+        TickerBlockData::class,
         FaqBlockData::class,
         StoreInfoBlockData::class,
     ];

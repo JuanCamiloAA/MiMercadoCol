@@ -30,7 +30,7 @@
         <meta name="theme-color" content="{{ $brand['theme_color'] ?? '#0E6E4E' }}">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title inertia>{{ $brand['display_name'] ?? config('app.name', 'MiMercadoCol') }}</title>
+        <title inertia>{{ $brand['display_name'] ?? config('app.name', 'AgoraShop') }}</title>
 
         <link rel="icon" id="brand-favicon" href="{{ $brand['favicon_url'] ?? $factoryFavicon }}">
         @if (! empty($brand['touch_icon_url']))

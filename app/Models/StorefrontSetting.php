@@ -20,6 +20,7 @@ class StorefrontSetting extends Model
     public const KEYS = [
         'delivery', 'coverage', 'slots', 'payments', 'catalog', 'texts', 'seo',
         'topbar', 'header', 'nav', 'mobile_nav', 'card', 'cart_bar', 'category_page', 'product_page', 'search', 'footer',
+        'floating',
     ];
 
     protected $fillable = ['storefront_id', 'key', 'value'];

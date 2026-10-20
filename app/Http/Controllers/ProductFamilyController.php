@@ -17,14 +17,14 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Store;
 use App\Models\Supplier;
-use App\Services\ImageService;
 use App\Services\ProductAttributeCatalog;
+use App\Services\Catalog\CatalogImages;
 use App\Services\ProductFamilyService;
 use App\Support\TenantContext;
+use App\Support\Uploads;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -38,7 +38,7 @@ class ProductFamilyController extends Controller
 {
     public function __construct(
         protected ProductFamilyService $families,
-        protected ImageService $images,
+        protected CatalogImages $catalogImages,
         protected ProductAttributeCatalog $attributes,
     ) {}
 
@@ -107,7 +107,7 @@ class ProductFamilyController extends Controller
                 'attribute_2' => $family->attribute2 ? ['id' => $family->attribute2->id, 'name' => $family->attribute2->name] : null,
                 'images' => $family->images->map(fn (ProductFamilyImage $image) => [
                     'id' => $image->id,
-                    'url' => '/storage/'.$image->thumb(),
+                    'url' => Uploads::url($image->thumb()),
                     'value_id' => $image->attribute_value_id,
                 ])->values(),
             ],
@@ -237,10 +237,22 @@ class ProductFamilyController extends Controller
 
         abort_if($image->product_family_id !== $family->id, 403, 'Esa foto no es de este artículo.');
 
-        Storage::disk('public')->delete(array_filter([$image->path, $image->thumb_path]));
+        $this->catalogImages->deleteFiles($image);
         $image->delete();
 
         return back()->with('success', 'La foto quedó eliminada.');
+    }
+
+    /** La foto comun que va primero: la de la tarjeta y la que abre el carrusel. */
+    public function coverImage(ProductFamily $family, ProductFamilyImage $image): RedirectResponse
+    {
+        $this->authorizeCompany($family);
+
+        abort_if($image->product_family_id !== $family->id, 403, 'Esa foto no es de este artículo.');
+
+        $this->catalogImages->makeFirst($family->images(), $image);
+
+        return back()->with('success', 'La portada quedó cambiada.');
     }
 
     /**
@@ -296,11 +308,14 @@ class ProductFamilyController extends Controller
                 'has_movements' => $mode === 'edit' && $this->families->hasMovements($product),
             ], $canViewCost ? ['cost' => $product->cost] : []))->values(),
             'attributes' => $this->attributes->catalogFor($companyId, onlyActive: true),
-            'images' => $family ? $family->images()->get()->map(fn (ProductFamilyImage $image) => [
+            'images' => $family ? $family->images()->get()->map(fn (ProductFamilyImage $image, int $index) => [
                 'id' => $image->id,
-                'url' => '/storage/'.$image->thumb(),
+                'url' => Uploads::url($image->thumb()),
                 'value_id' => $image->attribute_value_id,
+                'is_cover' => $index === 0,
             ])->values() : [],
+            // Cuantas fotos comunes se le montan (Ajustes > Catalogo).
+            'imageLimit' => $this->catalogImages->limit($companyId),
             'categories' => Category::query()->where('company_id', $companyId)->where('is_active', true)->orderBy('sort_order')->orderBy('name')
                 ->get()->map(fn (Category $category) => ['value' => $category->id, 'label' => $category->name])->values(),
             'suppliers' => Supplier::query()->where('company_id', $companyId)->where('is_active', true)->orderBy('name')
@@ -331,25 +346,15 @@ class ProductFamilyController extends Controller
         // Solo un valor de sus propias caracteristicas: la foto de un color de este articulo.
         $allowed = ProductAttributeValue::query()->whereIn('product_attribute_id', array_filter([$family->attribute_1_id, $family->attribute_2_id]))->pluck('id')->all();
         $values = $request->imageValues()->map(fn (?int $id) => in_array($id, $allowed, true) ? $id : null);
-        $sort = (int) $family->images()->max('sort_order');
 
-        DB::transaction(function () use ($files, $values, $family, $sort) {
-            foreach ($files as $index => $file) {
-                if (! $file || ! $file->isValid()) {
-                    continue;
-                }
-
-                $stored = $this->images->storeProductImage($file, (int) $family->company_id);
-
-                ProductFamilyImage::query()->create([
-                    'product_family_id' => $family->id,
-                    'path' => $stored['path'],
-                    'thumb_path' => $stored['thumb_path'],
-                    'attribute_value_id' => $values->get($index),
-                    'sort_order' => ++$sort,
-                ]);
-            }
-        });
+        // Cuantas caben ya lo midio el formulario contra el tope de la empresa (`CatalogImages`).
+        DB::transaction(fn () => $this->catalogImages->append(
+            $family->images(),
+            $files,
+            (int) $family->company_id,
+            'products',
+            fn (int $index) => ['attribute_value_id' => $values->get($index)],
+        ));
     }
 
     protected function authorizeCompany(ProductFamily $family): void

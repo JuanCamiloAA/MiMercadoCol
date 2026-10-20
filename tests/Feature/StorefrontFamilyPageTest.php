@@ -50,10 +50,10 @@ class StorefrontFamilyPageTest extends TestCase
             ->where('attributes.0.name', 'Talla')
             ->where('attributes.0.values', fn ($values) => collect($values)->pluck('value')->all() === ['S', 'M'])
             ->where('attributes.1.values', fn ($values) => collect($values)->pluck('value')->all() === ['Negro', 'Azul'])
-            ->has('variants', 3)
-            ->where('variants', fn ($variants) => collect($variants)->firstWhere('id', $outOfStock->id)['stock']['out'] === true
-                && collect($variants)->firstWhere('id', $outOfStock->id)['value_1_id'] === $this->value('Talla', 'M')->id
-                && collect($variants)->firstWhere('id', $outOfStock->id)['label'] === 'Talla M · Azul')
+            // La agotada no se ofrece: al cruzar M con Azul el selector dice «no disponible».
+            ->has('variants', 2)
+            ->where('variants', fn ($variants) => collect($variants)->firstWhere('id', $outOfStock->id) === null
+                && collect($variants)->contains(fn ($variant) => $variant['value_1_id'] === $this->value('Talla', 'M')->id && $variant['label'] === 'Talla M · Negro'))
             ->where('default_id', fn ($id) => $id !== $outOfStock->id)
             ->where('selected_id', fn ($id) => $id !== $outOfStock->id));
     }
@@ -85,7 +85,7 @@ class StorefrontFamilyPageTest extends TestCase
         // Las opciones para escoger desde la tarjeta son las mismas, en JSON.
         $this->getJson(route('storefront.family.options', $this->shirt->slug))
             ->assertOk()
-            ->assertJsonCount(3, 'variants')
+            ->assertJsonCount(2, 'variants')
             ->assertJsonPath('family.href', '/tienda/articulo/'.$this->shirt->slug);
     }
 

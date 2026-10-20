@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Platform;
 
 use App\Models\BillingCycle;
+use App\Models\BusinessCategory;
 use App\Models\MembershipPlan;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -31,6 +32,8 @@ class StoreCompanyRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:40'],
             'address' => ['nullable', 'string', 'max:160'],
             'city' => ['nullable', 'string', 'max:80'],
+            // Alimentos, textiles, belleza…: con ella la landing la agrupa.
+            'business_category_id' => ['required', 'integer', Rule::exists(BusinessCategory::class, 'id')->where('is_active', true)],
 
             'store_name' => ['required', 'string', 'max:80'],
             'store_code' => ['required', 'string', 'max:20', 'alpha_dash'],
@@ -62,6 +65,8 @@ class StoreCompanyRequest extends FormRequest
             'tax_id.required' => 'Escribe el NIT.',
             'tax_id.unique' => 'Ya hay una empresa con ese NIT.',
             'email.email' => 'El correo de la empresa no es válido.',
+            'business_category_id.required' => 'Elige la clasificación de la empresa.',
+            'business_category_id.exists' => 'Esa clasificación no existe o está desactivada.',
             'store_name.required' => 'Escribe el nombre de la primera sede.',
             'store_code.required' => 'Escribe el código de la sede.',
             'store_code.alpha_dash' => 'El código de la sede solo lleva letras, números y guiones.',
@@ -98,6 +103,7 @@ class StoreCompanyRequest extends FormRequest
                 'phone' => $data['phone'] ?? null,
                 'address' => $data['address'] ?? null,
                 'city' => $data['city'] ?? null,
+                'business_category_id' => (int) $data['business_category_id'],
             ],
             'store' => [
                 'name' => $data['store_name'],

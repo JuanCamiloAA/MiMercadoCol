@@ -8,12 +8,15 @@ use App\Models\ProductAttributeValue;
 use App\Models\ProductFamily;
 use App\Models\ProductImage;
 use App\Models\Service;
+use App\Models\ServiceImage;
 use App\Models\Store;
 use App\Services\PromotionService;
 use App\Services\WarehouseService;
+use App\Support\Uploads;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Los articulos de la tienda tal como los pinta la tarjeta de producto.
@@ -34,12 +37,21 @@ class StorefrontProducts
     ) {}
 
     /**
-     * Lo que la tienda puede ofrecer: activo, publicado en linea, con precio y —si la sede no
-     * muestra agotados— con existencia en la bodega que respalda la tienda.
-     *
-     * @param  array<string, mixed>  $catalog  El ajuste `catalog` publicado.
+     * Lo disponible de un articulo en la bodega que respalda la tienda: existencia menos lo
+     * apartado, con `product_stocks` ya unida a esa bodega. El panel (`StorefrontAssortmentService`)
+     * usa la misma expresion para decir que esta oculto: las dos tienen que decir lo mismo.
      */
-    public function query(Store $store, array $catalog = []): Builder
+    public const AVAILABLE_SQL = 'COALESCE(product_stocks.quantity, 0) - COALESCE(product_stocks.reserved_quantity, 0)';
+
+    /**
+     * Lo que la tienda puede ofrecer: activo, publicado en linea, con precio y con disponible en
+     * la bodega que respalda la tienda (o que se vende aunque no haya, `allow_negative_stock`).
+     *
+     * @param  array<string, mixed>  $catalog  El ajuste `catalog` publicado. `show_out_of_stock` ya no cuenta.
+     * @param  bool  $onlyAvailable  Solo para el aviso de la vista previa, que pregunta si el estante
+     *                               quedo vacio por las existencias. El cliente siempre va con `true`.
+     */
+    public function query(Store $store, array $catalog = [], bool $onlyAvailable = true): Builder
     {
         // La tienda solo muestra lo que hay en la bodega que la respalda. Sumar el deposito
         // ofreceria mercancia que el alistador no va a encontrar en el estante.
@@ -57,10 +69,18 @@ class StorefrontProducts
                 $join->on('product_stocks.product_id', '=', 'products.id')
                     ->where('product_stocks.warehouse_id', '=', $warehouseId);
             })
-            ->when(! ($catalog['show_out_of_stock'] ?? true), fn (Builder $query) => $query->where(fn (Builder $inner) => $inner
-                ->where('products.allow_negative_stock', true)
-                ->orWhereRaw('COALESCE(product_stocks.quantity, 0) - COALESCE(product_stocks.reserved_quantity, 0) > 0')))
+            // La tienda no ofrece lo que no puede entregar: publicado sin disponible queda oculto,
+            // sin despublicarse, y vuelve solo cuando entra mercancia.
+            ->when($onlyAvailable, fn (Builder $query) => self::whereAvailable($query))
             ->select(self::COLUMNS);
+    }
+
+    /** Con disponible en la bodega unida, o vendible aunque no haya. */
+    public static function whereAvailable(Builder $query): Builder
+    {
+        return $query->where(fn (Builder $inner) => $inner
+            ->where('products.allow_negative_stock', true)
+            ->orWhereRaw(self::AVAILABLE_SQL.' > 0'));
     }
 
     /** Las columnas que necesita la ficha. */
@@ -96,9 +116,10 @@ class StorefrontProducts
         // Un articulo con subarticulos sale una sola vez: su ficha va en el lugar de la primera
         // fila suya que llegue, y las demas se descartan. Asi un estante no repite tallas.
         $families = $this->familyCards($rows->pluck('product_family_id')->filter()->unique()->values()->all(), $store, $card);
+        $extras = $this->cardExtras($rows, $card);
         $emitted = [];
 
-        return $rows->map(function ($row) use ($promos, $icons, $card, $perUnit, $families, &$emitted) {
+        return $rows->map(function ($row) use ($promos, $icons, $card, $perUnit, $families, $extras, &$emitted) {
             if (! empty($row->product_family_id)) {
                 $familyId = (int) $row->product_family_id;
 
@@ -111,8 +132,60 @@ class StorefrontProducts
                 return $families[$familyId];
             }
 
-            return $this->productCard($row, $promos[(int) $row->id] ?? null, $icons, $card, $perUnit);
+            $product = $this->productCard($row, $promos[(int) $row->id] ?? null, $icons, $card, $perUnit);
+
+            // Solo si la sede los pidió en la tarjeta: la línea de descripción y la foto al pasar el mouse.
+            foreach (['description', 'image_hover'] as $key) {
+                if (isset($extras[$key][(int) $row->id])) {
+                    $product[$key] = $extras[$key][(int) $row->id];
+                }
+            }
+
+            return $product;
         })->filter()->values()->all();
+    }
+
+    /**
+     * Lo que la tarjeta muestra solo si la sede lo pidió: una línea de la descripción de la ficha
+     * y la segunda foto de la galería (la primera que no es la portada). Va en dos consultas
+     * aparte para no cargar la consulta de siempre con texto que casi nunca se pinta.
+     *
+     * @param  Collection<int, object>  $rows
+     * @param  array<string, mixed>  $card
+     * @return array{description: array<int, string>, image_hover: array<int, string>}
+     */
+    protected function cardExtras(Collection $rows, array $card): array
+    {
+        $extras = ['description' => [], 'image_hover' => []];
+        $singles = $rows->filter(fn ($row) => empty($row->product_family_id));
+        $ids = $singles->pluck('id')->map(fn ($id) => (int) $id)->unique()->values()->all();
+
+        if ($ids === []) {
+            return $extras;
+        }
+
+        if ($card['show_description'] ?? false) {
+            $extras['description'] = Product::query()->withoutGlobalScopes()->whereIn('id', $ids)->whereNotNull('description')->pluck('description', 'id')
+                ->map(fn ($text) => Str::limit(trim(preg_replace('/\s+/', ' ', strip_tags((string) $text)) ?? ''), 90))
+                ->filter(fn (string $text) => $text !== '')
+                ->all();
+        }
+
+        if (($card['image_hover'] ?? 'none') === 'second') {
+            $covers = $singles->mapWithKeys(fn ($row) => [(int) $row->id => (string) $row->image_path])->all();
+
+            ProductImage::query()->whereIn('product_id', $ids)->orderBy('sort_order')->orderBy('id')->get(['product_id', 'path'])
+                ->groupBy('product_id')
+                ->each(function (Collection $images, int|string $productId) use ($covers, &$extras) {
+                    $second = $images->first(fn (ProductImage $image) => $image->path !== ($covers[(int) $productId] ?? null));
+
+                    if ($second && ($url = Uploads::url($second->path))) {
+                        $extras['image_hover'][(int) $productId] = $url;
+                    }
+                });
+        }
+
+        return $extras;
     }
 
     /**
@@ -211,16 +284,16 @@ class StorefrontProducts
                     'compare' => $compare,
                     'percent' => $compare ? (int) round(($compare - $price) / $compare * 100) : 0,
                     'available' => $available,
-                    'in_stock' => $row->allow_negative_stock || $available > 0,
                 ];
             });
 
-            $pool = $priced->where('in_stock', true)->isNotEmpty() ? $priced->where('in_stock', true) : $priced;
-            $representative = $pool->sortBy([['price', 'asc'], [fn ($entry) => $entry['row']->variant_sort, 'asc']])->first();
+            // `sellableVariants()` solo trae presentaciones con disponible: una familia sin
+            // ninguna ya salio arriba (`$rows->isEmpty()`) y no tiene tarjeta.
+            $representative = $priced->sortBy([['price', 'asc'], [fn ($entry) => $entry['row']->variant_sort, 'asc']])->first();
             $best = $priced->sortByDesc('percent')->first();
             $common = $family->images->firstWhere('attribute_value_id', null) ?? $family->images->first();
             $image = $common
-                ? ['url' => '/storage/'.ltrim($common->thumb(), '/'), 'external' => false]
+                ? ['url' => Uploads::url($common->thumb()), 'external' => false]
                 : self::image($representative['row']->thumb_path ?: $representative['row']->image_path, $representative['row']->image_url);
             $maxAvailable = (float) $priced->max('available');
             $anyNegative = $priced->contains(fn ($entry) => (bool) $entry['row']->allow_negative_stock);
@@ -278,11 +351,6 @@ class StorefrontProducts
         $card = array_merge(StorefrontStructure::DEFAULTS['card'], $settings['card'] ?? []);
         $perUnit = (bool) ($settings['product_page']['show_unit_price'] ?? true) && (bool) ($settings['catalog']['price_per_unit'] ?? true);
         $rows = $this->sellableVariants([$family->id], $store)->get($family->id, collect());
-
-        if (! ($settings['catalog']['show_out_of_stock'] ?? true)) {
-            $rows = $rows->filter(fn ($row) => $row->allow_negative_stock || ((float) $row->stock_quantity - (float) $row->reserved_quantity) > 0)->values();
-        }
-
         $promos = $this->promotions->unitPrices($rows, $store->company_id, PromotionService::CHANNEL_ONLINE);
         $icons = $this->categoryIcons($store, array_filter([(int) $family->category_id]));
         $own = ProductImage::query()->whereIn('product_id', $rows->pluck('id'))->orderBy('sort_order')->get()->groupBy('product_id');
@@ -307,29 +375,26 @@ class StorefrontProducts
                         'id' => $value->id,
                         'value' => $value->value,
                         'color_hex' => $value->color_hex,
-                        'image' => $value->media ? '/storage/'.ltrim((string) ($value->media->variants['square'] ?? $value->media->path), '/') : null,
+                        'image' => $value->media ? Uploads::url((string) ($value->media->variants['square'] ?? $value->media->path)) : null,
                     ])->values()->all(),
             ];
         }
 
         $variants = $rows->map(function ($row) use ($promos, $icons, $card, $perUnit, $own, $descriptions, $family) {
-            $images = $own->get($row->id, collect())->map(fn (ProductImage $image) => '/storage/'.ltrim($image->path, '/'))->values()->all();
+            $images = $own->get($row->id, collect())->map(fn (ProductImage $image) => Uploads::url($image->path))->values()->all();
 
             return array_merge($this->productCard($row, $promos[(int) $row->id] ?? null, $icons, $card, $perUnit), [
                 'label' => $row->variant_label,
                 'value_1_id' => $row->variant_value_1_id ? (int) $row->variant_value_1_id : null,
                 'value_2_id' => $row->variant_value_2_id ? (int) $row->variant_value_2_id : null,
                 // Las fotos propias; si no tiene, la galeria usa las comunes (o las de su color).
-                'images' => $images !== [] ? $images : ($row->image_path ? ['/storage/'.ltrim($row->image_path, '/')] : []),
+                'images' => $images !== [] ? $images : ($row->image_path ? [Uploads::url($row->image_path)] : []),
                 'description' => $descriptions->get($row->id) ?: $family->description,
             ]);
         })->values()->all();
 
-        $default = collect($variants)->firstWhere('id', $family->default_variant_id);
-
-        if (! $default || $default['stock']['out']) {
-            $default = collect($variants)->first(fn ($variant) => ! $variant['stock']['out']) ?? ($variants[0] ?? null);
-        }
+        // Todas las que llegan tienen disponible: si la de por defecto no esta, va la primera.
+        $default = collect($variants)->firstWhere('id', $family->default_variant_id) ?? ($variants[0] ?? null);
 
         return [
             'family' => [
@@ -344,7 +409,7 @@ class StorefrontProducts
             ],
             'attributes' => $attributes,
             'variants' => $variants,
-            'images' => $family->images->map(fn ($image) => ['url' => '/storage/'.ltrim($image->path, '/'), 'value_id' => $image->attribute_value_id])->values()->all(),
+            'images' => $family->images->map(fn ($image) => ['url' => Uploads::url($image->path), 'value_id' => $image->attribute_value_id])->values()->all(),
             'default_id' => $default['id'] ?? null,
         ];
     }
@@ -375,6 +440,8 @@ class StorefrontProducts
                 $join->on('product_stocks.product_id', '=', 'products.id')
                     ->where('product_stocks.warehouse_id', '=', $warehouseId);
             })
+            // La misma regla que `query()`: una presentacion sin disponible sale del selector.
+            ->where(fn (Builder $query) => self::whereAvailable($query))
             ->select(self::COLUMNS)
             ->orderBy('products.variant_sort')
             ->get()
@@ -417,7 +484,7 @@ class StorefrontProducts
                     $swatches[] = [
                         'value' => $value->value,
                         'color_hex' => $value->color_hex,
-                        'image' => $value->media ? '/storage/'.ltrim((string) ($value->media->variants['square'] ?? $value->media->path), '/') : null,
+                        'image' => $value->media ? Uploads::url((string) ($value->media->variants['square'] ?? $value->media->path)) : null,
                     ];
                 }
             }
@@ -453,7 +520,8 @@ class StorefrontProducts
     {
         $card = array_merge(StorefrontStructure::DEFAULTS['card'], $card);
 
-        return collect($this->services->present($services, $store))->map(function (array $service) use ($card) {
+        // Un servicio que no alcanza para una unidad no se muestra, como un articulo sin disponible.
+        return collect($this->services->present($this->services->onlyAvailable($services, $store), $store))->map(function (array $service) use ($card) {
             $image = self::image($service['thumb_path'] ?: $service['image_path'], null);
 
             return [
@@ -502,7 +570,53 @@ class StorefrontProducts
             ?? $images->firstWhere('attribute_value_id', null)
             ?? $images->first();
 
-        return $pick ? ['url' => '/storage/'.ltrim($pick->thumb(), '/'), 'external' => false] : $own;
+        return $pick ? ['url' => Uploads::url($pick->thumb()), 'external' => false] : $own;
+    }
+
+    /**
+     * Las fotos de la ficha de un articulo, en tamaño completo y con la portada primero: lo que
+     * recorre el carrusel. Sin fotos propias, la portada suelta o la del catalogo externo. Muestra
+     * todas las que tiene aunque la empresa haya bajado despues el tope: el tope es para montar.
+     *
+     * @return list<string>
+     */
+    public function gallery(Product $product): array
+    {
+        $own = ProductImage::query()->where('product_id', $product->id)->orderBy('sort_order')->orderBy('id')->get()
+            ->sortBy(fn (ProductImage $image) => $image->path === $product->image_path ? 0 : 1)
+            ->map(fn (ProductImage $image) => Uploads::url($image->path))
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($own !== []) {
+            return $own;
+        }
+
+        $cover = self::image($product->image_path, $product->image_url)['url'];
+
+        return $cover ? [$cover] : [];
+    }
+
+    /**
+     * Las fotos de la ficha de un servicio, con la portada primero.
+     *
+     * @return list<string>
+     */
+    public function serviceGallery(Service $service): array
+    {
+        $images = $service->images()->get()
+            ->sortBy(fn (ServiceImage $image) => $image->path === $service->image_path ? 0 : 1)
+            ->map(fn (ServiceImage $image) => Uploads::url($image->path))
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($images === [] && $service->image_path) {
+            return array_values(array_filter([Uploads::url($service->image_path)]));
+        }
+
+        return $images;
     }
 
     /** El enlace de un articulo: un subarticulo abre su articulo con la presentacion elegida. */
@@ -521,7 +635,7 @@ class StorefrontProducts
     public static function image(?string $path, ?string $url): array
     {
         if ($path) {
-            return ['url' => '/storage/'.ltrim($path, '/'), 'external' => false];
+            return ['url' => Uploads::url($path), 'external' => false];
         }
 
         if ($url && preg_match('#^https?://#i', $url) === 1) {
@@ -578,20 +692,17 @@ class StorefrontProducts
     /**
      * El aviso de existencias segun la regla de la tarjeta.
      *
-     * Por defecto no se dice la cifra: «Últimas 3 unidades» solo bajo el umbral y «Agotado»
-     * cuando no hay. La cifra exacta solo si la sede lo pidio.
+     * Por defecto no se dice la cifra: «Últimas 3 unidades» solo bajo el umbral. La cifra exacta
+     * solo si la sede lo pidio. «Agotado» ya no existe: lo que no tiene disponible no llega a
+     * la tienda (`query()`), asi que aqui siempre hay algo que vender.
      *
      * @param  array<string, mixed>  $card
-     * @return array{out: bool, level: string, note: string|null}
+     * @return array{level: string, note: string|null}
      */
     public static function stock(float $available, bool $allowNegative, bool $byWeight, array $card): array
     {
-        if ($allowNegative) {
-            return ['out' => false, 'level' => 'ok', 'note' => null];
-        }
-
-        if ($available <= 0) {
-            return ['out' => true, 'level' => 'out', 'note' => 'Agotado'];
+        if ($allowNegative || $available <= 0) {
+            return ['level' => 'ok', 'note' => null];
         }
 
         $display = $card['stock_display'] ?? 'low_only';
@@ -605,7 +716,7 @@ class StorefrontProducts
             default => null,
         };
 
-        return ['out' => false, 'level' => $low ? 'low' : 'ok', 'note' => $note];
+        return ['level' => $low ? 'low' : 'ok', 'note' => $note];
     }
 
     /**

@@ -4,13 +4,15 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { PageProps } from '@/types';
 
 /** Los canales que el servidor le arma a esta persona. Nunca se componen aquí. */
-export type ChannelKey = 'orders' | 'pos' | 'registers' | 'inventory' | 'catalog' | 'presence';
+export type ChannelKey = 'orders' | 'pos' | 'registers' | 'inventory' | 'catalog' | 'presence' | 'changes';
 
 export interface RealtimeConfig {
     enabled: boolean;
     company_id: number | null;
     store_id: number | null;
     channels: Partial<Record<ChannelKey, string>>;
+    /** Los temas que muestra esta pantalla (`Topics::ROUTES`); vacío, no se recarga sola. */
+    topics?: string[];
 }
 
 /** Lo mínimo que trae cualquier evento del sistema. */
@@ -36,6 +38,7 @@ export function useRealtimeConfig(): RealtimeConfig {
             company_id: null,
             store_id: null,
             channels: {},
+            topics: [],
         }
     );
 }

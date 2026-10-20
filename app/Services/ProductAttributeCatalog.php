@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ProductAttribute;
 use App\Models\ProductAttributeValue;
+use App\Support\Uploads;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -299,7 +300,7 @@ class ProductAttributeCatalog
             'amount' => $value->amount,
             'unit' => $value->unit,
             'color_hex' => $value->color_hex,
-            'media_url' => $value->media ? '/storage/'.ltrim((string) ($value->media->variants['square'] ?? $value->media->path), '/') : null,
+            'media_url' => $value->media ? Uploads::url((string) ($value->media->variants['square'] ?? $value->media->path)) : null,
             'media_id' => $value->media_id,
             'sort_order' => $value->sort_order,
             'is_active' => (bool) $value->is_active,

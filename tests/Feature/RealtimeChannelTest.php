@@ -82,9 +82,19 @@ class RealtimeChannelTest extends TestCase
             Channels::pos($otherCompany->id, $otherStore->id),
             Channels::registers($otherCompany->id, $otherStore->id),
             Channels::catalog($otherCompany->id),
+            Channels::changes($otherCompany->id),
         ] as $channel) {
             $this->authorize($this->admin, $channel)->assertForbidden();
         }
+    }
+
+    public function test_el_aviso_de_cambios_lo_escucha_cualquiera_de_la_empresa(): void
+    {
+        // Lleva solo el tema y la sede: basta ser de la empresa. Los datos los cuida cada ruta.
+        $this->authorize($this->admin, Channels::changes($this->company->id))->assertOk();
+
+        $courier = $this->makeUser('domiciliario');
+        $this->authorize($courier, Channels::changes($this->company->id))->assertOk();
     }
 
     public function test_un_id_de_empresa_cambiado_a_mano_no_sirve(): void

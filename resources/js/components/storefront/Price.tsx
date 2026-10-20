@@ -26,7 +26,8 @@ export function Price({
 
     return (
         <div className={cn('min-w-0', className)}>
-            <p className="flex flex-wrap items-baseline gap-x-1.5 leading-none">
+            {/* `data-store-price`: la letra del precio la puede poner el tema («Técnica»). */}
+            <p className="flex flex-wrap items-baseline gap-x-1.5 leading-none" data-store-price="">
                 {from && <span className="text-[12.5px] font-semibold text-[var(--muted)]">Desde</span>}
                 <span
                     className={cn(

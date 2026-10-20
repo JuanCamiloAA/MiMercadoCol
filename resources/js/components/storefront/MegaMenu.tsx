@@ -127,7 +127,7 @@ export function MegaMenu({ categories, onClose }: { categories: CategoryNode[]; 
                 }
             }}
         >
-            <div className="mx-auto grid max-h-[min(80vh,660px)] w-full max-w-[1280px] grid-cols-[280px_minmax(0,1fr)] gap-6 px-4 py-4 lg:px-6">
+            <div className="mx-auto grid max-h-[min(80vh,660px)] w-full max-w-[var(--store-max,1280px)] grid-cols-[280px_minmax(0,1fr)] gap-6 px-4 py-4 lg:px-[var(--store-gutter,1.5rem)]">
                 <ul ref={list} className="overflow-y-auto border-r border-[var(--line)] pr-2" aria-label="Categorías">
                     {categories.map((category, position) => (
                         <li key={category.id}>

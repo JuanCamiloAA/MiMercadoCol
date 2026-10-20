@@ -16,6 +16,10 @@ return [
     'Carrot', 'OrangeSlice', 'Pepper', 'Bread', 'Cake', 'Egg', 'Cheese', 'Cow', 'Fish', 'Hamburger',
     'Pizza', 'BowlFood', 'CookingPot', 'Grains', 'Coffee', 'BeerBottle', 'Wine', 'Cookie', 'Popcorn', 'IceCream',
     'Broom', 'Drop', 'HandSoap', 'ToiletPaper', 'Baby', 'PawPrint', 'Bone', 'FirstAid', 'Leaf', 'Plant', 'TShirt',
+    // Ropa y calzado.
+    'Dress', 'Pants', 'Hoodie', 'Sneaker', 'Handbag',
     'Star', 'Heart', 'Fire', 'Lightning', 'Gift', 'Confetti',
     'ShieldCheck', 'ThumbsUp', 'Sparkle', 'Megaphone', 'Calendar', 'House',
+    // Los de las plantillas: sastrería, cambios, chat y ferretería.
+    'Scissors', 'Ruler', 'ArrowUUpLeft', 'ChatCircle', 'Wrench',
 ];

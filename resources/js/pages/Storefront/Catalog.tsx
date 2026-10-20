@@ -19,7 +19,6 @@ interface Filters {
     min: number | null;
     max: number | null;
     deals: boolean;
-    in_stock: boolean;
     sort: string;
     page: number;
 }
@@ -46,7 +45,6 @@ function toParams(filters: Filters, query: string | null): Params {
         min: filters.min ?? undefined,
         max: filters.max ?? undefined,
         deals: filters.deals ? 1 : undefined,
-        in_stock: filters.in_stock ? 1 : undefined,
         sort: filters.sort,
     } as Params;
 }
@@ -113,7 +111,7 @@ export default function StorefrontCatalog({ mode, title, query, category, result
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    const active = (filters.sub ? 1 : 0) + filters.brands.length + filters.attr.length + (filters.min || filters.max ? 1 : 0) + (filters.deals ? 1 : 0) + (filters.in_stock ? 1 : 0);
+    const active = (filters.sub ? 1 : 0) + filters.brands.length + filters.attr.length + (filters.min || filters.max ? 1 : 0) + (filters.deals ? 1 : 0);
     const chips = page?.show_subcategory_chips ?? true;
 
     const filterPanel = <FilterPanel results={results} filters={filters} allowed={allowed} onApply={apply} mode={mode} />;
@@ -224,7 +222,7 @@ export default function StorefrontCatalog({ mode, title, query, category, result
                     </div>
 
                     {items.length === 0 ? (
-                        <EmptyResults shell={shell} mode={mode} hasFilters={active > 0} onClear={() => apply({ sub: null, brands: [], attr: [], min: null, max: null, deals: false, in_stock: false })} />
+                        <EmptyResults shell={shell} mode={mode} hasFilters={active > 0} onClear={() => apply({ sub: null, brands: [], attr: [], min: null, max: null, deals: false })} />
                     ) : (
                         <>
                             <div className={cn('grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:gap-3', sidebar && allowed.length > 0 ? 'lg:grid-cols-4' : 'lg:grid-cols-5')}>
@@ -334,11 +332,6 @@ function ActiveChips({ filters, onApply, results }: { filters: Filters; onApply:
             {filters.deals && (
                 <button type="button" className={chip} onClick={() => onApply({ deals: false })}>
                     Solo ofertas <XIcon size={12} weight="bold" />
-                </button>
-            )}
-            {filters.in_stock && (
-                <button type="button" className={chip} onClick={() => onApply({ in_stock: false })}>
-                    Solo disponibles <XIcon size={12} weight="bold" />
                 </button>
             )}
         </>
@@ -518,14 +511,6 @@ function FilterPanel({
                 </div>
             )}
 
-            {allowed.includes('in_stock') && (
-                <div className={section}>
-                    <label className="flex min-h-[40px] cursor-pointer items-center gap-2.5 font-semibold">
-                        <input type="checkbox" checked={filters.in_stock} onChange={(event) => onApply({ in_stock: event.target.checked })} className="size-4 accent-[var(--accent)]" />
-                        Solo disponibles
-                    </label>
-                </div>
-            )}
         </div>
     );
 }

@@ -3,6 +3,7 @@
 namespace App\Broadcasting;
 
 use Illuminate\Contracts\Broadcasting\Broadcaster;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -23,11 +24,24 @@ class GracefulBroadcaster implements Broadcaster
 {
     public function __construct(protected Broadcaster $inner) {}
 
+    /** Cuanto se deja de intentar despues de un fallo. */
+    public const PAUSE_SECONDS = 30;
+
+    protected const PAUSE_KEY = 'realtime:paused_until';
+
     public function broadcast(array $channels, $event, array $payload = []): void
     {
+        // Si acaba de fallar, no se vuelve a intentar en cada guardado: con Reverb apagado cada
+        // intento esperaria su tiempo de conexion antes de rendirse.
+        if ((int) Cache::get(self::PAUSE_KEY, 0) > time()) {
+            return;
+        }
+
         try {
             $this->inner->broadcast($channels, $event, $payload);
         } catch (Throwable $exception) {
+            Cache::put(self::PAUSE_KEY, time() + self::PAUSE_SECONDS, self::PAUSE_SECONDS * 2);
+
             Log::warning('No se pudo transmitir en vivo; la aplicacion sigue normal.', [
                 'event' => $event,
                 'channels' => array_map('strval', $channels),

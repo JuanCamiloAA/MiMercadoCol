@@ -43,7 +43,8 @@ class HeaderBlock extends LandingBlock
     public function fields(): array
     {
         return [
-            'logo' => ['type' => 'image', 'label' => 'Logo', 'help' => 'Si no hay, se usa el nombre de la plataforma.'],
+            'logo' => ['type' => 'image', 'label' => 'Logo', 'preview' => 'logo', 'help' => 'Si no hay, se usa el de la marca de la plataforma (Ajustes) y, sin él, su nombre.'],
+            'logo_dark' => ['type' => 'image', 'label' => 'Logo para fondo oscuro', 'preview' => 'logo-dark', 'help' => 'Para quien ve la página en modo oscuro. Si no hay, el de la marca de la plataforma y, sin él, el de arriba.'],
             'brand_name' => ['type' => 'text', 'label' => 'Nombre', 'max' => 40, 'help' => 'Vacío: el nombre de la plataforma.'],
             'links' => self::repeater('Enlaces', 'enlace', [
                 'label' => ['type' => 'text', 'label' => 'Texto', 'max' => 24],
@@ -59,6 +60,7 @@ class HeaderBlock extends LandingBlock
     {
         return [
             'logo' => null,
+            'logo_dark' => null,
             'brand_name' => '',
             'links' => [
                 ['label' => 'Tiendas', 'url' => '#tiendas'],
@@ -69,5 +71,11 @@ class HeaderBlock extends LandingBlock
             'cta_label' => 'Contratar',
             'cta_url' => '/contratar',
         ];
+    }
+
+    /** El encabezado no lleva la pestaña «Diseño»: es fijo al desplazar y una envoltura le quitaria lo fijo. */
+    public function supportsAppearance(): bool
+    {
+        return false;
     }
 }

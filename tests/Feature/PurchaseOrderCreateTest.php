@@ -11,8 +11,8 @@ use App\Models\Supplier;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
-use Tests\Concerns\CreatesCompanyEnvironment;
 use Tests\Concerns\BuysCatalog;
+use Tests\Concerns\CreatesCompanyEnvironment;
 use Tests\TestCase;
 
 /**

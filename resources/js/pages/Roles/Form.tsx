@@ -1,6 +1,7 @@
 import { useForm, usePage } from '@inertiajs/react';
 import { ArrowLeftIcon } from '@phosphor-icons/react';
 import type { FormEvent } from 'react';
+import { PlanHiddenNote } from '@/components/membership/PlanTree';
 import { PermissionMatrix } from '@/components/PermissionMatrix';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { Card, CardHeader } from '@/components/ui/Card';
@@ -28,7 +29,7 @@ interface RoleFormProps {
 const COLORS = ['#0E6E4E', '#1D6FA5', '#8F4705', '#B3261E', '#565E64', '#5B3A9B'];
 
 export default function RoleForm({ mode, role, rolePermissions }: RoleFormProps) {
-    const { permissionMatrix } = usePage<PageProps>().props;
+    const { permissionMatrix, permissionMatrixHidden } = usePage<PageProps>().props;
 
     const { data, setData, post, put, processing, errors } = useForm({
         display_name: role?.display_name ?? '',
@@ -132,6 +133,7 @@ export default function RoleForm({ mode, role, rolePermissions }: RoleFormProps)
                             selected={data.permissions}
                             onChange={(permissions) => setData('permissions', permissions)}
                             baseline={rolePermissions}
+                            footer={<PlanHiddenNote hidden={permissionMatrixHidden ?? 0} />}
                         />
                     ) : (
                         <p className="text-[0.8125rem] text-[var(--muted)]">No se pudo cargar el catalogo de permisos.</p>

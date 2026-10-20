@@ -37,7 +37,7 @@ interface ProductShowProps {
         description: string | null;
         category: { id: number; name: string } | null;
         supplier: { id: number; name: string; contact_name: string | null; phone: string | null } | null;
-        images: { id: number; path: string }[];
+        images: { id: number; path: string; url: string | null }[];
         /** Si es un subartículo: su artículo principal. */
         family: { id: number; name: string; label: string | null } | null;
     };
@@ -143,7 +143,7 @@ export default function ProductShow({ product, stocks, salesTrend, movements, ca
                     <Card>
                         <div className="grid h-40 place-items-center rounded-control bg-[var(--surface-2)] text-[var(--muted)]">
                             {product.images.length > 0 ? (
-                                <img src={`/storage/${product.images[0].path}`} alt={product.name} className="h-full w-full rounded-control object-cover" />
+                                <img src={product.images[0].url ?? undefined} alt={product.name} className="h-full w-full rounded-control object-cover" />
                             ) : (
                                 <PackageIcon size={44} />
                             )}

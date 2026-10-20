@@ -30,6 +30,11 @@ class BenefitsBlockData extends BlockData
     public function fields(string $context = self::CONTEXT_STORE): array
     {
         return [
+            'style' => [
+                'type' => 'select',
+                'label' => 'Cómo se ven',
+                'options' => self::options(['cards' => 'En una tarjeta, con círculos', 'inline' => 'En una fila con líneas finas']),
+            ],
             'items' => [
                 'type' => 'repeater',
                 'label' => 'Beneficios',
@@ -47,6 +52,7 @@ class BenefitsBlockData extends BlockData
     public function defaults(): array
     {
         return [
+            'style' => 'cards',
             'items' => [
                 ['icon' => 'Truck', 'title' => 'Domicilio en 40 min', 'text' => 'En toda la comuna'],
                 ['icon' => 'Clock', 'title' => 'Abierto 7 a 9', 'text' => 'Todos los días'],

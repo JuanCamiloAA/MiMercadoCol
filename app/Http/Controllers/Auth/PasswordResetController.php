@@ -7,12 +7,14 @@ use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 class PasswordResetController extends Controller
 {
@@ -30,7 +32,12 @@ class PasswordResetController extends Controller
             ['email.required' => 'El correo es obligatorio.', 'email.email' => 'El correo no es valido.']
         );
 
-        $status = Password::sendResetLink($request->only('email'));
+        try {
+            $status = Password::sendResetLink($request->only('email'));
+        } catch (Throwable $exception) {
+            Log::warning('Contrasena: no se pudo enviar el enlace.', ['error' => class_basename($exception)]);
+            $status = null;
+        }
 
         if ($status !== Password::RESET_LINK_SENT) {
             throw ValidationException::withMessages([

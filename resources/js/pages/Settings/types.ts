@@ -1,7 +1,8 @@
+import type { EntitlementTreeModule } from '@/components/membership/PlanTree';
 import type { NavigationOverrides } from '@/lib/navigation';
 import type { MembershipStatus } from '@/types';
 
-export type TabKey = 'company' | 'membership' | 'brand' | 'appearance' | 'navigation' | 'pos' | 'pos_rules' | 'receipt' | 'credit';
+export type TabKey = 'company' | 'membership' | 'brand' | 'appearance' | 'navigation' | 'pos' | 'pos_rules' | 'receipt' | 'credit' | 'catalog';
 
 export type ThemeChoice = 'light' | 'dark' | 'system';
 
@@ -47,6 +48,8 @@ export interface SettingsValues {
     'pos.cash_rounding': number;
     'returns.max_days': number;
     'returns.store_credit_days': number;
+    'payments.online_hold_minutes': number;
+    'payments.pos_link_minutes': number;
 
     'receipt.paper_width': number;
     'receipt.font_size': 'small' | 'normal' | 'large';
@@ -59,6 +62,12 @@ export interface SettingsValues {
     'receipt.auto_print': boolean;
 
     'credit.block_on_overdue_days': number;
+
+    'catalog.max_images': number;
+    'storefront_catalog.expiring_days': number;
+    'storefront_catalog.overstock_days': number;
+    'storefront_catalog.overstock_min_factor': number;
+    'storefront_catalog.low_margin_percent': number;
 }
 
 export type SettingKey = keyof SettingsValues;
@@ -177,11 +186,27 @@ export interface MembershipChargeRow {
     failure_reason: string | null;
 }
 
+/** Un modulo que trae un plan, completo o en parte. */
+export interface PlanModule {
+    key: string;
+    display: string;
+    state: 'all' | 'some';
+}
+
+/** Lo que se gana y se pierde al pasar a un plan, agrupado por modulo. */
+export interface PlanDiff {
+    gains: { module: string; items: string[] }[];
+    losses: { module: string; items: string[] }[];
+    gained: number;
+    lost: number;
+}
+
 export interface MembershipPlanOption {
     id: number;
     name: string;
     description: string | null;
-    features: string[];
+    modules: PlanModule[];
+    diff: PlanDiff;
     limits: { stores: number | null; users: number | null; registers: number | null };
     /** Precio por id de ciclo, calculado en el servidor. */
     prices: Record<string, number>;
@@ -189,7 +214,13 @@ export interface MembershipPlanOption {
 
 /** Ajustes > Membresia. Todo precio viene calculado del servidor. */
 export interface MembershipOverview {
-    plan: { id: number; name: string; description: string | null; features: string[] } | null;
+    plan: { id: number; name: string; description: string | null; modules: PlanModule[] } | null;
+    /** Lo que tiene la empresa, con lo agregado y su vencimiento. */
+    entitlements: {
+        tree: EntitlementTreeModule[];
+        exceptions: { id: number; node: string; label: string; effect: 'grant' | 'revoke'; starts_at: string | null; ends_at: string | null }[];
+    };
+    special_price: { description: string; ends_at: string | null } | null;
     cycle: { id: number; name: string; months: number } | null;
     price: number | null;
     status: MembershipStatus;

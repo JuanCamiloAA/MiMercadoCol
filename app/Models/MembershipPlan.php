@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Services\Membership\MembershipFeatures;
+use App\Services\Membership\EntitlementService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,12 +10,18 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * Un plan de membresia. El precio guardado es el mensual en COP; el de cada ciclo lo calcula
  * `MembershipPricing::priceFor()`.
+ *
+ * Lo que incluye son nodos del arbol de permisos (`entitlements`, ver `Entitlements`): es un
+ * techo, y quien responde que tiene una empresa es `EntitlementService`, no este modelo.
  */
 class MembershipPlan extends Model
 {
+    /** Cuantos destacados se muestran en la landing y en «Contratar». */
+    public const MAX_HIGHLIGHTS = 8;
+
     protected $fillable = [
         'name', 'slug', 'description', 'monthly_price', 'trial_days',
-        'max_stores', 'max_users', 'max_registers', 'features',
+        'max_stores', 'max_users', 'max_registers', 'entitlements', 'highlights',
         'is_public', 'is_featured', 'is_active', 'sort_order',
     ];
 
@@ -27,12 +33,19 @@ class MembershipPlan extends Model
             'max_stores' => 'integer',
             'max_users' => 'integer',
             'max_registers' => 'integer',
-            'features' => 'array',
+            'entitlements' => 'array',
+            'highlights' => 'array',
             'is_public' => 'boolean',
             'is_featured' => 'boolean',
             'is_active' => 'boolean',
             'sort_order' => 'integer',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        // El plan describe el producto: un cambio aplica de inmediato a quien lo tiene.
+        static::saved(fn () => app(EntitlementService::class)->forget());
     }
 
     public function scopeActive(Builder $query): Builder
@@ -48,11 +61,6 @@ class MembershipPlan extends Model
     public function companies(): HasMany
     {
         return $this->hasMany(Company::class);
-    }
-
-    public function hasFeature(string $feature): bool
-    {
-        return in_array($feature, $this->features ?? [], true) && array_key_exists($feature, MembershipFeatures::CATALOGUE);
     }
 
     /**

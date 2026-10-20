@@ -17,7 +17,8 @@ interface SessionOption {
 interface Summary {
     sales_count: number;
     sales_total: number;
-    payments_by_method: { method: string; label: string; total: number; count: number }[];
+    /** Por medio configurado; `method` es el tipo (solo el efectivo entra a la gaveta). */
+    payments_by_method: { method: string; payment_method_id: number | null; label: string; total: number; count: number }[];
     customer_payments_cash: number;
     cash_in: number;
     cash_out: number;
@@ -172,8 +173,8 @@ export default function PosClosing({ sessions, session, summary, denominations, 
                                 <Row label="Base inicial" value={money(session.opening_amount)} />
                                 {summary.payments_by_method.map((method) => (
                                     <Row
-                                        key={method.method}
-                                        label={`Ventas en ${method.label.toLowerCase()} (${method.count})`}
+                                        key={`${method.method}-${method.payment_method_id ?? 'x'}`}
+                                        label={`Ventas · ${method.label} (${method.count})`}
                                         value={money(method.total)}
                                         muted={method.method !== 'cash'}
                                     />

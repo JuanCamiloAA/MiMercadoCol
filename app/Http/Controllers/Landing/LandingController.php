@@ -7,9 +7,9 @@ use App\Services\Landing\LandingManager;
 use App\Services\Landing\LandingRenderer;
 use App\Services\PlatformSettingsService;
 use App\Support\HomeResolver;
+use App\Support\Uploads;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -46,8 +46,11 @@ class LandingController extends Controller
             'lng' => ['required', 'numeric', 'between:-180,180'],
         ]);
 
+        // Lo mismo que la carga inicial: la proxima franja solo si el buscador publicado la muestra.
+        $withNextSlot = $this->renderer->wantsNextSlot($this->manager->publishedBlocks());
+
         return response()->json([
-            'stores' => $this->renderer->nearby((float) $validated['lat'], (float) $validated['lng']),
+            'stores' => $this->renderer->nearby((float) $validated['lat'], (float) $validated['lng'], $withNextSlot),
         ]);
     }
 
@@ -79,14 +82,21 @@ class LandingController extends Controller
         $user = $request->user('web');
         $image = $this->platform->get('landing.seo_image');
         $favicon = $this->platform->get('landing.favicon');
+        $logo = $this->platform->get('platform.brand_logo');
+        $logoDark = $this->platform->get('platform.brand_logo_dark');
+        $mark = $this->platform->get('platform.brand_mark');
 
         return [
             'site' => [
                 'name' => $this->platform->name(),
+                // La landing sigue el tema de quien la mira: el encabezado escoge el logo de cada fondo.
+                'logo_url' => is_string($logo) && $logo !== '' ? Uploads::url($logo) : null,
+                'logo_dark_url' => is_string($logoDark) && $logoDark !== '' ? Uploads::url($logoDark) : null,
+                'mark_url' => is_string($mark) && $mark !== '' ? Uploads::url($mark) : null,
                 'seo_title' => $this->platform->get('landing.seo_title') ?: $this->platform->name(),
                 'seo_description' => $this->platform->get('landing.seo_description'),
-                'seo_image_url' => is_string($image) && $image !== '' ? Storage::disk('public')->url($image) : null,
-                'favicon_url' => is_string($favicon) && $favicon !== '' ? Storage::disk('public')->url($favicon) : null,
+                'seo_image_url' => is_string($image) && $image !== '' ? Uploads::url($image) : null,
+                'favicon_url' => is_string($favicon) && $favicon !== '' ? Uploads::url($favicon) : null,
                 'whatsapp' => $this->platform->get('landing.whatsapp'),
                 'support_email' => $this->platform->get('platform.support_email'),
                 'terms_url' => route('legal.terms'),

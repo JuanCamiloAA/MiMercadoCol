@@ -39,12 +39,24 @@ class NumberSequenceService
         });
     }
 
-    /** Numero de venta: prefijo de la caja + consecutivo por sede. Ej: C1-000482. */
-    public function nextSaleNumber(int $companyId, int $storeId, string $prefix): string
+    /**
+     * Numero de venta: prefijo de la caja + su consecutivo. Ej: C1-000482.
+     *
+     * El consecutivo es de la empresa y del prefijo, no de la sede: el numero es unico en la
+     * empresa, y dos sedes con su «Caja 1» (C1), o dos tiendas en linea (MOS), sacaban las dos el
+     * C1-000001 y la segunda venta reventaba. Asi cada caja lleva el suyo y nunca se repite.
+     */
+    public function nextSaleNumber(int $companyId, string $prefix): string
     {
-        $number = $this->next($companyId, 'sale', $storeId);
+        $number = $this->next($companyId, self::saleKey($prefix));
 
         return $prefix.'-'.str_pad((string) $number, 6, '0', STR_PAD_LEFT);
+    }
+
+    /** La llave del contador de un prefijo de venta (cabe en `document_counters.key`). */
+    public static function saleKey(string $prefix): string
+    {
+        return 'sale:'.mb_substr($prefix, 0, 25);
     }
 
     public function nextPurchaseOrderCode(int $companyId): string

@@ -5,11 +5,11 @@ namespace App\Services;
 use App\Models\Company;
 use App\Models\Sale;
 use App\Settings\SettingsSchema;
+use App\Support\Uploads;
 use chillerlan\QRCode\Common\EccLevel;
 use chillerlan\QRCode\Output\QRMarkupSVG;
 use chillerlan\QRCode\QRCode;
 use chillerlan\QRCode\QROptions;
-use Illuminate\Support\Facades\Storage;
 use Picqer\Barcode\BarcodeGeneratorSVG;
 use Throwable;
 
@@ -88,11 +88,11 @@ class ReceiptService
         $value = $this->settings->get($companyId, 'brand.logo_receipt');
         $path = is_array($value) ? ($value['path'] ?? null) : null;
 
-        if (! is_string($path) || ! Storage::disk('public')->exists($path)) {
+        if (! is_string($path) || ! Uploads::disk()->exists($path)) {
             return $this->defaultLogo();
         }
 
-        return $forPdf ? Storage::disk('public')->path($path) : '/storage/'.$path;
+        return $forPdf ? Uploads::localPath(Uploads::diskName(), $path) : (string) Uploads::url($path);
     }
 
     /**

@@ -1,6 +1,8 @@
 import { router, useForm } from '@inertiajs/react';
 import { BuildingsIcon, CrosshairIcon, MapPinIcon, PencilSimpleIcon, PlusIcon, StackIcon, TrashIcon, UploadSimpleIcon } from '@phosphor-icons/react';
 import { type FormEvent, useState } from 'react';
+import { LocationPicker } from '@/components/maps/LocationPicker';
+import type { MapConfig } from '@/components/maps/types';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { Checkbox, Input } from '@/components/ui/Field';
 import { ConfirmDialog, Modal } from '@/components/ui/Modal';
@@ -29,10 +31,14 @@ interface StoreRow {
 
 interface StoresIndexProps {
     stores: StoreRow[];
+    map: MapConfig;
 }
 
-export default function StoresIndex({ stores }: StoresIndexProps) {
+export default function StoresIndex({ stores, map }: StoresIndexProps) {
     const { can } = usePermission();
+    // Una sede nueva arranca el mapa donde ya hay otra de la empresa, no en el centro del país.
+    const located = stores.find((store) => store.latitude !== null && store.longitude !== null);
+    const otherStore = located && located.latitude !== null && located.longitude !== null ? { lat: located.latitude, lng: located.longitude } : null;
     const [editing, setEditing] = useState<StoreRow | null>(null);
     const [creating, setCreating] = useState(false);
     const [toDelete, setToDelete] = useState<StoreRow | null>(null);
@@ -261,6 +267,13 @@ export default function StoresIndex({ stores }: StoresIndexProps) {
                     <Input label="Telefono" value={form.data.phone} onChange={(event) => form.setData('phone', event.target.value)} error={form.errors.phone} />
                     <div className="flex flex-col gap-2 rounded-control border border-[var(--line)] bg-[var(--surface-2)] p-3 sm:col-span-2">
                         <p className="text-[0.8125rem] font-medium">Ubicación para el buscador de la landing</p>
+                        <LocationPicker
+                            config={map}
+                            latitude={form.data.latitude}
+                            longitude={form.data.longitude}
+                            onChange={(latitude, longitude) => form.setData((data) => ({ ...data, latitude, longitude }))}
+                            fallback={otherStore}
+                        />
                         <div className="grid gap-3 sm:grid-cols-2">
                             <Input
                                 label="Latitud"
@@ -283,15 +296,16 @@ export default function StoresIndex({ stores }: StoresIndexProps) {
                             <Button type="button" size="sm" variant="secondary" icon={<CrosshairIcon size={15} />} onClick={locateMe} loading={locating}>
                                 Usar mi ubicación actual
                             </Button>
-                            {form.data.latitude && form.data.longitude && (
-                                <a
-                                    href={`https://www.openstreetmap.org/?mlat=${form.data.latitude}&mlon=${form.data.longitude}#map=17/${form.data.latitude}/${form.data.longitude}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="inline-flex items-center gap-1 font-medium text-[var(--accent)] hover:underline"
+                            {(form.data.latitude || form.data.longitude) && (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    icon={<MapPinIcon size={15} />}
+                                    onClick={() => form.setData((data) => ({ ...data, latitude: '', longitude: '' }))}
                                 >
-                                    <MapPinIcon size={14} /> Ver en el mapa
-                                </a>
+                                    Quitar la ubicación
+                                </Button>
                             )}
                             {geoError && <span className="text-[var(--danger)]">{geoError}</span>}
                         </div>

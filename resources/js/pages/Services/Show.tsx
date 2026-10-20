@@ -13,6 +13,7 @@ interface ServiceShowProps {
     service: ServiceRow & {
         description: string | null;
         image_path: string | null;
+        image_url?: string | null;
         tax_rate: number;
         is_featured: boolean;
         online_price: number | null;
@@ -99,8 +100,8 @@ export default function ServiceShow({ service, components, warehouses, sales, ca
             <div className="mb-4 grid gap-4 lg:grid-cols-3">
                 <Card>
                     <div className="flex items-start gap-3">
-                        {service.image_path ? (
-                            <img src={`/storage/${service.image_path}`} alt="" className="size-20 shrink-0 rounded-control object-cover" />
+                        {service.image_url ? (
+                            <img src={service.image_url} alt="" className="size-20 shrink-0 rounded-control object-cover" />
                         ) : (
                             <span className="grid size-20 shrink-0 place-items-center rounded-control bg-[var(--surface-2)] text-[var(--muted)]">
                                 <WrenchIcon size={28} />

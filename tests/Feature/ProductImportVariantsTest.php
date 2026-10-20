@@ -43,6 +43,9 @@ class ProductImportVariantsTest extends TestCase
         $this->assertSame(3, $result['created'], json_encode($result, JSON_UNESCAPED_UNICODE));
         $family = ProductFamily::query()->withoutGlobalScopes()->where('name', 'Aceite de girasol')->firstOrFail();
         $this->assertCount(3, $family->variants);
+        // Nace activa y publicada, como un articulo importado: el archivo no dice lo contrario.
+        $this->assertTrue($family->is_active);
+        $this->assertTrue($family->is_online_visible);
         $this->assertSame(19.0, (float) $family->tax_rate);
         $this->assertSame('Premier', $family->brand);
 

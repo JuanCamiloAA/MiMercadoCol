@@ -1,6 +1,7 @@
-# La Canasta — sistema de supermercado
+# AgoraShop — sistema de supermercado
 
 Sistema de punto de venta, inventario, cartera, domicilios y tienda en línea para supermercados de barrio.
+«La Canasta» es la empresa de demostración que dejan las semillas.
 Laravel 12 + Inertia 2 + React 19 + TypeScript estricto + Tailwind 4 + MySQL/MariaDB.
 
 ---
@@ -28,6 +29,22 @@ La aplicación queda en `http://127.0.0.1:8000`.
 > En Windows, `PHP_CLI_SERVER_WORKERS` debe quedar en `1`: el servidor embebido de PHP no
 > soporta *workers* en esa plataforma y se cae con valores mayores.
 
+### Tiempo real
+
+Lo que cambia en una pestaña (una venta, un ajuste de existencias, un pedido, una compra que
+llega, un precio) aparece solo en las demás pestañas abiertas de la empresa, sin recargar. Lo mueve
+Reverb, el servidor de sockets de Laravel. `composer dev` lo arranca junto con el servidor, la cola
+y Vite; si levantas todo a mano, también hace falta:
+
+```bash
+php artisan reverb:start
+```
+
+La barra superior dice si la pantalla está «Al día» o «Sin conexión en vivo». Sin Reverb la
+aplicación funciona igual, solo que hay que recargar para ver lo que hicieron otros. Las variables
+son `REVERB_*` (y sus copias `VITE_REVERB_*`) del `.env`; si abres la aplicación desde otro equipo de
+la red, `REVERB_HOST` tiene que ser la IP de este equipo, no `127.0.0.1`.
+
 ### Requisitos del PHP
 
 Además de lo que pide Laravel 12, el sistema usa **GD** para recortar las fotos de los
@@ -36,6 +53,26 @@ Apache. Si no está, las imágenes se guardan igual pero en su tamaño original.
 
 Los correos de estado de pedido salen por cola. En desarrollo basta `QUEUE_CONNECTION=sync`;
 en producción, `database` o `redis` y un `php artisan queue:work` corriendo.
+
+### Correo
+
+Todo correo sale por **Brevo** (relevo SMTP), con `MAIL_MAILER=brevo` y estas claves en `.env`:
+
+| Clave | De dónde sale |
+|---|---|
+| `BREVO_SMTP_LOGIN` | Brevo > SMTP y API > SMTP: el **Login** (algo como `xxxx@smtp-brevo.com`) |
+| `BREVO_SMTP_KEY` | La **clave SMTP** (`xsmtpsib-…`). La clave de API (`xkeysib-…`) no sirve aquí |
+| `MAIL_FROM_ADDRESS` | Un remitente o dominio **verificado** en Brevo; si no, Brevo rechaza el envío |
+
+El servidor es `smtp-relay.sendinblue.com:587`, el nombre viejo de Brevo, a propósito: desde Colombia
+el relevo que responde no incluye `smtp-relay.brevo.com` en su certificado y el cifrado falla. Si algún
+día hace falta otro, se cambia con `BREVO_SMTP_HOST`.
+
+Para comprobarlo: `php artisan mail:check alguien@correo.com` envía una prueba por el mailer en uso
+y, si Brevo la rechaza (login, clave o remitente), muestra su respuesta.
+
+Con `MAIL_MAILER=log` los correos quedan en `storage/logs` y no sale nada. Las pruebas usan
+`array` (`phpunit.xml`) y nunca tocan Brevo.
 
 ### Tarea programada
 
@@ -53,12 +90,120 @@ A mano: `php artisan membership:process` (con `--dry-run` muestra lo que haría 
 
 A las 02:30 se cierra el saldo a favor que ya venció: `php artisan store-credit:expire`.
 
+Cada minuto, `php artisan payments:expire` vence los cobros por pasarela que nadie pagó: cancela el
+pedido en línea que esperaba el pago (suelta la mercancía apartada, el saldo a favor y el cupón) y
+devuelve la caja al cobro. Antes de vencer uno le pregunta a la pasarela: si sí se pagó, lo aprueba.
+Sin el cron, un pedido en línea sin pagar se queda apartando mercancía. La espera se ajusta en
+**Ajustes > Reglas de caja** (`payments.online_hold_minutes`, 30 minutos; `payments.pos_link_minutes`, 15).
+
 ### Pasarela de pagos (Wompi)
 
-Las llaves se cargan en **Plataforma > Pasarela de pagos**, por entorno (pruebas y producción), y
+Esta es la pasarela **de la plataforma**: cobra las membresías y las contrataciones en línea. Las
+llaves se cargan en **Plataforma > Pasarela de pagos**, por entorno (pruebas y producción), y
 se guardan cifradas. Sin las cuatro llaves del entorno no se enciende, y sin pasarela no aparece
 ningún botón de pago. La URL de eventos que se pega en el panel de Wompi es
 `https://tu-dominio/webhooks/wompi`. El `.env` (`WOMPI_*`) solo siembra la primera vez.
+
+### Pasarelas de las empresas (ventas)
+
+Cada empresa conecta **su propia cuenta** en **Medios de pago > Pasarelas**: la plata de sus
+ventas va a esa cuenta, no a la plataforma. Proveedores: Wompi, Mercado Pago, PayU, ePayco y Bold.
+Cuáles puede conectar una empresa lo decide el super usuario en **Plataforma > Pasarelas para
+empresas** (apagar uno lo saca de todas las cajas y tiendas sin borrar ninguna cuenta). El plan
+también manda: sin `payment_methods.gateways.*` la empresa solo tiene medios manuales.
+
+Para probar con el **sandbox** de cada una:
+
+1. Saca las llaves de prueba del panel del proveedor (Wompi: *Desarrolladores*, llaves `pub_test_`
+   y `prv_test_` más los dos secretos; Mercado Pago: credenciales de prueba y la clave secreta de
+   webhooks; PayU: la cuenta de pruebas pública de su documentación; ePayco: `P_CUST_ID_CLIENTE`,
+   `P_KEY` y la llave pública; Bold: «Llaves de pruebas», que en sandbox firma los webhooks con la
+   cadena vacía).
+2. En **Medios de pago > Pasarelas > Conectar una pasarela** elige el proveedor y el entorno
+   *Pruebas*, pega las llaves y guarda. La cuenta queda **apagada**.
+3. **Probar conexión**. Si responde bien, copia la **URL del webhook** de la tarjeta y pégala en el
+   panel del proveedor (cada tarjeta dice dónde). Luego **Encender**.
+4. En **Medios de pago > Medios** crea el medio que cobra con esa cuenta: *Pasarela en la tienda*
+   (checkout de la tienda en línea), *QR o link de pago en la caja* o *Datáfono integrado* (este
+   pide registrar el aparato en **Datáfonos integrados**; con una cuenta de pruebas ofrece un
+   cobro de prueba de $ 1.000).
+
+**El webhook en local.** Las pasarelas tienen que alcanzar tu máquina. Abre un túnel y usa su
+dirección como `APP_URL`, que es con la que se arma la URL del webhook:
+
+```bash
+cloudflared tunnel --url http://127.0.0.1:8000     # o: ngrok http 8000
+# en .env: APP_URL=https://<el-subdominio-del-tunel>
+php artisan config:clear
+```
+
+La URL es `https://<dominio>/webhooks/pagos/<proveedor>/<token>`; el token identifica la cuenta y
+**Nueva URL de webhook** lo cambia (la vieja deja de servir en el acto). Sin túnel también se
+puede probar: la caja y la página de pago le preguntan el estado a la pasarela cada pocos
+segundos, y `payments:expire` relee lo pendiente antes de vencerlo.
+
+Lo que llega por cualquier camino pasa por el mismo orden: firma con el secreto de esa cuenta,
+relectura de la transacción en la pasarela y liquidación con la fila bloqueada (una sola venta
+aunque lleguen el sondeo y el webhook). Un pago aprobado que no quedó en ninguna venta ni pedido
+(la caja canceló y el cliente pagó igual, el pedido ya había vencido) aparece en **Medios de pago >
+Transacciones > Por conciliar**. Las llaves secretas se guardan cifradas y nunca vuelven al
+navegador: la pantalla las muestra enmascaradas y solo se reemplazan.
+
+### Archivos en Firebase Storage
+
+Todo lo que se adjunta (fotos de artículos, servicios y categorías, logos, banners, la biblioteca de
+medios, la landing, fotos de devoluciones y archivos de importación) se guarda en el disco que diga
+el `.env`. Mientras no se cambie, es el disco local de siempre (`storage/app/public`).
+
+| Variable | Qué es |
+|---|---|
+| `FIREBASE_CREDENTIALS` | Ruta a la llave JSON de la cuenta de servicio. **No se sube al repositorio** (`.gitignore` la excluye). |
+| `FIREBASE_STORAGE_BUCKET` | El bucket, tal como aparece en la consola de Firebase > Storage (p. ej. `mitiendacol.firebasestorage.app`). |
+| `UPLOADS_DISK` | `public` (local) o `firebase`. Lo público: se abre con un enlace. |
+| `PRIVATE_UPLOADS_DISK` | `local` o `firebase_private`. Lo privado: solo lo sirve la aplicación, con sesión y permiso. |
+| `FIREBASE_DOWNLOAD_TOKEN` | Opcional. El token de los enlaces públicos; si no está, se deriva de `APP_KEY`. |
+
+Para pasar a Firebase:
+
+1. En la consola de Firebase, **Storage > Comenzar** (pide el plan Blaze). Copia el nombre del bucket.
+2. Pon `FIREBASE_STORAGE_BUCKET` en el `.env` y corre `php artisan config:clear`.
+3. `php artisan firebase:check`: escribe, lee, abre el enlace público y confirma que lo privado no
+   se abre desde afuera. Si un paso falla, dice cuál.
+4. `php artisan uploads:firebase --dry-run` para ver cuánto subiría, y después sin `--dry-run`. Se
+   puede repetir: lo que ya está arriba con el mismo tamaño se salta. No borra nada de aquí.
+5. `UPLOADS_DISK=firebase`, `PRIVATE_UPLOADS_DISK=firebase_private` y `php artisan config:clear`.
+6. `php artisan platform:brand`: deja la marca de la plataforma (logo, isotipo, favicon e imagen para
+   compartir, de `resources/brand/ventaio`) en Firebase y en uso. Si el paso 4 ya la subió, no la
+   vuelve a subir.
+
+Lo público se escribe con el token de descarga de Firebase y se enlaza por
+`firebasestorage.googleapis.com`, sin tocar las reglas de seguridad. Lo privado va sin token. Los
+respaldos de la base y las capturas no se suben. Las pruebas nunca tocan Firebase: `phpunit.xml`
+fija los discos locales.
+
+### Mapas
+
+El buscador de tiendas de la landing y el formulario de sedes muestran un mapa. El proveedor se
+elige en **Plataforma > Mapas** (super usuario), uno para toda la plataforma:
+
+| Proveedor | Llave | Notas |
+|---|---|---|
+| OpenStreetMap | No | De fábrica. Para tráfico moderado; con muchas visitas, pasa a uno con llave. |
+| Google Maps | Llave de API | Con facturación activa. El Map ID es opcional (sin él, el de demostración). |
+| MapTiler | Llave | Estilos y satélite; cupo gratuito mensual. |
+| Mapbox | Token público (`pk.`) | El secreto (`sk.`) se rechaza: nunca va en una página. |
+| Personalizado | — | Cualquier servidor de teselas con `{z}/{x}/{y}` y su crédito. |
+
+Las llaves de mapas viajan al navegador de cada visitante; es normal. Lo que las protege es
+restringirlas a tu dominio en la consola del proveedor. **Probar sin guardar** pinta la vista
+previa con las sedes reales; si las teselas no cargan o Google rechaza la llave, lo dice ahí, antes
+de que lo vea el público.
+
+En el editor de la landing, el bloque **Buscador de tiendas** decide dónde va el mapa (al lado de la
+lista, franja arriba, solo un botón «Ver mapa» o sin mapa), su alto y su estilo, si se agrupan las
+sedes cercanas, si se puede ampliar en una ventana y si ofrece «Buscar en esta zona». Una sede sin
+latitud y longitud sale en la lista pero no en el mapa (la vista previa lo avisa); se ubica tocando
+el mapa en **Sedes**.
 
 ---
 
@@ -86,6 +231,36 @@ Agudelo), o con **Crear cuenta**.
 **Segunda empresa de demostración**: «Mercado El Vecino» (Envigado y Bello), administrador
 `admin@elvecino.co` con la misma contraseña. Su tienda está publicada: sirve para probar la
 landing con dos empresas y el carrito por empresa.
+
+**Tienda de ropa**: «Moda Aurora» (clasificación *Textiles y confección*), con sedes en El Poblado y
+Laureles y cuatro semanas de operación sembradas por `FashionCompanySeeder`:
+
+- **Catálogo por talla y color**: nueve artículos con subartículos (jeans, camisetas, blusas,
+  vestidos, camisas, conjuntos de niño, tenis y medias), con foto por color, y tres accesorios.
+- **Proveedores y compras**: cuatro proveedores (denim, básicos, colección y calzado) y órdenes en
+  todos los estados: recibidas, recibidas por partes, en camino y en borrador.
+- **Bodegas y traslados**: en El Poblado, las compras llegan a la *Bodega de reserva* y se suben al
+  piso con traslados directos. Hay traslados entre sedes, uno con faltante dado de baja y uno en
+  camino, más una solicitud de Laureles surtida en parte.
+- **Ventas y caja**: ventas diarias en las dos cajas, con cierres de turno y el de hoy abierto.
+  Hay promociones (jeans -20 %, medias 3x2 y gorra a precio especial) y pedidos en línea en cada
+  estado.
+- **Devoluciones**: una devolución por talla con saldo a favor, un cambio de talla en caja, una
+  solicitud de devolución en línea y una devolución a proveedor con nota crédito.
+
+| Correo | Rol |
+|---|---|
+| `admin@modaaurora.co` | Administradora |
+| `supervisor@modaaurora.co` | Supervisora (PIN `2468`) |
+| `cajera@modaaurora.co` | Caja de El Poblado (PIN `1234`) |
+| `cajero.laureles@modaaurora.co` | Caja de Laureles (PIN `4321`) |
+| `bodega@modaaurora.co` | Bodega |
+| `domicilios@modaaurora.co` | Domiciliario |
+
+Su tienda en línea se abre en `/tienda/moda-aurora/el-poblado`; los clientes en línea (por ejemplo
+`1036654321`, Mariana Ospina) entran con `Cliente123*`. Laureles es la sede chica y su tienda solo
+muestra lo que tiene en existencia. En una base que ya está en uso se agrega sola, sin tocar lo
+demás: `php artisan db:seed --class=FashionCompanySeeder`.
 
 ---
 
@@ -116,16 +291,20 @@ landing con dos empresas y el carrito por empresa.
 | Roles | `/roles` | `roles.index.view` |
 | Informes | `/informes` | `reports.sales.view` |
 | Tienda en línea (surtido) | `/tienda-en-linea` | `storefront.catalog.manage` |
+| Publicados sin stock | `/tienda-en-linea/sin-stock` | `storefront.catalog.manage` |
+| Sugerencias para publicar | `/tienda-en-linea/sugerencias` | `storefront.catalog.manage` |
+| Suscriptores de novedades | `/tienda-en-linea/suscriptores` | `storefront.newsletter.view` |
 | Importar artículos | `/catalogo/importar` | `products.catalog_import.view` |
 | Editor de la tienda | `/tienda/editor` | `storefront.editor.view` |
 | Plantillas de tienda | `/plataforma/plantillas-tienda` | `platform.store_templates.view` (super usuario) |
 | Medios | `/medios` | `storefront.editor.content` |
 | Cupones | `/cupones` | `coupons.index.view` |
 | Sedes | `/sedes` | `stores.index.view` |
-| Ajustes | `/ajustes` | `settings.index.view` (guardar: `settings.index.brand` para marca, apariencia y menú; `settings.index.pos_layout` para caja y tiquete; `settings.index.edit` para reglas de caja y crédito) |
+| Ajustes | `/ajustes` | `settings.index.view` (guardar: `settings.index.brand` para marca, apariencia y menú; `settings.index.pos_layout` para caja y tiquete; `settings.index.edit` para reglas de caja, crédito y catálogo) |
 | Tienda del cliente | `/tienda` | pública (pide elegir sede) |
 | Importar una maestra | `/<modulo>/importar` | `<modulo>.index.import` |
 | Plazos de pago | `/plazos-pago` | `payment_terms.index.view` |
+| Medios de pago | `/medios-pago` | `payment_methods.index.view` (pasarelas: `payment_methods.gateways.view`; datáfonos: `payment_methods.terminals.view`; transacciones y conciliar: `payment_methods.transactions.view` / `.reconcile`) |
 | Membresía de la empresa | `/ajustes?pestana=membresia` | `settings.membership.view` (pagar: `settings.membership.manage_payment`) |
 | Landing pública | `/` | pública |
 | Contratar | `/contratar` | pública |
@@ -133,7 +312,8 @@ landing con dos empresas y el carrito por empresa.
 | Empresas | `/plataforma/empresas` | `companies.index.view` |
 | Solicitudes | `/plataforma/solicitudes` | `platform.leads.view` |
 | Planes y ciclos | `/plataforma/planes`, `/plataforma/ciclos` | `platform.plans.view`, `platform.billing_cycles.view` |
-| Pasarela de pagos | `/plataforma/pasarela` | `platform.gateway.view` |
+| Pasarela de pagos (membresías) | `/plataforma/pasarela` | `platform.gateway.view` |
+| Pasarelas para empresas | `/plataforma/pasarelas-empresas` | `platform.gateway.view` |
 | Editor de la landing | `/plataforma/landing` | `platform.landing.view` |
 | Carga masiva (CSV) | `/plataforma/carga-masiva` | `platform.imports.view` |
 
@@ -152,8 +332,19 @@ landing con dos empresas y el carrito por empresa.
 - Toda empresa nace por `App\Services\Platform\CompanyProvisioner` (Empresas, contratación en
   línea y carga masiva): sede con bodega, caja, roles, plazos de pago, tienda apagada, administrador
   y membresía, todo en una transacción.
+- Cada empresa tiene una **clasificación** (alimentos y supermercados, textiles, belleza, artículos
+  varios, droguería…), que el super usuario administra en *Plataforma > Clasificaciones*. Se elige al
+  crear la empresa, al contratar en línea y en la carga masiva. La landing la usa para agrupar: el
+  buscador de tiendas filtra por tipo de comercio (`/?tipo=textiles-y-confeccion#tiendas` llega ya
+  filtrado) y «Tiendas presentes» muestra las empresas por clasificación. Las empresas que ya
+  existían quedaron en alimentos, que es lo que vendían.
 - La membresía (planes, ciclos, prueba, gracia, suspensión, cobros) vive en
   `App\Services\Membership\*`. Una empresa suspendida solo llega a Ajustes > Membresía para pagar.
+- **Qué incluye un plan** se arma en *Plataforma > Planes* con el mismo árbol de permisos de Roles:
+  módulo entero, una página o una acción suelta. A una empresa se le pueden dar o quitar cosas por
+  fuera de su plan, con vencimiento, y ponerle un precio especial (*Plataforma > Empresas > Plan y
+  funciones*). Lo que el plan no incluye no se pinta en Roles ni en Usuarios y la ruta responde
+  «Tu plan no incluye…»; los permisos que la persona tenía se conservan y vuelven si cambia de plan.
 - La tienda en línea toma la empresa de la sede elegida (`StorefrontContext`); el cliente y el
   carrito son de cada empresa.
 - La sede activa vive en sesión y se cambia desde la barra superior. Si la persona solo tiene
@@ -208,6 +399,29 @@ turno refleja la plata que salió y el inventario recupera la mercancía.
 
 **Anulación** es otra cosa: corrige un error del cajero, devuelve el stock y saca la venta de
 las cifras.
+
+### Tienda en línea: qué se publica y qué ve el cliente
+
+**Publicado no es visible.** La tienda solo muestra lo publicado que tiene disponible (existencia
+menos apartado) en la bodega que la respalda (`onlineSourceFor`), o lo que admite negativo. Lo que
+se agota sigue publicado pero oculto: sale de listados, búsqueda, destacados, estantes y del menú, y
+vuelve solo cuando entra mercancía, sin tocar nada. Una presentación agotada sale del selector de su
+ficha y la tarjeta del artículo desaparece solo cuando ninguna presentación tiene disponible. Un
+servicio que no alcanza para una unidad tampoco se muestra. Si algo se agota con el cliente a mitad
+de compra, el carrito lo marca «Se agotó», no lo cobra y no deja pagar hasta quitarlo.
+
+El módulo `/tienda-en-linea` tiene tres pantallas, todas con el selector «Existencias de» (sede y
+bodega de la tienda de la que se leen existencias y ventas):
+
+| Pantalla | Para qué |
+|---|---|
+| **Catálogo** (`/tienda-en-linea`) | Pestañas Artículos, Con subartículos y Servicios. Indicadores (visibles, publicados sin stock, con stock sin publicar, publicados, destacados, ficha incompleta), vistas rápidas con su conteo, filtros (categoría con subcategorías, marca, proveedor, existencias, estado, ficha, precio, promoción, lote por vencer, sin ventas en línea, precio distinto, margen bajo, stock en otra bodega), ventas de caja de 30 días, estado real en tienda, publicar/ocultar/destacar de a uno o en lote, sugerencias y cobertura por categoría. Exporta CSV con los mismos filtros |
+| **Publicados sin stock** (`/tienda-en-linea/sin-stock`) | Lo publicado que hoy no se ve, con lo que hay en otras bodegas de la sede, la compra o el traslado en camino y desde cuándo está sin stock. Acciones: solicitar traslado (uno o varios desde la misma bodega), crear compra hacia la bodega de la tienda, ver la compra o el traslado, despublicar |
+| **Sugerencias** (`/tienda-en-linea/sugerencias`) | Lo que tiene stock y no está en línea, por razón: se vende en caja, lote por vencer, inventario alto con poca rotación y ficha incompleta. Publicar, publicar y destacar, crear promoción, completar ficha o descartar (por sede; se restaura desde «Ver descartados») |
+
+Los umbrales (días para «por vencer», días de cobertura, veces el mínimo y margen bajo) son
+`storefront_catalog.*` de Ajustes. Los botones que llevan a otro módulo abren su pantalla con la
+precarga hecha y solo se pintan si el usuario tiene el permiso de allá.
 
 ### Editor de la tienda
 
@@ -293,6 +507,25 @@ busquedas). La vista previa se ve con el catalogo de una sede elegida.
 - **Volver a la plantilla** (o aplicar otra) guarda antes el diseño propio como una version del
   historial, para poder deshacer.
 - El reparto entre diseño y sede vive en `StorefrontTemplate::DESIGN_KEYS`.
+- **Catalogo**: ademas de «Supermercado» (la de por defecto) la siembra trae doce plantillas
+  publicadas, de `database/seeders/data/storefront_templates.json`: Vitrina, Pasarela, Urbano,
+  Sastre y Lookbook (moda); Botánica y Noir (belleza y hogar); Ahorro, Despensa, Barrio y Huerta
+  (mercado); Taller (ferreteria). Sus imagenes las pinta la siembra con GD, sin internet, como
+  medios de plataforma. Correr la siembra otra vez no repite ni pisa ninguna (van por `slug`):
+  `php artisan db:seed --class=StorefrontTemplateCatalogSeeder` en una base que ya existe.
+- La galeria se filtra por tipo de comercio y se puede **duplicar** una plantilla para partir de
+  ella. Desde el editor de la tienda, «Aplicar otra plantilla» abre la misma galeria; si la
+  plantilla sugiere colores, se pueden usar marcando la casilla o desde Aspecto («Usar los colores
+  sugeridos por la plantilla»). Nunca se aplican solos.
+- Cada seccion tiene su pestaña **Diseño** (alto, ancho, margenes, fondo con color, foto o video,
+  velo, animacion), igual en la tienda y en la landing, y cada lamina o mosaico la suya
+  (proporcion, posicion del texto, tamaño del titulo, velo y boton).
+- **Claro y oscuro**: cada imagen o video de un banner se pide en cuatro versiones (computador y
+  celular, en modo claro y en modo oscuro), y el fondo de cada seccion, su velo, el color del texto y
+  el diseño de cada lamina pueden ser distintos en modo oscuro. El editor tiene un conmutador
+  **Claro | Oscuro** que cambia lo que se edita y la vista previa. Las versiones oscuras y de celular
+  son opcionales: si faltan, se usa la clara o la de computador; al publicar se avisa solo si la
+  tienda se puede ver en los dos modos.
 
 **Domicilio, franjas y cupones**
 
@@ -586,6 +819,19 @@ existencias por bodega.
 - **Importar y exportar** usan el mismo archivo de artículos con cinco columnas opcionales:
   `articulo_principal`, `atributo_1`, `valor_1`, `atributo_2`, `valor_2`.
 
+### Fotos de artículos y servicios
+
+- Cada ficha (artículo, artículo con subartículos y servicio) admite varias fotos desde que se crea.
+  **Cuántas lo decide la empresa** en *Ajustes > Catálogo* (`catalog.max_images`): **una por defecto**,
+  hasta diez. El servidor cuenta las que la ficha ya tiene más las que llegan.
+- Bajar el número no borra fotos: la ficha que ya tenía más las conserva y se siguen viendo; solo no
+  deja subir otra hasta quitar alguna. Al migrar, a cada empresa que ya usaba varias fotos se le dejó
+  el tope en lo que usaba.
+- La **portada** (la estrella en el formulario) es la del listado, la caja y la tarjeta de la tienda.
+- En la tienda, la ficha muestra todas en **carrusel**: se deslizan con el dedo en el celular y tienen
+  flechas, puntos y miniaturas en el computador. En un artículo con subartículos, el carrusel cambia
+  a las fotos de la presentación elegida (o a las comunes de su color).
+
 ### Promociones
 
 Cuatro tipos, una sola pantalla (`/promociones`, permiso `promotions.index.view`):
@@ -648,18 +894,30 @@ es donde está el cajón del dinero.
 
 ### Cobro con varios medios de pago
 
-Una venta admite **de uno a cuatro pagos**, uno por medio (efectivo, tarjeta, transferencia y
-crédito). La modal de cobro va en tres pasos: elegir el medio, asignarle el monto y revisar los
-pagos aplicados.
+Los medios los configura cada empresa en **Medios de pago** (`/medios-pago`): nombre, ícono, tipo
+y reglas de cuándo aparecen (caja o tienda, sedes, cajas, horario, vigencia, monto mínimo y
+máximo, tipo de entrega, cliente registrado o con cupo, si se combina con otros). El **tipo**
+decide cómo se comporta: «Nequi» y «Daviplata» son dos transferencias con nombre propio; el
+efectivo da cambio; el crédito pide cupo. La caja y la tienda pintan solo lo que el servidor dice
+que vale en ese momento, y el servidor lo vuelve a revisar al cobrar.
+
+Una venta admite **hasta diez pagos**, uno por medio configurado (efectivo, uno solo). La modal
+de cobro va en tres pasos: elegir el medio, asignarle el monto y revisar los pagos aplicados.
 
 - Tocar un medio le asigna **lo que falte por cobrar**: un toque basta para el caso normal.
-- **Solo el efectivo genera cambio.** Tarjeta, transferencia y crédito nunca pasan del faltante;
-  el crédito, además, nunca pasa del cupo disponible.
+- **Solo el efectivo genera cambio.** Los demás nunca pasan del faltante; el crédito, además,
+  nunca pasa del cupo disponible, y cada medio respeta su mínimo y su máximo.
 - **Confirmar** solo se habilita cuando la suma cubre el total, y el aviso de la modal dice
-  siempre qué falta.
-- Atajos: `E` efectivo, `T` tarjeta, `R` transferencia, `C` crédito, dígitos para el monto,
-  `Backspace` para borrar, `Enter` para confirmar y `Esc` para volver al tiquete **sin perder**
-  los pagos ya asignados. `F12` abre el cobro y `F1` devuelve el foco al lector.
+  siempre qué falta (la referencia obligatoria, el medio que no se combina…).
+- Atajos por tipo (el primer medio de ese tipo): `E` efectivo, `T` datáfono, `R` transferencia,
+  `C` crédito, `Q` QR o link; dígitos para el monto, `Backspace` para borrar, `Enter` para
+  confirmar y `Esc` para volver al tiquete **sin perder** los pagos ya asignados. `F12` abre el
+  cobro y `F1` devuelve el foco al lector.
+- **QR, link y datáfono integrado**: con un renglón de pasarela, confirmar no crea la venta.
+  Abre el cobro (el QR en pantalla, el link para copiar o «esperando el datáfono») con la cuenta
+  regresiva; la venta se registra sola cuando la pasarela aprueba. Rechazado, vencido o cancelado,
+  la caja vuelve al cobro con el tiquete intacto. Si se recarga la pantalla mientras espera, el
+  cobro vuelve a aparecer.
 - Si la venta lleva crédito queda en estado `credit`: `due_total` es solo la parte fiada y
   `paid_total` lo que sí se cobró. A cartera entra únicamente la línea de crédito.
 - Todo se vuelve a validar en el servidor contra el total recalculado desde los ítems; los
@@ -676,8 +934,9 @@ cobraba y no aparecía en ningún informe ni en el arqueo. Los pedidos entregado
 este cambio conservan su venta sin esa línea; el cobro de esos se cuadra contra el total de su
 venta, no del pedido.
 
-**Cómo se guarda.** Una fila de `sale_payments` por medio, con `sequence` para el orden y
-`reference` para el voucher. En la línea de efectivo, `amount` es **lo que el cliente entregó**
+**Cómo se guarda.** Una fila de `sale_payments` por medio configurado (`payment_method_id`, único
+por venta; `method` guarda el tipo), con `sequence` para el orden, `reference` para el voucher y
+`payment_transaction_id` cuando pasó por una pasarela. En la línea de efectivo, `amount` es **lo que el cliente entregó**
 y `change_amount` el vuelto, de modo que:
 
 ```
@@ -706,6 +965,11 @@ que abre `/pos/ventas/{venta}/imprimir`: una vista del ancho del rollo (58 u 80 
 Ajustes > Tiquete de la sede) que se manda sola a la impresora si así está configurado. No
 necesita controladores de marca ni software adicional, solo la impresora térmica instalada
 en Windows.
+
+**Tiquete suspendido.** *Suspender* (F4 por defecto) guarda los artículos y el cliente del tiquete;
+*Recuperar* (F5) los devuelve juntos, así que no hay que volver a pedirle los datos al cliente. El cliente vuelve
+con su cupo, saldo y saldo a favor de ese momento, no de cuando se suspendió; si lo desactivaron
+mientras tanto, la caja avisa y deja elegir otro.
 
 **Sesión viva.** La pantalla del POS avisa al servidor cada cuatro minutos (`/sesion-activa`),
 así que un turno largo sin vender no vence la sesión. Y si aun así vence, el 419 ya no muestra
@@ -928,6 +1192,7 @@ Corren contra la base `canasta_pos_test` (se crea sola con `RefreshDatabase`). C
 php artisan migrate:fresh --seed     # base limpia con 30 días de operación simulada
 php artisan credit:block-overdue     # bloquea a los clientes en mora
 php artisan membership:process       # ronda diaria de membresías (--dry-run para simular)
+php artisan payments:expire          # vence los cobros por pasarela sin pagar (corre cada minuto)
 php artisan queue:work               # envía los correos de pedidos
 php artisan queue:work --queue=imports  # procesa las importaciones de catálogo
 npm run dev                          # front en caliente

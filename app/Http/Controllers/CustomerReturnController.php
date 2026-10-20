@@ -17,12 +17,12 @@ use App\Services\CustomerReturnService;
 use App\Services\RegisterSessionService;
 use App\Services\StoreCreditService;
 use App\Support\TenantContext;
+use App\Support\Uploads;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -297,7 +297,7 @@ class CustomerReturnController extends Controller
 
         abort_unless($path !== null, 404);
 
-        return Storage::disk('local')->response($path);
+        return Uploads::privateDisk()->response($path);
     }
 
     /**

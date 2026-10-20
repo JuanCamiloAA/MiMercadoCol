@@ -1,0 +1,523 @@
+/* ==========================================================================
+ * Diseño de sección (SectionShell) — tienda y landing
+ *
+ * Toda sección se pinta dentro de `.sec`. La pestaña «Diseño» del editor escribe atributos
+ * (`data-height`, `data-pt`, `data-bg`…) solo cuando el valor difiere de lo neutro; sin atributo
+ * manda lo que el bloque ya tenía. Así una tienda o una landing que nunca tocó «Diseño» se ve
+ * exactamente igual que antes.
+ *
+ * Tienda: las secciones van en una columna con separación (`--store-gap` × 1,6). «Espacio normal»
+ * es esa separación; «Sin espacio» la anula y la sección queda pegada a la de al lado. Con fondo
+ * propio la sección es una tarjeta con relleno y las esquinas del tema.
+ *
+ * Landing: cada bloque trae su propio relleno y su ancho (70rem); «Diseño» los cambia con
+ * `--sec-pt`, `--sec-pb`, `--sec-max` y `--sec-px`, que el bloque lee con su valor de siempre de
+ * respaldo (`pt-[var(--sec-pt,3.5rem)]`).
+ * ========================================================================== */
+
+.sec {
+    position: relative;
+}
+
+/* Un bloque solo de celular no aparece en computador, y al revés. Va aquí y no con `hidden` de
+   Tailwind: el alto de la sección pone `display: flex`, y esta hoja le gana a las utilidades. */
+@media (max-width: 767px) {
+    .sec[data-devices='desktop'] {
+        display: none;
+    }
+}
+
+@media (min-width: 768px) {
+    .sec[data-devices='mobile'] {
+        display: none;
+    }
+}
+
+/* Las capas de fondo van detrás del contenido de la sección pero nunca detrás de la página. */
+.sec[data-bg] {
+    isolation: isolate;
+}
+
+/* ------------------------------------------------------------------ alto */
+
+.sec[data-height],
+.sec[data-height-m] {
+    display: flex;
+    flex-direction: column;
+    justify-content: var(--sec-justify, flex-start);
+}
+
+.sec[data-align='center'] {
+    --sec-justify: center;
+}
+
+.sec[data-align='end'] {
+    --sec-justify: flex-end;
+}
+
+.sec[data-height='third'] {
+    min-height: 38svh;
+}
+
+.sec[data-height='half'] {
+    min-height: 55svh;
+}
+
+.sec[data-height='tall'] {
+    min-height: 78svh;
+}
+
+.sec[data-height='screen'] {
+    min-height: 100svh;
+}
+
+/* En celular, si se pidió otro alto. */
+@media (max-width: 767px) {
+    .sec[data-height-m='auto'] {
+        min-height: 0;
+    }
+
+    .sec[data-height-m='half'] {
+        min-height: 55svh;
+    }
+
+    .sec[data-height-m='tall'] {
+        min-height: 78svh;
+    }
+
+    .sec[data-height-m='screen'] {
+        min-height: 100svh;
+    }
+}
+
+/* ------------------------------------------------------------- separación */
+
+.sec[data-gap='none'] {
+    --sec-gap: 0px;
+}
+
+.sec[data-gap='sm'] {
+    --sec-gap: 0.5rem;
+}
+
+.sec[data-gap='lg'] {
+    --sec-gap: 2rem;
+}
+
+.sec[data-radius='none'] {
+    --sec-radius: 0px;
+}
+
+.sec[data-radius='lg'] {
+    --sec-radius: 1.75rem;
+}
+
+/* El banner principal llena el alto que se le pidió a su sección: ahí manda la sección, no el
+   alto ni la proporción de la lámina. En celular, «Según el contenido» le devuelve el suyo. */
+.sec[data-height='third'] [data-hero-fill] {
+    height: calc(38svh - var(--sec-pt, 0px) - var(--sec-pb, 0px));
+    aspect-ratio: auto;
+}
+
+.sec[data-height='half'] [data-hero-fill] {
+    height: calc(55svh - var(--sec-pt, 0px) - var(--sec-pb, 0px));
+    aspect-ratio: auto;
+}
+
+.sec[data-height='tall'] [data-hero-fill] {
+    height: calc(78svh - var(--sec-pt, 0px) - var(--sec-pb, 0px));
+    aspect-ratio: auto;
+}
+
+.sec[data-height='screen'] [data-hero-fill] {
+    height: calc(100svh - var(--sec-pt, 0px) - var(--sec-pb, 0px));
+    aspect-ratio: auto;
+}
+
+@media (max-width: 767px) {
+    .sec[data-height-m='auto'] [data-hero-fill] {
+        height: revert-layer;
+        aspect-ratio: revert-layer;
+    }
+
+    .sec[data-height-m='half'] [data-hero-fill] {
+        height: calc(55svh - var(--sec-pt, 0px) - var(--sec-pb, 0px));
+        aspect-ratio: auto;
+    }
+
+    .sec[data-height-m='tall'] [data-hero-fill] {
+        height: calc(78svh - var(--sec-pt, 0px) - var(--sec-pb, 0px));
+        aspect-ratio: auto;
+    }
+
+    .sec[data-height-m='screen'] [data-hero-fill] {
+        height: calc(100svh - var(--sec-pt, 0px) - var(--sec-pb, 0px));
+        aspect-ratio: auto;
+    }
+}
+
+/* =================================================================== tienda */
+
+.sec[data-surface='store'] {
+    --sec-pt: 0px;
+    --sec-pb: 0px;
+    --sec-card: 1.25rem;
+    --sec-card-x: 1rem;
+    padding-top: var(--sec-pt);
+    padding-bottom: var(--sec-pb);
+}
+
+@media (min-width: 768px) {
+    .sec[data-surface='store'] {
+        --sec-card-x: 1.25rem;
+    }
+}
+
+/* Con fondo propio: una tarjeta con relleno, la misma que tenía el estante con fondo. */
+.sec[data-surface='store'][data-bg] {
+    --sec-pt: var(--sec-card);
+    --sec-pb: var(--sec-card);
+    padding-inline: var(--sec-card-x);
+}
+
+.sec[data-surface='store'][data-frame='contained'][data-bg] {
+    border-radius: var(--sec-radius, var(--store-radius));
+}
+
+/* En el celular la sección con fondo va de borde a borde, sin esquinas: así se veía el estante con
+   fondo, y las filas que se deslizan llegan hasta el borde de la pantalla. */
+@media (max-width: 767px) {
+    .sec[data-surface='store'][data-frame='contained'][data-bg] {
+        margin-inline: -1rem;
+        border-radius: 0;
+    }
+}
+
+/* Espacio arriba y abajo. Sin fondo, «Corto» y «Mínimo» no quitan la separación de la página:
+   solo «Sin espacio» la anula. */
+.sec[data-surface='store'][data-pt='none'] {
+    --sec-pt: 0px;
+    margin-top: calc(var(--store-gap) * -1.6);
+}
+
+.sec[data-surface='store'][data-pb='none'] {
+    --sec-pb: 0px;
+}
+
+.sec[data-surface='store'][data-pb='none'] + .sec {
+    margin-top: calc(var(--store-gap) * -1.6);
+}
+
+.sec[data-surface='store'][data-bg][data-pt='xs'] {
+    --sec-pt: 0.5rem;
+}
+
+.sec[data-surface='store'][data-bg][data-pb='xs'] {
+    --sec-pb: 0.5rem;
+}
+
+.sec[data-surface='store'][data-bg][data-pt='sm'] {
+    --sec-pt: calc(var(--sec-card) * 0.66);
+}
+
+.sec[data-surface='store'][data-bg][data-pb='sm'] {
+    --sec-pb: calc(var(--sec-card) * 0.66);
+}
+
+.sec[data-surface='store'][data-pt='lg'] {
+    --sec-pt: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.sec[data-surface='store'][data-pb='lg'] {
+    --sec-pb: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.sec[data-surface='store'][data-bg][data-pt='lg'] {
+    --sec-pt: clamp(2rem, 4vw, 3rem);
+}
+
+.sec[data-surface='store'][data-bg][data-pb='lg'] {
+    --sec-pb: clamp(2rem, 4vw, 3rem);
+}
+
+.sec[data-surface='store'][data-pt='xl'] {
+    --sec-pt: clamp(3rem, 6vw, 4.5rem);
+}
+
+.sec[data-surface='store'][data-pb='xl'] {
+    --sec-pb: clamp(3rem, 6vw, 4.5rem);
+}
+
+/* De borde a borde: la sección sale de la columna de la página y ocupa todo el ancho. El
+   contenido sigue alineado con el de la página, salvo con ancho completo. `100vw` cuenta la barra
+   de desplazamiento: el cascarón recorta lo que sobra a lo ancho (`clip` no crea un contenedor de
+   desplazamiento, así el encabezado pegajoso sigue funcionando). */
+[data-store-shell] {
+    overflow-x: clip;
+}
+
+.sec[data-surface='store'][data-frame='bleed'] {
+    width: 100vw;
+    margin-inline: calc(50% - 50vw);
+    padding-inline: 0;
+    border-radius: 0;
+}
+
+.sec[data-surface='store'][data-frame='bleed'] > .sec-inner {
+    width: 100%;
+    max-width: var(--store-max, 1280px);
+    margin-inline: auto;
+    padding-inline: 1rem;
+}
+
+@media (min-width: 1024px) {
+    .sec[data-surface='store'][data-frame='bleed'] > .sec-inner {
+        padding-inline: var(--store-gutter, 1.5rem);
+    }
+}
+
+/* La primera sección a sangre y sin espacio arriba sube hasta el encabezado: anula el relleno de
+   arriba de la página (`pt-4 md:pt-6` en `StoreLayout`). */
+.sec[data-surface='store'][data-frame='bleed'][data-pt='none']:first-child {
+    margin-top: -1rem;
+}
+
+@media (min-width: 768px) {
+    .sec[data-surface='store'][data-frame='bleed'][data-pt='none']:first-child {
+        margin-top: -1.5rem;
+    }
+}
+
+.sec[data-surface='store'][data-width='narrow'] > .sec-inner {
+    width: 100%;
+    max-width: 48rem;
+    margin-inline: auto;
+}
+
+.sec[data-surface='store'][data-frame='bleed'][data-width='wide'] > .sec-inner {
+    max-width: 88rem;
+}
+
+.sec[data-surface='store'][data-frame='bleed'][data-width='full'] > .sec-inner {
+    max-width: none;
+    padding-inline: 0;
+}
+
+/* ================================================================== landing */
+
+.sec[data-surface='landing'][data-pt='none'] {
+    --sec-pt: 0px;
+}
+
+.sec[data-surface='landing'][data-pb='none'] {
+    --sec-pb: 0px;
+}
+
+.sec[data-surface='landing'][data-pt='xs'] {
+    --sec-pt: clamp(0.75rem, 2vw, 1rem);
+}
+
+.sec[data-surface='landing'][data-pb='xs'] {
+    --sec-pb: clamp(0.75rem, 2vw, 1rem);
+}
+
+.sec[data-surface='landing'][data-pt='sm'] {
+    --sec-pt: clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.sec[data-surface='landing'][data-pb='sm'] {
+    --sec-pb: clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.sec[data-surface='landing'][data-pt='lg'] {
+    --sec-pt: clamp(4.5rem, 8vw, 6.5rem);
+}
+
+.sec[data-surface='landing'][data-pb='lg'] {
+    --sec-pb: clamp(4.5rem, 8vw, 6.5rem);
+}
+
+.sec[data-surface='landing'][data-pt='xl'] {
+    --sec-pt: clamp(6rem, 11vw, 8.5rem);
+}
+
+.sec[data-surface='landing'][data-pb='xl'] {
+    --sec-pb: clamp(6rem, 11vw, 8.5rem);
+}
+
+.sec[data-surface='landing'][data-width='narrow'] {
+    --sec-max: 48rem;
+}
+
+.sec[data-surface='landing'][data-width='wide'] {
+    --sec-max: 88rem;
+}
+
+.sec[data-surface='landing'][data-width='full'] {
+    --sec-max: none;
+    --sec-px: 0px;
+}
+
+/* El fondo de la sección manda sobre el que el bloque traía (la banda gris, el resplandor). */
+.sec[data-surface='landing'][data-bg] {
+    --sec-own-bg: transparent;
+}
+
+/* En la landing las secciones ya van de borde a borde; «Dentro de la página» es una tarjeta. */
+.sec[data-surface='landing'][data-frame='contained'] {
+    width: calc(100% - 2rem);
+    max-width: calc(var(--sec-max, 70rem) + 4rem);
+    margin: clamp(1rem, 3vw, 2rem) auto;
+    border-radius: var(--sec-radius, var(--radius-sheet));
+    /* `clip` y no `hidden`: recorta las esquinas sin volverse contenedor de desplazamiento, y el
+       mapa pegajoso del buscador sigue pegado. */
+    overflow: clip;
+}
+
+/* ============================================================ capas de fondo */
+
+.sec-bg {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+.sec-bg-layer {
+    position: absolute;
+    inset: 0;
+}
+
+/* Con paralaje la capa sobresale arriba y abajo: el desplazamiento máximo es la mitad del factor
+   más fuerte (65 px), así que 80 px de margen nunca deja hueco. */
+.sec-bg-layer[data-parallax='on'] {
+    inset: -80px 0;
+    will-change: transform;
+}
+
+.sec-bg-fill {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.sec-texture[data-texture='dots'] {
+    background-image: radial-gradient(circle at center, color-mix(in srgb, var(--text) 18%, transparent) 1px, transparent 1px);
+    background-size: 22px 22px;
+}
+
+.sec-texture[data-texture='grid'] {
+    background-image:
+        linear-gradient(to right, color-mix(in srgb, var(--text) 9%, transparent) 1px, transparent 1px),
+        linear-gradient(to bottom, color-mix(in srgb, var(--text) 9%, transparent) 1px, transparent 1px);
+    background-size: 48px 48px;
+}
+
+.sec-texture[data-texture='lines'] {
+    background-image: repeating-linear-gradient(135deg, color-mix(in srgb, var(--text) 9%, transparent) 0 1px, transparent 1px 12px);
+}
+
+/* Grano hecho en el propio SVG: no hay que servir ninguna imagen. */
+.sec-texture[data-texture='noise'] {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
+    opacity: 0.5;
+}
+
+.sec-texture[data-texture='glow'] {
+    background-image: radial-gradient(58% 62% at 50% 0%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 70%);
+}
+
+.sec-gradient[data-gradient='brand'] {
+    background-image: linear-gradient(160deg, var(--bg), color-mix(in srgb, var(--accent) 38%, var(--bg)));
+}
+
+.sec-gradient[data-gradient='soft'] {
+    background-image: linear-gradient(180deg, color-mix(in srgb, var(--accent) 10%, var(--bg)), var(--bg));
+}
+
+.sec-gradient[data-gradient='dark'] {
+    background-image: linear-gradient(135deg, #08101d, #1c2733 60%, color-mix(in srgb, var(--accent) 30%, #08101d));
+}
+
+.sec-gradient[data-gradient='halo'] {
+    background-image: radial-gradient(70% 90% at 50% 50%, color-mix(in srgb, #ffffff 70%, var(--bg)), var(--bg) 72%);
+}
+
+.sec-gradient[data-gradient='sunset'] {
+    background-image: linear-gradient(135deg, #f7b267, #f4845f 45%, #c44569);
+}
+
+/* El botón para pausar el video de fondo: discreto, en la esquina, encima del contenido. */
+.sec-video-toggle {
+    position: absolute;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    z-index: 2;
+    display: grid;
+    width: 2.25rem;
+    height: 2.25rem;
+    place-items: center;
+    border-radius: 999px;
+    background: rgba(8, 16, 29, 0.55);
+    color: #ffffff;
+    backdrop-filter: blur(6px);
+}
+
+.sec-video-toggle:focus-visible {
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
+}
+
+/* ================================================= revelado al hacer scroll */
+
+/*
+ * La sección marca `data-visible` cuando entra en pantalla. Las piezas marcadas con `data-part`
+ * entran escalonadas según su `--sec-part`; si el bloque no marca piezas, entra entero. Ocultar
+ * depende de `.sec-js`, que pone `SectionShell` al cargarse: sin JavaScript nada queda invisible.
+ */
+.sec-reveal {
+    --sec-rev-dur: 0.6s;
+    --sec-rev-delay: 0s;
+    --sec-rev-step: 0.09s;
+    --sec-rev-from: none;
+    --sec-rev-blur: 0px;
+    --sec-rev-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.sec-js .sec-reveal [data-part],
+.sec-js .sec-reveal:not(:has([data-part])) > .sec-inner {
+    opacity: 0;
+    transform: var(--sec-rev-from);
+    filter: blur(var(--sec-rev-blur));
+    transition:
+        opacity var(--sec-rev-dur) var(--sec-rev-ease),
+        transform var(--sec-rev-dur) var(--sec-rev-ease),
+        filter var(--sec-rev-dur) var(--sec-rev-ease);
+    transition-delay: calc(var(--sec-rev-delay) + var(--sec-part, 0) * var(--sec-rev-step));
+}
+
+.sec-js .sec-reveal[data-visible='true'] [data-part],
+.sec-js .sec-reveal[data-visible='true']:not(:has([data-part])) > .sec-inner {
+    opacity: 1;
+    transform: none;
+    filter: none;
+}
+
+/* Quien pide menos movimiento ve la página quieta y completa. */
+@media (prefers-reduced-motion: reduce) {
+    .sec-js .sec-reveal [data-part],
+    .sec-js .sec-reveal > .sec-inner {
+        opacity: 1 !important;
+        transform: none !important;
+        filter: none !important;
+        transition: none !important;
+    }
+
+    .sec-bg-layer[data-parallax='on'] {
+        transform: none !important;
+    }
+}

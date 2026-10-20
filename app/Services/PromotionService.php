@@ -61,6 +61,35 @@ class PromotionService
             ->get();
     }
 
+    /**
+     * Lo que alcanzan, juntas, las promociones vigentes de un canal: articulos, categorias
+     * (exactas, como en `reaches()`) y articulos principales. Sirve para marcar y filtrar en una
+     * sola consulta —«Promoción activa» en «Tienda en línea»— sin preguntar articulo por articulo.
+     *
+     * @return array{product_ids: list<int>, category_ids: list<int>, family_ids: list<int>}
+     */
+    public function reach(int $companyId, string $channel): array
+    {
+        $reach = ['product_ids' => [], 'category_ids' => [], 'family_ids' => []];
+
+        foreach ($this->running($companyId, $channel) as $promotion) {
+            foreach ($promotion->targets as $target) {
+                $key = match ($target->target_type) {
+                    PromotionTarget::TYPE_PRODUCT => 'product_ids',
+                    PromotionTarget::TYPE_CATEGORY => 'category_ids',
+                    PromotionTarget::TYPE_FAMILY => 'family_ids',
+                    default => null,
+                };
+
+                if ($key !== null) {
+                    $reach[$key][] = (int) $target->target_id;
+                }
+            }
+        }
+
+        return array_map(fn (array $ids) => array_values(array_unique($ids)), $reach);
+    }
+
     /** Olvida lo memorizado: hace falta tras crear o editar una promocion en la misma peticion. */
     public function forget(): void
     {

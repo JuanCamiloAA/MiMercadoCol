@@ -1,6 +1,7 @@
 import { router, useForm, usePage } from '@inertiajs/react';
-import { CreditCardIcon, TicketIcon, XIcon } from '@phosphor-icons/react';
-import { type FormEvent, useState } from 'react';
+import { TicketIcon, XIcon } from '@phosphor-icons/react';
+import { type FormEvent, useEffect, useState } from 'react';
+import { paymentIcon, type PresentedPaymentMethod } from '@/components/payments/payment-icons';
 import StoreLayout from '@/layouts/StoreLayout';
 import { cn } from '@/lib/cn';
 import { money, number, UNIT_SHORT } from '@/lib/format';
@@ -11,6 +12,13 @@ interface SlotRow {
     day: string;
     remaining: number | null;
     full: boolean;
+}
+
+/** Los medios de la tienda como se muestran: en línea, al recibir y crédito. */
+interface PaymentGroup {
+    key: string;
+    label: string;
+    methods: PresentedPaymentMethod[];
 }
 
 interface CheckoutProps {
@@ -32,7 +40,10 @@ interface CheckoutProps {
     zones: { index: number; name: string; fee: number; eta_minutes: number }[];
     zone: number | null;
     slots: SlotRow[];
-    methods: { value: string; label: string }[];
+    /** Los medios que valen en esta sede, por este monto y para este cliente (Medios de pago). */
+    paymentGroups: PaymentGroup[];
+    /** Los mismos, si el saldo a favor paga primero: el medio cubre menos y puede valer otro. */
+    paymentGroupsWithStoreCredit: PaymentGroup[] | null;
     coupon: { code: string; discount: number; free_delivery: boolean } | null;
     customer: { name: string; phone: string | null; address: string | null; neighborhood: string | null; delivery_notes: string | null };
     /** Saldo a favor disponible por devoluciones. */
@@ -61,7 +72,8 @@ export default function StorefrontCheckout({
     zones,
     zone,
     slots,
-    methods,
+    paymentGroups,
+    paymentGroupsWithStoreCredit,
     coupon,
     customer,
     storeCredit,
@@ -74,9 +86,20 @@ export default function StorefrontCheckout({
         delivery_notes: customer.delivery_notes ?? '',
         zone: zone ?? (zones.length > 0 ? zones[0].index : null),
         slot: slots.find((slot) => !slot.full)?.key ?? '',
-        payment_method: methods[0]?.value ?? '',
+        payment_method_id: (paymentGroupsWithStoreCredit ?? paymentGroups)[0]?.methods[0]?.id ?? null,
         use_store_credit: storeCredit > 0,
     });
+
+    const groups = data.use_store_credit && paymentGroupsWithStoreCredit ? paymentGroupsWithStoreCredit : paymentGroups;
+    const methods = groups.flatMap((group) => group.methods);
+    const selected = methods.find((method) => method.id === data.payment_method_id) ?? null;
+
+    // Si con el saldo a favor (o sin el) el medio elegido deja de valer, se pasa al primero que valga.
+    useEffect(() => {
+        if (!selected && methods.length > 0) {
+            setData('payment_method_id', methods[0].id);
+        }
+    }, [selected, methods, setData]);
 
     const [code, setCode] = useState('');
 
@@ -94,7 +117,7 @@ export default function StorefrontCheckout({
     // El saldo a favor paga primero; el medio elegido cubre el resto.
     const creditUsed = data.use_store_credit ? Math.min(storeCredit, total) : 0;
     const toPay = total - creditUsed;
-    const creditBlocked = data.payment_method === 'credit' && toPay > 0 && credit.rejection !== null;
+    const creditBlocked = selected?.kind === 'credit' && toPay > 0 && credit.rejection !== null;
     const blocked = creditBlocked || delivery.below_minimum || methods.length === 0;
     const days = [...new Set(slots.map((slot) => slot.day))];
 
@@ -216,35 +239,59 @@ export default function StorefrontCheckout({
                                 Esta sede no tiene medios de pago habilitados. Escríbenos para tomar tu pedido.
                             </p>
                         ) : (
-                            <div className="flex flex-col gap-2">
-                                {methods.map((method) => {
-                                    const disabled = method.value === 'credit' && (!credit.enabled || credit.blocked);
+                            <div className="flex flex-col gap-3">
+                                {groups.map((group) => (
+                                    <div key={group.key}>
+                                        {groups.length > 1 && <p className="mb-1.5 text-[12px] font-semibold uppercase tracking-wide text-[var(--muted)]">{group.label}</p>}
+                                        <div className="flex flex-col gap-2">
+                                            {group.methods.map((method) => {
+                                                const disabled = method.kind === 'credit' && (!credit.enabled || credit.blocked);
+                                                const MethodIcon = paymentIcon(method.icon);
+                                                const active = data.payment_method_id === method.id;
 
-                                    return (
-                                        <button
-                                            key={method.value}
-                                            type="button"
-                                            disabled={disabled}
-                                            onClick={() => setData('payment_method', method.value)}
-                                            className={cn(
-                                                'flex h-12 items-center gap-2 rounded-[11px] border px-3 text-left text-[14px] font-medium transition-colors',
-                                                disabled
-                                                    ? 'cursor-not-allowed border-[var(--line)] bg-[var(--surface-2)] text-[var(--muted)] opacity-60'
-                                                    : data.payment_method === method.value
-                                                      ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
-                                                      : 'border-[var(--line)] bg-[var(--surface-2)]',
-                                            )}
-                                        >
-                                            {method.value === 'credit' && <CreditCardIcon size={17} />}
-                                            {method.label}
-                                            {disabled && <span className="ml-auto text-[11.5px]">no disponible</span>}
-                                        </button>
-                                    );
-                                })}
+                                                return (
+                                                    <button
+                                                        key={method.id}
+                                                        type="button"
+                                                        disabled={disabled}
+                                                        onClick={() => setData('payment_method_id', method.id)}
+                                                        aria-pressed={active}
+                                                        className={cn(
+                                                            'flex min-h-12 items-center gap-2.5 rounded-[11px] border px-3 py-2 text-left transition-colors',
+                                                            disabled
+                                                                ? 'cursor-not-allowed border-[var(--line)] bg-[var(--surface-2)] text-[var(--muted)] opacity-60'
+                                                                : active
+                                                                  ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
+                                                                  : 'border-[var(--line)] bg-[var(--surface-2)]',
+                                                            method.highlight && !active && !disabled && 'ring-1 ring-[var(--accent)]/40',
+                                                        )}
+                                                    >
+                                                        <MethodIcon size={18} className="shrink-0" />
+                                                        <span className="min-w-0 flex-1">
+                                                            <span className="block text-[14px] font-medium">{method.name}</span>
+                                                            {method.description && <span className="block text-[11.5px] text-[var(--muted)]">{method.description}</span>}
+                                                        </span>
+                                                        {disabled && <span className="ml-auto text-[11.5px]">no disponible</span>}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         )}
 
-                        {credit.enabled && data.payment_method === 'credit' && (
+                        {selected?.instructions && (
+                            <p className="mt-3 whitespace-pre-line rounded-[11px] bg-[var(--surface-2)] px-3 py-2 text-[12.5px] text-[var(--muted)]">{selected.instructions}</p>
+                        )}
+
+                        {selected?.kind === 'gateway_checkout' && toPay > 0 && (
+                            <p className="mt-3 text-[12.5px] text-[var(--muted)]">
+                                Al confirmar te llevamos a la pasarela para pagar {money(toPay)}. Apartamos tu pedido mientras pagas.
+                            </p>
+                        )}
+
+                        {credit.enabled && selected?.kind === 'credit' && (
                             <dl className="mt-3 flex flex-col gap-1.5 rounded-[11px] border border-[var(--line)] bg-[var(--surface-2)] p-3 text-[13px]">
                                 <Row label="Tu cupo" value={money(credit.limit)} />
                                 <Row label="Deuda actual" value={money(credit.balance)} />
@@ -283,13 +330,15 @@ export default function StorefrontCheckout({
                                     <span className="block text-[12px] text-[var(--muted)]">
                                         {toPay === 0 && data.use_store_credit
                                             ? 'Tu saldo cubre todo el pedido.'
-                                            : `Se descuenta primero; el resto lo pagas con ${methods.find((method) => method.value === data.payment_method)?.label.toLowerCase() ?? 'el medio que elijas'}.`}
+                                            : `Se descuenta primero; el resto lo pagas con ${selected?.name.toLowerCase() ?? 'el medio que elijas'}.`}
                                     </span>
                                 </span>
                             </label>
                         )}
 
-                        {errors.payment_method && <p className="mt-2 text-[12px] font-medium text-[var(--danger)]">{errors.payment_method}</p>}
+                        {(errors.payment_method_id ?? pageErrors.payment_method) && (
+                            <p className="mt-2 text-[12px] font-medium text-[var(--danger)]">{errors.payment_method_id ?? pageErrors.payment_method}</p>
+                        )}
                     </section>
                 </div>
 
@@ -390,7 +439,7 @@ export default function StorefrontCheckout({
                             blocked ? 'cursor-not-allowed bg-[var(--surface-2)] text-[var(--muted)]' : 'bg-[var(--accent)] text-[var(--accent-ink)]',
                         )}
                     >
-                        Confirmar el pedido
+                        {selected?.kind === 'gateway_checkout' && toPay > 0 ? `Ir a pagar ${money(toPay)}` : 'Confirmar el pedido'}
                     </button>
 
                     <p className="mt-2 text-center text-[11.5px] text-[var(--muted)]">Te atiende la sede {store.name}</p>

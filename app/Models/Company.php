@@ -2,7 +2,11 @@
 
 namespace App\Models;
 
+use App\Services\Membership\Entitlement;
+use App\Services\Membership\Entitlements;
+use App\Services\Membership\EntitlementService;
 use App\Services\Membership\MembershipFeatures;
+use App\Services\Payments\PaymentMethodCatalog;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -47,7 +51,7 @@ class Company extends Model
     ];
 
     protected $fillable = [
-        'name', 'slug', 'legal_name', 'tax_id', 'email', 'phone', 'address', 'city', 'logo', 'currency', 'is_active',
+        'name', 'slug', 'legal_name', 'tax_id', 'email', 'phone', 'address', 'city', 'business_category_id', 'logo', 'currency', 'is_active',
         'membership_plan_id', 'billing_cycle_id', 'next_membership_plan_id', 'next_billing_cycle_id',
         'membership_status', 'membership_started_at', 'membership_ends_at', 'grace_ends_at', 'next_charge_at',
         'auto_renew', 'show_on_landing', 'deactivated_at', 'deactivation_reason', 'signup_id',
@@ -79,6 +83,30 @@ class Company extends Model
                 $company->slug = self::uniqueSlug((string) $company->name);
             }
         });
+
+        // Toda empresa nace con sus medios de pago, como toda sede nace con su bodega: una empresa
+        // sin «Efectivo» revienta el primer cobro. Cubre Empresas, la contratacion, la carga masiva
+        // y las semillas, que crean empresas por caminos distintos.
+        static::created(function (Company $company) {
+            app(PaymentMethodCatalog::class)->ensureDefaults((int) $company->id);
+        });
+
+        // Cambiar de plan cambia lo que la empresa tiene en esta misma peticion.
+        static::saved(function (Company $company) {
+            if ($company->wasChanged('membership_plan_id')) {
+                app(EntitlementService::class)->forget((int) $company->id);
+            }
+        });
+    }
+
+    public function entitlementExceptions(): HasMany
+    {
+        return $this->hasMany(CompanyEntitlement::class)->latest('id');
+    }
+
+    public function planPrices(): HasMany
+    {
+        return $this->hasMany(CompanyPlanPrice::class)->latest('id');
     }
 
     public function stores(): HasMany
@@ -89,6 +117,12 @@ class Company extends Model
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    /** Alimentos, textiles, belleza…: con ella la landing agrupa las tiendas. */
+    public function businessCategory(): BelongsTo
+    {
+        return $this->belongsTo(BusinessCategory::class);
     }
 
     public function plan(): BelongsTo
@@ -137,36 +171,42 @@ class Company extends Model
     }
 
     /**
-     * Si la empresa tiene una funcion del plan. Sin plan asignado (empresas de antes de las
-     * membresias) se asume todo: no se le quita a nadie lo que ya usaba.
+     * Atajo para las funciones de antes: traduce la funcion a su nodo y le pregunta a
+     * `EntitlementService` (`online_store` → `storefront.*`, `promotions` → `promotions.*`,
+     * `multi_warehouse` → `stores.warehouses.create`, `catalog_import` → `products.catalog_import.*`).
+     * Sin plan asignado (empresas de antes de las membresias) se tiene todo.
      */
     public function hasFeature(string $feature): bool
     {
-        if ($this->membership_plan_id === null) {
-            return true;
+        $node = Entitlements::FEATURE_NODES[$feature] ?? null;
+
+        if ($node === null) {
+            return false;
         }
 
-        return (bool) $this->plan?->hasFeature($feature);
+        return $this->entitlement()->allowsNode($node);
+    }
+
+    /** Lo que la empresa tiene, ya calculado con su plan y sus excepciones. */
+    public function entitlement(): Entitlement
+    {
+        return app(EntitlementService::class)->for($this);
     }
 
     /**
-     * Las funciones que tiene la empresa. Sin plan, todas.
+     * Las funciones viejas que tiene la empresa, para lo que todavia pregunta por ellas.
      *
      * @return list<string>
      */
     public function features(): array
     {
-        if ($this->membership_plan_id === null) {
-            return array_keys(MembershipFeatures::CATALOGUE);
-        }
-
-        return MembershipFeatures::sanitize($this->plan?->features);
+        return array_values(array_filter(array_keys(MembershipFeatures::CATALOGUE), fn (string $feature) => $this->hasFeature($feature)));
     }
 
     /**
      * Un `slug` libre a partir del nombre, para la direccion de la tienda.
      */
-    public const RESERVED_SLUGS = ['producto', 'servicio', 'pedido', 'pedidos', 'preview', 'carrito', 'pago', 'registro', 'ingresar', 'salir', 'sede', 'activar', 'categoria', 'ofertas', 'buscar', 'devoluciones', 'menu', 'articulo'];
+    public const RESERVED_SLUGS = ['producto', 'servicio', 'pedido', 'pedidos', 'preview', 'carrito', 'pago', 'registro', 'ingresar', 'salir', 'sede', 'activar', 'categoria', 'ofertas', 'buscar', 'devoluciones', 'menu', 'articulo', 'newsletter'];
 
     public static function uniqueSlug(string $name, ?int $ignoreId = null): string
     {

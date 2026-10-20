@@ -32,7 +32,7 @@ class StorefrontPreviewBuilder
      * @param  array<string, mixed>  $snapshot
      * @return array<string, mixed>
      */
-    public function build(array $snapshot, Store $store, string $view, ?int $categoryId = null, ?int $productId = null, ?string $device = null): array
+    public function build(array $snapshot, Store $store, string $view, ?int $categoryId = null, ?int $productId = null, ?string $device = null, ?string $scheme = null): array
     {
         $view = in_array($view, self::VIEWS, true) ? $view : StorefrontBlock::PAGE_HOME;
         $settings = $this->structure->withDefaults($snapshot['settings'] ?? []);
@@ -58,6 +58,11 @@ class StorefrontPreviewBuilder
         };
 
         $props['blocks'] = $this->renderer->renderSnapshot($snapshot, $store, $device, $view, $context)['blocks'];
+        // El encabezado sobre la portada, con la misma regla que la tienda (los bloques ocultos no cuentan).
+        $props['headerOverlay'] = $view === StorefrontBlock::PAGE_HOME
+            && StorefrontRenderer::headerOverlay($rendered['settings']['header'] ?? [], array_values(array_filter($props['blocks'], fn (array $block) => $block['is_visible'] ?? true)));
+        // El modo que el editor está revisando: manda sobre el de la tienda y sobre el que haya escogido quien edita.
+        $props['previewScheme'] = in_array($scheme, ['light', 'dark'], true) ? $scheme : null;
 
         return $props;
     }
@@ -136,7 +141,11 @@ class StorefrontPreviewBuilder
         return [
             'product' => array_merge(
                 $this->products->present([$row], $store, $settings['card'], (bool) ($page['show_unit_price'] ?? true))[0],
-                ['description' => ($page['show_description'] ?? true) ? $product->description : null, 'tax_rate' => (float) $product->tax_rate]
+                [
+                    'description' => ($page['show_description'] ?? true) ? $product->description : null,
+                    'tax_rate' => (float) $product->tax_rate,
+                    'images' => $this->products->gallery($product),
+                ]
             ),
             'breadcrumbs' => $category ? [['label' => $category['name'], 'href' => $category['href']]] : [],
             'related' => $this->listing->related($store, $product, $settings),
@@ -228,6 +237,6 @@ class StorefrontPreviewBuilder
      */
     protected function filters(string $sort): array
     {
-        return ['sub' => null, 'brands' => [], 'attr' => [], 'min' => null, 'max' => null, 'deals' => false, 'in_stock' => false, 'sort' => $sort, 'page' => 1];
+        return ['sub' => null, 'brands' => [], 'attr' => [], 'min' => null, 'max' => null, 'deals' => false, 'sort' => $sort, 'page' => 1];
     }
 }

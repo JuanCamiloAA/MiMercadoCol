@@ -9,7 +9,8 @@ use App\Models\StorefrontTemplate;
 use Carbon\CarbonImmutable;
 
 /**
- * Lo que la tienda publicada dice sobre domicilio, cobertura, franjas y medios de pago.
+ * Lo que la tienda publicada dice sobre domicilio, cobertura y franjas. Los medios de pago ya no
+ * viven aqui: son operacion, no se publican con la tienda (`PaymentMethodAvailability`).
  *
  * El checkout no puede leer el borrador: si el administrador esta a mitad de un cambio, el
  * cliente pagaria con reglas que todavia no se publicaron. Por eso todo sale del retrato de la
@@ -62,7 +63,20 @@ class StorefrontConfig
      */
     public function settings(Store $store): array
     {
-        $published = $this->published($store)['settings'] ?? [];
+        return $this->settingsFrom($this->published($store));
+    }
+
+    /**
+     * Lo mismo que `settings()`, desde un retrato ya cargado: el buscador de la landing trae los
+     * de todas las sedes en una sola consulta. Domicilio, zonas y franjas son siempre de la sede
+     * (la plantilla no los toca), asi que basta con el retrato de su version publicada.
+     *
+     * @param  array<string, mixed>  $snapshot
+     * @return array<string, array<string, mixed>>
+     */
+    public function settingsFrom(array $snapshot): array
+    {
+        $published = $snapshot['settings'] ?? [];
         $settings = [];
 
         foreach ($this->manager->defaultSettings() as $key => $defaults) {
@@ -82,7 +96,16 @@ class StorefrontConfig
      */
     public function zones(Store $store): array
     {
-        $rows = $this->published($store)['zones'] ?? [];
+        return $this->zonesFrom($this->published($store));
+    }
+
+    /**
+     * @param  array<string, mixed>  $snapshot
+     * @return list<array{index: int, name: string, fee: int, eta_minutes: int}>
+     */
+    public function zonesFrom(array $snapshot): array
+    {
+        $rows = $snapshot['zones'] ?? [];
 
         return collect($rows)
             ->filter(fn (array $zone) => (bool) ($zone['is_active'] ?? true))
@@ -104,13 +127,22 @@ class StorefrontConfig
      */
     public function slots(Store $store, int $days = 3): array
     {
-        $settings = $this->settings($store);
+        return $this->slotsFrom($store, $this->published($store), $days);
+    }
+
+    /**
+     * @param  array<string, mixed>  $snapshot
+     * @return list<array{key: string, label: string, day: string, starts_at: string, ends_at: string, remaining: int|null, full: bool}>
+     */
+    public function slotsFrom(Store $store, array $snapshot, int $days = 3): array
+    {
+        $settings = $this->settingsFrom($snapshot);
 
         if (! ($settings['slots']['enabled'] ?? false)) {
             return [];
         }
 
-        $rows = collect($this->published($store)['slots'] ?? [])
+        $rows = collect($snapshot['slots'] ?? [])
             ->filter(fn (array $slot) => (bool) ($slot['is_active'] ?? true));
 
         if ($rows->isEmpty()) {
@@ -217,6 +249,57 @@ class StorefrontConfig
     }
 
     /**
+     * El domicilio en corto, para el buscador de la landing. Es un «desde»: el valor exacto lo da
+     * el checkout con la zona de cada quien.
+     *
+     * `fee_from` es lo menos que alguien paga: con zonas, el checkout obliga a elegir una y cobra
+     * la suya, asi que la tarifa general no cuenta; sin zonas, la general. `free_from` en `null`
+     * cuando no hay, igual que `freeDelivery()`: 0 es «nunca gratis», no «gratis desde $ 0».
+     * La proxima franja cuenta cupos (una consulta por franja): solo se pide si alguien la muestra.
+     *
+     * @param  array<string, mixed>  $snapshot  El retrato publicado de la sede.
+     * @return array{enabled: bool, fee_from: int|null, free_from: int|null, min_order_total: int, next_slot: string|null}
+     */
+    public function deliverySummary(Store $store, array $snapshot, bool $withNextSlot = false): array
+    {
+        $delivery = $this->settingsFrom($snapshot)['delivery'];
+        $enabled = (bool) ($delivery['enabled'] ?? true);
+        $zoneFees = array_column($this->zonesFrom($snapshot), 'fee');
+        $freeFrom = (int) ($delivery['free_from'] ?? 0);
+
+        return [
+            'enabled' => $enabled,
+            'fee_from' => $enabled ? ($zoneFees !== [] ? min($zoneFees) : (int) ($delivery['fee'] ?? 0)) : null,
+            'free_from' => $enabled && $freeFrom > 0 ? $freeFrom : null,
+            'min_order_total' => max(0, (int) ($delivery['min_order_total'] ?? 0)),
+            'next_slot' => $withNextSlot ? $this->nextSlotLabel($this->slotsFrom($store, $snapshot)) : null,
+        ];
+    }
+
+    /**
+     * La primera franja con cupo, como la escribe la tienda: «hoy entre 4:00 y 6:00 p. m.».
+     *
+     * @param  list<array{starts_at: string, ends_at: string, full: bool}>  $slots
+     */
+    public function nextSlotLabel(array $slots): ?string
+    {
+        foreach ($slots as $slot) {
+            if ($slot['full']) {
+                continue;
+            }
+
+            $starts = CarbonImmutable::parse($slot['starts_at']);
+            $ends = CarbonImmutable::parse($slot['ends_at']);
+            $now = CarbonImmutable::now();
+            $day = $starts->isSameDay($now) ? 'hoy' : ($starts->isSameDay($now->addDay()) ? 'mañana' : $starts->locale('es')->isoFormat('dddd'));
+
+            return $day.' entre '.StorefrontStructure::clock($starts, false).' y '.StorefrontStructure::clock($ends);
+        }
+
+        return null;
+    }
+
+    /**
      * Una pieza de la estructura publicada (`card`, `category_page`, `product_page`, `search`,
      * `cart_bar`...), completa con sus valores por defecto.
      *
@@ -225,27 +308,6 @@ class StorefrontConfig
     public function structure(Store $store, string $key): array
     {
         return (array) ($this->settings($store)[$key] ?? []);
-    }
-
-    /**
-     * Medios de pago habilitados en la sede, en las claves que entiende `Order`.
-     *
-     * @return list<string>
-     */
-    public function paymentMethods(Store $store): array
-    {
-        $payments = $this->settings($store)['payments'];
-
-        return collect([
-            Order::PAYMENT_CASH_ON_DELIVERY => 'cash_on_delivery',
-            Order::PAYMENT_CARD => 'card_on_delivery',
-            Order::PAYMENT_TRANSFER => 'transfer',
-            Order::PAYMENT_CREDIT => 'customer_credit',
-        ])
-            ->filter(fn (string $key) => (bool) ($payments[$key] ?? false))
-            ->keys()
-            ->values()
-            ->all();
     }
 
     /** Cuantos pedidos vivos ya tomaron esa franja. */

@@ -125,8 +125,8 @@ export default function ServicesIndex({ services, filters: initial, categories, 
                                 <TR key={service.id}>
                                     <TD>
                                         <div className="flex items-center gap-3">
-                                            {service.thumb ? (
-                                                <img src={`/storage/${service.thumb}`} alt="" className="size-10 shrink-0 rounded-chip object-cover" />
+                                            {service.thumb_url ? (
+                                                <img src={service.thumb_url} alt="" className="size-10 shrink-0 rounded-chip object-cover" />
                                             ) : (
                                                 <span className="grid size-10 shrink-0 place-items-center rounded-chip bg-[var(--surface-2)] text-[var(--muted)]">
                                                     <WrenchIcon size={18} />

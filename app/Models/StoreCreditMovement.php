@@ -27,8 +27,20 @@ class StoreCreditMovement extends Model
 
     public const TYPE_EXPIRED = 'expired';
 
+    /** Un pedido pagado en linea que se entrego por menos: la diferencia vuelve como saldo. */
+    public const TYPE_ONLINE_OVERPAID = 'online_overpaid';
+
+    /** Un pago por pasarela que no termino en venta y se le abono al cliente (pagos por conciliar). */
+    public const TYPE_GATEWAY_CREDIT = 'gateway_credit';
+
+    /** Lo que se le devolvio por la pasarela en vez de dejarlo como saldo. */
+    public const TYPE_GATEWAY_REFUND = 'gateway_refund';
+
     /** @var array<string, string> */
     public const TYPE_LABELS = [
+        self::TYPE_ONLINE_OVERPAID => 'Diferencia de un pedido pagado en línea',
+        self::TYPE_GATEWAY_CREDIT => 'Pago en línea abonado',
+        self::TYPE_GATEWAY_REFUND => 'Reembolsado por la pasarela',
         self::TYPE_RETURN_CREDIT => 'Devolución',
         self::TYPE_SALE_PAYMENT => 'Pago de una compra',
         self::TYPE_SALE_REVERSAL => 'Compra anulada o devuelta',

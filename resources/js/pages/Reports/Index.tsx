@@ -9,6 +9,7 @@ import { Badge, PageHeader, Tabs } from '@/components/ui/Misc';
 import { Table, TBody, TD, TH, THead, TR } from '@/components/ui/Table';
 import AppLayout from '@/layouts/AppLayout';
 import { money, number, percent } from '@/lib/format';
+import { usePermission } from '@/lib/permissions';
 
 interface SalesData {
     summary: {
@@ -24,6 +25,26 @@ interface SalesData {
     by_day: { date: string; label: string; total: number; tickets: number }[];
     by_category: { name: string; total: number; quantity: number }[];
     by_method: { method: string; label: string; total: number; count: number }[];
+    /** Por medio configurado; `method` es el tipo. La comisión es estimada (Medios de pago). */
+    by_payment_method: { payment_method_id: number | null; method: string; label: string; kind_label: string; total: number; count: number; fee: number; net: number }[];
+    /** Conciliación de pasarelas: lo aprobado, lo que quedó en ventas o pedidos y lo que falta. */
+    gateways: {
+        provider: string;
+        environment: string;
+        payment_method_id: number;
+        label: string;
+        attempts: number;
+        approved_count: number;
+        approved_total: number;
+        applied_total: number;
+        to_reconcile_count: number;
+        to_reconcile_total: number;
+        failed_count: number;
+        expired_count: number;
+        refunded_total: number;
+        fee: number;
+        net: number;
+    }[];
     by_employee: { name: string; total: number; tickets: number }[];
     top_products: { name: string; is_service: boolean; total: number; quantity: number; variants: number }[];
     services: {
@@ -52,6 +73,7 @@ interface ReportsIndexProps {
 export default function ReportsIndex({ filters: initialFilters, stores, sales, inventory, credit, employees, canExport }: ReportsIndexProps) {
     const [filters, setFilters] = useState(initialFilters);
     const [tab, setTab] = useState<'sales' | 'inventory' | 'credit' | 'employees'>('sales');
+    const { can } = usePermission();
 
     const apply = (next: Partial<typeof initialFilters>) => {
         const merged = { ...filters, ...next };
@@ -192,10 +214,141 @@ export default function ReportsIndex({ filters: initialFilters, stores, sales, i
                         </Card>
 
                         <Card>
-                            <CardHeader title="Ventas por medio de pago" />
+                            <CardHeader title="Ventas por tipo de medio" description="Lo que entró, ya sin el cambio del efectivo." />
                             <HorizontalBars data={sales.by_method.map((row) => ({ name: row.label, value: row.total }))} />
                         </Card>
                     </div>
+
+                    {sales.by_payment_method.length > 0 && (
+                        <Card padded={false}>
+                            <div className="px-5 pt-5">
+                                <CardHeader title="Por medio de pago" description="Por cada medio configurado. La comisión es estimada con lo que anotaste en Medios de pago." />
+                            </div>
+                            <Table className="rounded-none border-x-0 border-b-0">
+                                <THead>
+                                    <TR>
+                                        <TH>Medio</TH>
+                                        <TH align="right">Cobros</TH>
+                                        <TH align="right">Total</TH>
+                                        <TH align="right">Comisión est.</TH>
+                                        <TH align="right">Neto</TH>
+                                    </TR>
+                                </THead>
+                                <TBody>
+                                    {sales.by_method.map((kind) => {
+                                        const rows = sales.by_payment_method.filter((row) => row.method === kind.method);
+                                        const fee = rows.reduce((sum, row) => sum + row.fee, 0);
+
+                                        return [
+                                            ...rows.map((row) => (
+                                                <TR key={`${row.method}-${row.payment_method_id ?? 'x'}`}>
+                                                    <TD>
+                                                        {row.label}
+                                                        <span className="block text-[0.75rem] text-[var(--muted)]">{row.kind_label}</span>
+                                                    </TD>
+                                                    <TD align="right" className="font-mono tabular">
+                                                        {number(row.count)}
+                                                    </TD>
+                                                    <TD align="right" className="font-mono tabular">
+                                                        {money(row.total)}
+                                                    </TD>
+                                                    <TD align="right" className="font-mono tabular text-[var(--muted)]">
+                                                        {row.fee > 0 ? money(row.fee) : '—'}
+                                                    </TD>
+                                                    <TD align="right" className="font-mono tabular">
+                                                        {money(row.net)}
+                                                    </TD>
+                                                </TR>
+                                            )),
+                                            rows.length > 1 ? (
+                                                <TR key={`${kind.method}-subtotal`} className="bg-[var(--surface-2)]">
+                                                    <TD className="font-semibold">Subtotal {kind.label.toLowerCase()}</TD>
+                                                    <TD align="right" className="font-mono tabular font-semibold">
+                                                        {number(kind.count)}
+                                                    </TD>
+                                                    <TD align="right" className="font-mono tabular font-semibold">
+                                                        {money(kind.total)}
+                                                    </TD>
+                                                    <TD align="right" className="font-mono tabular font-semibold">
+                                                        {fee > 0 ? money(fee) : '—'}
+                                                    </TD>
+                                                    <TD align="right" className="font-mono tabular font-semibold">
+                                                        {money(kind.total - fee)}
+                                                    </TD>
+                                                </TR>
+                                            ) : null,
+                                        ];
+                                    })}
+                                </TBody>
+                            </Table>
+                        </Card>
+                    )}
+
+                    {sales.gateways.length > 0 && (
+                        <Card padded={false}>
+                            <div className="px-5 pt-5">
+                                <CardHeader
+                                    title="Conciliación de pasarelas"
+                                    description="Lo que aprobó cada pasarela frente a lo que quedó en ventas o pedidos. Lo que falta por conciliar entró y todavía no está en ninguna venta."
+                                    action={
+                                        can('payment_methods.transactions.view') && sales.gateways.some((row) => row.to_reconcile_count > 0) ? (
+                                            <Button size="sm" variant="secondary" onClick={() => router.visit(route('payment_methods.transactions.index', { estado: 'conciliar' }))}>
+                                                Ver por conciliar
+                                            </Button>
+                                        ) : undefined
+                                    }
+                                />
+                            </div>
+                            <Table className="rounded-none border-x-0 border-b-0">
+                                <THead>
+                                    <TR>
+                                        <TH>Medio</TH>
+                                        <TH align="right">Intentos</TH>
+                                        <TH align="right">Aprobado</TH>
+                                        <TH align="right">En ventas o pedidos</TH>
+                                        <TH align="right">Por conciliar</TH>
+                                        <TH align="right">Reembolsado</TH>
+                                        <TH align="right">Comisión est.</TH>
+                                        <TH align="right">Neto</TH>
+                                    </TR>
+                                </THead>
+                                <TBody>
+                                    {sales.gateways.map((row) => (
+                                        <TR key={`${row.provider}-${row.environment}-${row.payment_method_id}`}>
+                                            <TD>
+                                                {row.label}
+                                                <span className="block text-[0.75rem] text-[var(--muted)]">
+                                                    {row.provider}
+                                                    {row.environment === 'sandbox' ? ' · pruebas' : ''} · {number(row.failed_count)} rechazados, {number(row.expired_count)} vencidos
+                                                </span>
+                                            </TD>
+                                            <TD align="right" className="font-mono tabular">
+                                                {number(row.attempts)}
+                                            </TD>
+                                            <TD align="right" className="font-mono tabular">
+                                                {money(row.approved_total)}
+                                            </TD>
+                                            <TD align="right" className="font-mono tabular">
+                                                {money(row.applied_total)}
+                                            </TD>
+                                            <TD align="right" className="font-mono tabular">
+                                                {row.to_reconcile_count > 0 ? <Badge tone="warn">{money(row.to_reconcile_total)}</Badge> : '—'}
+                                            </TD>
+                                            <TD align="right" className="font-mono tabular">
+                                                {row.refunded_total > 0 ? money(row.refunded_total) : '—'}
+                                            </TD>
+                                            <TD align="right" className="font-mono tabular text-[var(--muted)]">
+                                                {row.fee > 0 ? money(row.fee) : '—'}
+                                            </TD>
+                                            <TD align="right" className="font-mono tabular">
+                                                {money(row.net)}
+                                            </TD>
+                                        </TR>
+                                    ))}
+                                </TBody>
+                            </Table>
+                        </Card>
+                    )}
 
                     <div className="grid gap-4 lg:grid-cols-2">
                         <Card padded={false}>

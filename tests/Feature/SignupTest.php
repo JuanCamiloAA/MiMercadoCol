@@ -51,6 +51,7 @@ class SignupTest extends TestCase
             'company_name' => 'Autoservicio La 80',
             'tax_id' => '901000111-2',
             'city' => 'Medellín',
+            'business_category_id' => app(\App\Services\Platform\BusinessCategoryCatalog::class)->defaultId(),
             'company_phone' => '6045557788',
             'company_email' => 'Hola@La80.co',
             'admin_name' => 'Paula',

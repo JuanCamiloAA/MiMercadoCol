@@ -17,7 +17,19 @@
  * - Consulta: GET /transactions/{id}; busqueda: GET /transactions?reference= con la privada.
  * - Firma de integridad: SHA256 de "<referencia><monto><moneda>[<expiracion>]<secreto>".
  * - Eventos: SHA256 de los valores de `signature.properties` + `timestamp` + secreto de eventos.
- *   Wompi manda el checksum en mayusculas.
+ *   Wompi manda el checksum en mayusculas. Hay que responder 200; si no, reintenta a los 30
+ *   minutos, a las 3 horas y a las 24 horas.
+ *
+ * Con la cuenta de una EMPRESA (Medios de pago > Pasarelas, `WompiGateway`) se usa el mismo
+ * cliente con sus llaves:
+ * - Checkout de la tienda: Web Checkout firmado (`checkout_url`), con `redirect-url` a la pagina de
+ *   estado y `expiration-time`. La vuelta trae `?id=`, que no se cree: manda la relectura.
+ * - Link y QR de la caja: el mismo Web Checkout firmado con NUESTRA referencia y expiracion; el QR
+ *   lo codifica. (La API de links de pago de Wompi genera su propia referencia por transaccion:
+ *   por eso no se usa aqui.)
+ * - Datafono integrado y reembolsos por API: no se declaran.
+ * - El evento de cada empresa llega a /webhooks/pagos/wompi/{token}; el de la membresia sigue en
+ *   /webhooks/wompi.
  */
 return [
     'environment' => env('WOMPI_ENVIRONMENT', 'sandbox'),

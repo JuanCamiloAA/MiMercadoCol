@@ -6,6 +6,8 @@ use App\Http\Controllers\Storefront\CheckoutController;
 use App\Http\Controllers\Storefront\CustomerAuthController;
 use App\Http\Controllers\Storefront\CustomerRegisterController;
 use App\Http\Controllers\Storefront\CustomerReturnRequestController;
+use App\Http\Controllers\Storefront\NewsletterController;
+use App\Http\Controllers\Storefront\OnlinePaymentController;
 use App\Http\Controllers\Storefront\OrderTrackingController;
 use App\Http\Controllers\Storefront\PreviewController;
 use App\Http\Controllers\Storefront\StorefrontEntryController;
@@ -44,6 +46,9 @@ Route::prefix('tienda')->name('storefront.')->middleware('storefront.available')
     Route::patch('carrito/{item}', [CartController::class, 'update'])->name('cart.update');
     Route::delete('carrito/{item}', [CartController::class, 'destroy'])->name('cart.destroy');
 
+    // Novedades por correo, desde el pie (si la sede lo encendió). `newsletter` va en `Company::RESERVED_SLUGS`.
+    Route::post('newsletter', [NewsletterController::class, 'store'])->middleware('throttle:5,1')->name('newsletter.store');
+
     // Registro de clientes, en la empresa de la sede elegida. Un documento creado en la caja se
     // activa con un codigo al correo de su ficha.
     Route::get('registro', [CustomerRegisterController::class, 'create'])->name('register');
@@ -63,6 +68,9 @@ Route::prefix('tienda')->name('storefront.')->middleware('storefront.available')
         Route::post('pago/zona', [CheckoutController::class, 'zone'])->name('checkout.zone');
         Route::post('pago/cupon', [CheckoutController::class, 'applyCoupon'])->name('checkout.coupon.apply');
         Route::delete('pago/cupon', [CheckoutController::class, 'removeCoupon'])->name('checkout.coupon.remove');
+        // Pago en linea: ida a la pasarela y vuelta a «confirmando…»; el estado se pregunta.
+        Route::get('pago/en-linea/{reference}', [OnlinePaymentController::class, 'show'])->where('reference', 'PAY-[A-Z0-9]+')->name('payments.show');
+        Route::get('pago/en-linea/{reference}/estado', [OnlinePaymentController::class, 'status'])->where('reference', 'PAY-[A-Z0-9]+')->middleware('throttle:60,1')->name('payments.status');
         Route::get('pedidos', [OrderTrackingController::class, 'index'])->name('orders.index');
         Route::get('pedido/{order}', [OrderTrackingController::class, 'show'])->name('orders.show');
         // Devoluciones: el cliente las pide sobre un pedido entregado y ve como van.

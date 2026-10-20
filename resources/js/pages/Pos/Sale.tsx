@@ -20,7 +20,9 @@ import PosLayout from '@/layouts/PosLayout';
 import { cn } from '@/lib/cn';
 import { money, number, time, UNIT_SHORT } from '@/lib/format';
 import { playErrorSound, playScanSound } from '@/lib/sounds';
-import PaymentDialog, { type PaymentMethod } from '@/pages/Pos/components/PaymentDialog';
+import type { PresentedPaymentMethod } from '@/components/payments/payment-icons';
+import GatewayWaitDialog, { type GatewayPaymentState } from '@/pages/Pos/components/GatewayWaitDialog';
+import PaymentDialog, { type GatewayRequest, type PaymentPayload } from '@/pages/Pos/components/PaymentDialog';
 import ReturnDialog, { type ExchangeDraft } from '@/pages/Pos/components/ReturnDialog';
 import ServiceLineCard from '@/pages/Pos/components/ServiceLineCard';
 import {
@@ -67,6 +69,8 @@ interface PosProduct {
     /** Lo que hay en las otras bodegas de la sede. No se puede cobrar: hay que ir por ello. */
     other_stock: number;
     thumb: string | null;
+    /** La foto, ya resuelta por el servidor (Firebase o local). */
+    thumb_url?: string | null;
     stock: number;
     /** «Talla 8 · Azul», «900 ml»: el distintivo de un subartículo. */
     variant_label?: string | null;
@@ -142,7 +146,10 @@ interface HeldTicket {
     id: number;
     label: string;
     total: number;
-    customer: string | null;
+    /** El cliente con sus datos de hoy; nulo si no tenia o si ya no esta activo. */
+    customer: PosCustomer | null;
+    /** El nombre con que se suspendio, aunque el cliente ya no este activo. */
+    customer_name: string | null;
     payload: { items: CartLine[]; customer_id: number | null };
     created_at: string;
 }
@@ -217,6 +224,12 @@ interface PosSaleProps {
     };
     maxDiscountPercent: number;
     cashRounding: number;
+    /** Los medios de esta caja a esta hora, resueltos por el servidor. */
+    paymentMethods: PresentedPaymentMethod[];
+    /** Cada cuanto se pregunta por un cobro de pasarela en curso. */
+    paymentPollSeconds: number;
+    /** Un cobro por QR o datafono que seguia esperando al recargar. */
+    pendingGatewayReference: string | null;
     posLayout: PosLayoutSettings;
 }
 
@@ -295,6 +308,9 @@ export default function PosSale({
     permissions,
     maxDiscountPercent,
     cashRounding,
+    paymentMethods,
+    paymentPollSeconds,
+    pendingGatewayReference,
     posLayout,
 }: PosSaleProps) {
     const { errors, flash } = usePage<PageProps>().props;
@@ -326,6 +342,8 @@ export default function PosSale({
     const [returnSaleId, setReturnSaleId] = useState<number | null>(null);
     const [exchange, setExchange] = useState<ExchangeDraft | null>(null);
     const [leftoverMethod, setLeftoverMethod] = useState<'cash' | 'store_credit'>('cash');
+    // Cobro por QR, link o datafono en curso: la venta nace cuando la pasarela aprueba.
+    const [gatewayPayment, setGatewayPayment] = useState<GatewayPaymentState | null>(null);
 
     const barcodeRef = useRef<HTMLInputElement>(null);
 
@@ -1010,13 +1028,9 @@ export default function PosSale({
 
     // --- Cobro -------------------------------------------------------------
 
-    const confirmSale = (payments: { method: PaymentMethod; amount: number; received_amount?: number | null; reference?: string | null }[]) => {
-        setSubmitting(true);
-
-        router.post(
-            exchange ? route('pos.sales.exchange', exchange.sale_id) : route('pos.sales.store'),
-            {
-                items: cart.map((line) =>
+    /** El tiquete como lo espera el servidor, igual para el cobro normal y el de pasarela. */
+    const salePayload = (payments: PaymentPayload[]) => ({
+        items: cart.map((line) =>
                     line.kind === 'service'
                         ? {
                               service_id: line.service_id,
@@ -1037,26 +1051,125 @@ export default function PosSale({
                               discount: line.discount,
                               skip_promotion: line.skip_promotion,
                           },
-                ),
-                payments,
-                customer_id: customer?.id ?? exchange?.customer?.id ?? null,
-                seller_employee_id: seller,
-                // La caja viaja con el tiquete: la plata entra al cajon en el que se cobro.
-                register_session_id: session.id,
-                ...(exchange ? { return: { items: exchange.items, reason: exchange.reason, leftover_method: leftoverMethod } } : {}),
-            },
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    clearTicket();
-                    setTicketKey((current) => current + 1);
-                    setSeller(defaultSeller);
-                    setModal(null);
-                    void fetchProducts(search, category);
+        ),
+        payments,
+        customer_id: customer?.id ?? exchange?.customer?.id ?? null,
+        seller_employee_id: seller,
+        // La caja viaja con el tiquete: la plata entra al cajon en el que se cobro.
+        register_session_id: session.id,
+        ...(exchange ? { return: { items: exchange.items, reason: exchange.reason, leftover_method: leftoverMethod } } : {}),
+    });
+
+    const afterSale = () => {
+        clearTicket();
+        setTicketKey((current) => current + 1);
+        setSeller(defaultSeller);
+        setModal(null);
+        void fetchProducts(search, category);
+    };
+
+    const confirmSale = (payments: PaymentPayload[]) => {
+        setSubmitting(true);
+
+        router.post(exchange ? route('pos.sales.exchange', exchange.sale_id) : route('pos.sales.store'), salePayload(payments), {
+            preserveScroll: true,
+            onSuccess: afterSale,
+            onFinish: () => setSubmitting(false),
+        });
+    };
+
+    /**
+     * Abre el cobro por la pasarela. El servidor valida el tiquete entero, lo guarda como
+     * suspendido y pide el QR o el cobro en el datafono; la venta todavia no existe.
+     */
+    const startGateway = async (payments: PaymentPayload[], gateway: GatewayRequest) => {
+        setSubmitting(true);
+
+        try {
+            const customerId = customer?.id ?? null;
+            const response = await fetch(route('pos.gateway.store'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '',
                 },
-                onFinish: () => setSubmitting(false),
-            },
-        );
+                body: JSON.stringify({
+                    ...salePayload(payments),
+                    gateway,
+                    held: {
+                        label: `Cobro por pasarela ${new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`,
+                        total: totals.total,
+                        customer_id: customerId,
+                        payload: { items: cart, customer_id: customerId },
+                    },
+                }),
+            });
+
+            const body = (await response.json().catch(() => null)) as (GatewayPaymentState & { message?: string; errors?: Record<string, string[]> }) | null;
+
+            if (!response.ok || !body) {
+                const first = body?.errors ? Object.values(body.errors)[0]?.[0] : null;
+                toast.error(first ?? body?.message ?? 'No se pudo abrir el cobro por la pasarela.');
+
+                return;
+            }
+
+            setModal(null);
+            setGatewayPayment(body);
+        } catch {
+            toast.error('No hubo respuesta del servidor. Revisa la conexión y vuelve a intentarlo.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    /** Un cobro que seguia esperando al recargar la pantalla vuelve a mostrarse. */
+    useEffect(() => {
+        if (!pendingGatewayReference) {
+            return;
+        }
+
+        void (async () => {
+            const response = await fetch(route('pos.gateway.show', pendingGatewayReference), { headers: { Accept: 'application/json' } });
+
+            if (response.ok) {
+                setGatewayPayment((await response.json()) as GatewayPaymentState);
+            }
+        })();
+    }, [pendingGatewayReference]);
+
+    /**
+     * Rechazado, vencido o cancelado. Si el tiquete sigue en pantalla se descarta el guardado; si
+     * se recargo mientras se esperaba, se retoma el guardado.
+     */
+    const leaveGateway = async () => {
+        const heldId = gatewayPayment?.held_sale_id ?? null;
+        const restoring = cart.length === 0;
+        setGatewayPayment(null);
+
+        if (heldId === null) {
+            return;
+        }
+
+        if (restoring) {
+            const response = await fetch(route('pos.hold.index'), { headers: { Accept: 'application/json' } });
+            const ticket = response.ok ? ((await response.json()) as { held: HeldTicket[] }).held.find((item) => item.id === heldId) : undefined;
+
+            if (!ticket) {
+                return;
+            }
+
+            setCart(ticket.payload.items.map((item) => normalizeLine(item)));
+            setCustomer(ticket.customer);
+        }
+
+        await fetch(route('pos.hold.destroy', heldId), {
+            method: 'DELETE',
+            headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '' },
+        });
+
+        setModal('payment');
     };
 
     return (
@@ -1188,9 +1301,9 @@ export default function PosSale({
                                     )}
 
                                     <span className="flex items-start gap-2 pr-10">
-                                        {product.thumb && (
+                                        {product.thumb_url && (
                                             <img
-                                                src={`/storage/${product.thumb}`}
+                                                src={product.thumb_url}
                                                 alt=""
                                                 loading="lazy"
                                                 className="size-10 shrink-0 rounded-chip object-cover"
@@ -1580,12 +1693,31 @@ export default function PosSale({
                 creditApprovedBy={approvals.credit}
                 submitting={submitting}
                 onRequestCreditApproval={(message) => setPinPrompt({ action: 'credit', message })}
+                methods={paymentMethods}
                 onConfirm={confirmSale}
+                // Un cambio no se cobra por pasarela: la devolucion y la venta nueva van en un solo acto.
+                onStartGateway={exchange ? undefined : (payments, gateway) => void startGateway(payments, gateway)}
                 sellers={sellers}
                 seller={seller}
                 onSellerChange={setSeller}
-                fixedPayments={exchange && totals.total > 0 ? [{ method: 'exchange', amount: Math.min(exchange.value, totals.total), reference: exchange.sale_number }] : undefined}
+                fixedPayments={
+                    exchange && totals.total > 0
+                        ? [{ key: 'exchange', method_id: null, kind: 'exchange', name: 'Cambio por devolución', amount: Math.min(exchange.value, totals.total), reference: exchange.sale_number }]
+                        : undefined
+                }
                 confirmLabel={exchange ? 'Confirmar el cambio' : undefined}
+            />
+
+            <GatewayWaitDialog
+                payment={gatewayPayment}
+                pollSeconds={paymentPollSeconds}
+                onUpdate={setGatewayPayment}
+                onApplied={(sale) => {
+                    setGatewayPayment(null);
+                    setLastSale(sale);
+                    afterSale();
+                }}
+                onBack={() => void leaveGateway()}
             />
 
             <CustomerModal
@@ -1615,7 +1747,7 @@ export default function PosSale({
                 open={modal === 'hold'}
                 onClose={() => setModal(null)}
                 cart={cart}
-                customerId={customer?.id ?? null}
+                customer={customer}
                 total={totals.total}
                 onHeld={() => {
                     clearTicket();
@@ -1631,8 +1763,17 @@ export default function PosSale({
                     // Un tiquete suspendido antes de que existieran las promociones no trae
                     // esos campos: sin normalizarlo, el total saldria en blanco.
                     setCart(ticket.payload.items.map((item) => normalizeLine(item)));
+                    // El cliente vuelve con el tiquete: no hay que pedirle los datos otra vez.
+                    setCustomer(ticket.customer);
                     setModal(null);
-                    toast.success(`Tiquete «${ticket.label}» recuperado.`);
+
+                    if (ticket.customer_name && !ticket.customer) {
+                        toast.warning(`Tiquete «${ticket.label}» recuperado, pero ${ticket.customer_name} ya no está activo como cliente.`, {
+                            description: 'Elige otro cliente o cóbralo como consumidor final.',
+                        });
+                    } else {
+                        toast.success(`Tiquete «${ticket.label}» recuperado${ticket.customer ? ` con ${ticket.customer.name}` : ''}.`);
+                    }
                 }}
             />
 
@@ -1744,8 +1885,8 @@ function ServiceTile({
                 {blocked ? 'Revisar' : 'Servicio'}
             </span>
             <span className="flex items-start gap-2 pr-16">
-                {service.thumb ? (
-                    <img src={`/storage/${service.thumb}`} alt="" loading="lazy" className="size-10 shrink-0 rounded-chip object-cover" />
+                {service.thumb_url ? (
+                    <img src={service.thumb_url} alt="" loading="lazy" className="size-10 shrink-0 rounded-chip object-cover" />
                 ) : (
                     <WrenchIcon size={18} className="mt-0.5 shrink-0 text-[var(--accent)]" />
                 )}
@@ -1935,8 +2076,8 @@ function CatalogList({
                                       : 'border-[var(--line)] bg-[var(--surface)] hover:border-[var(--accent)] hover:bg-[var(--surface-2)]',
                             )}
                         >
-                            {product.thumb && (
-                                <img src={`/storage/${product.thumb}`} alt="" loading="lazy" className="size-9 shrink-0 rounded-chip object-cover" />
+                            {product.thumb_url && (
+                                <img src={product.thumb_url} alt="" loading="lazy" className="size-9 shrink-0 rounded-chip object-cover" />
                             )}
                             <span className="min-w-0 flex-1">
                                 <span className="block truncate text-[0.84375rem] font-medium">{product.name}</span>
@@ -2482,17 +2623,18 @@ function HoldModal({
     open,
     onClose,
     cart,
-    customerId,
+    customer,
     total,
     onHeld,
 }: {
     open: boolean;
     onClose: () => void;
     cart: CartLine[];
-    customerId: number | null;
+    customer: PosCustomer | null;
     total: number;
     onHeld: () => void;
 }) {
+    const customerId = customer?.id ?? null;
     const [label, setLabel] = useState('');
     const [saving, setSaving] = useState(false);
 
@@ -2550,7 +2692,14 @@ function HoldModal({
                 className="h-11 w-full rounded-control border border-[var(--line)] bg-[var(--surface-2)] px-3 text-[0.875rem] focus:border-[var(--accent)] focus:outline-none"
             />
             <p className="mt-2 text-[0.78125rem] text-[var(--muted)]">
-                Se guardan {cart.length} articulos por {money(total)}. Lo puedes retomar con F5.
+                Se guardan {cart.length} articulos por {money(total)}
+                {customer ? (
+                    <>
+                        {' '}
+                        y el cliente <span className="font-medium text-[var(--text)]">{customer.name}</span>
+                    </>
+                ) : null}
+                . Lo puedes retomar con F5.
             </p>
         </Modal>
     );
@@ -2608,7 +2757,7 @@ function ResumeModal({ open, onClose, onResume }: { open: boolean; onClose: () =
                         >
                             <span className="block truncate text-[0.84375rem] font-medium">{ticket.label}</span>
                             <span className="block truncate text-[0.71875rem] text-[var(--muted)]">
-                                {ticket.customer ?? 'Consumidor final'} · {ticket.payload.items.length} articulos
+                                {ticket.customer_name ?? 'Consumidor final'} · {ticket.payload.items.length} articulos
                             </span>
                         </button>
                         <span className="font-mono text-[0.875rem] font-semibold tabular">{money(ticket.total)}</span>

@@ -1,6 +1,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { CaretDownIcon, ListIcon, SignOutIcon, StorefrontIcon, XIcon } from '@phosphor-icons/react';
 import { Fragment, type ReactNode, useState } from 'react';
+import { LiveRefresh } from '@/components/realtime/LiveRefresh';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { BrandMark } from '@/components/brand/BrandMark';
 import { BrandStyle } from '@/components/brand/BrandStyle';
@@ -113,6 +114,8 @@ export default function AppLayout({ title, children }: AppLayoutProps) {
         <div className="flex min-h-screen bg-[var(--bg)]">
             <Head title={title} />
             <BrandStyle />
+            {/* Lo que cambia en otras pestañas llega solo (tiempo real). */}
+            <LiveRefresh />
 
             <aside className="sticky top-0 hidden h-screen lg:block">{renderSidebar(surface.sidebar_mode)}</aside>
 

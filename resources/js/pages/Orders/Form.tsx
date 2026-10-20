@@ -38,6 +38,8 @@ interface OrderFormProps {
     slots: { key: string; label: string; starts_at: string; ends_at: string; full: boolean }[];
     deliveryFee: number;
     store: { id: number; name: string } | null;
+    /** Los medios de la tienda de la sede sin pasarela (Medios de pago): un pedido de mostrador se paga al recibir. */
+    paymentMethods: { value: number; label: string; kind: string }[];
 }
 
 interface Line {
@@ -60,7 +62,7 @@ const POLICIES = [
     { value: 'remove', label: 'Quitar del pedido' },
 ];
 
-export default function OrderForm({ customers, products, services, slots, deliveryFee, store }: OrderFormProps) {
+export default function OrderForm({ customers, products, services, slots, deliveryFee, store, paymentMethods }: OrderFormProps) {
     const [lines, setLines] = useState<Line[]>([]);
     const [search, setSearch] = useState('');
 
@@ -70,7 +72,7 @@ export default function OrderForm({ customers, products, services, slots, delive
         delivery_notes: '',
         delivery_slot_start: '',
         delivery_slot_end: '',
-        payment_method: 'cash_on_delivery',
+        payment_method_id: (paymentMethods[0]?.value ?? '') as number | string,
         delivery_fee: deliveryFee,
         items: [] as { product_id: number | null; service_id: number | null; quantity: number; substitution_policy: string }[],
     });
@@ -330,15 +332,12 @@ export default function OrderForm({ customers, products, services, slots, delive
                             <Select
                                 label="Medio de pago"
                                 required
-                                options={[
-                                    { value: 'cash_on_delivery', label: 'Contraentrega' },
-                                    { value: 'card', label: 'Tarjeta' },
-                                    { value: 'transfer', label: 'Transferencia' },
-                                    { value: 'credit', label: 'Credito' },
-                                ]}
-                                value={data.payment_method}
-                                onChange={(event) => setData('payment_method', event.target.value)}
-                                error={errors.payment_method}
+                                options={paymentMethods.map((method) => ({ value: method.value, label: method.label }))}
+                                placeholder={paymentMethods.length === 0 ? 'Ningún medio sirve en esta sede' : undefined}
+                                value={data.payment_method_id}
+                                onChange={(event) => setData('payment_method_id', event.target.value === '' ? '' : Number(event.target.value))}
+                                error={errors.payment_method_id}
+                                hint={paymentMethods.length === 0 ? 'Enciende uno para la tienda en línea en Medios de pago.' : undefined}
                             />
                             <Input
                                 label="Costo del domicilio"

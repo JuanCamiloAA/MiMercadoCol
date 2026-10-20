@@ -30,6 +30,8 @@ export interface PreviewRoot {
     shell: StoreShell;
     preview: PreviewMode;
     cart?: CartBrief | null;
+    /** El modo que el editor está revisando (su conmutador Claro | Oscuro). Manda sobre el de la tienda. */
+    scheme?: 'light' | 'dark' | null;
 }
 
 export const PreviewRootContext = createContext<PreviewRoot | null>(null);
@@ -69,18 +71,22 @@ export function StoreLink({
     children,
     ariaLabel,
     onClick,
+    heroFill = false,
 }: {
     href: string | null | undefined;
     className?: string;
     children: ReactNode;
     ariaLabel?: string;
     onClick?: () => void;
+    /** El banner principal que llena el alto de su sección (`[data-hero-fill]` en `sections.css`). */
+    heroFill?: boolean;
 }) {
     const { interactive } = usePreviewMode();
+    const fill = heroFill ? { 'data-hero-fill': '' } : {};
 
     if (!href || !interactive) {
         return (
-            <span className={className} aria-label={ariaLabel}>
+            <span className={className} aria-label={ariaLabel} {...fill}>
                 {children}
             </span>
         );
@@ -88,14 +94,14 @@ export function StoreLink({
 
     if (isExternal(href)) {
         return (
-            <a href={href} className={className} aria-label={ariaLabel} target="_blank" rel="noopener noreferrer" onClick={onClick}>
+            <a href={href} className={className} aria-label={ariaLabel} target="_blank" rel="noopener noreferrer" onClick={onClick} {...fill}>
                 {children}
             </a>
         );
     }
 
     return (
-        <Link href={href} className={className} aria-label={ariaLabel} onClick={onClick}>
+        <Link href={href} className={className} aria-label={ariaLabel} onClick={onClick} {...fill}>
             {children}
         </Link>
     );

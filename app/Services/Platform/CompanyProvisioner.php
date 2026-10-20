@@ -14,8 +14,8 @@ use App\Services\Membership\MembershipService;
 use App\Services\PaymentTermService;
 use App\Services\ProductAttributeCatalog;
 use App\Services\SettingsService;
-use App\Services\Storefront\StorefrontManager;
 use App\Services\StoreDefaultRolesService;
+use App\Services\Storefront\StorefrontManager;
 use App\Services\UserPermissionService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -75,6 +75,7 @@ class CompanyProvisioner
                 'phone' => $this->nullable($companyData['phone'] ?? null),
                 'address' => $this->nullable($companyData['address'] ?? null),
                 'city' => $this->nullable($companyData['city'] ?? null),
+                'business_category_id' => ! empty($companyData['business_category_id']) ? (int) $companyData['business_category_id'] : null,
                 'currency' => 'COP',
                 'is_active' => true,
                 'membership_plan_id' => $plan?->id,

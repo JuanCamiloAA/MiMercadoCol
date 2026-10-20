@@ -20,6 +20,8 @@ export function Carousel({
     perView = 'full',
     dots = true,
     arrows = true,
+    arrowPlacement = 'side',
+    progress = false,
     className,
     trackClassName,
     slideClassName,
@@ -32,6 +34,10 @@ export function Carousel({
     perView?: 'full' | 'cards';
     dots?: boolean;
     arrows?: boolean;
+    /** `top`: redondas arriba a la derecha, a la altura del título del estante. */
+    arrowPlacement?: 'side' | 'top';
+    /** Una barra debajo que dice cuánto se ha recorrido. */
+    progress?: boolean;
     className?: string;
     trackClassName?: string;
     /** El ancho de cada lámina en una fila de tarjetas. */
@@ -44,6 +50,8 @@ export function Carousel({
     const [hovered, setHovered] = useState(false);
     const [focused, setFocused] = useState(false);
     const [edges, setEdges] = useState({ start: true, end: slides.length <= 1 });
+    // La parte de la fila que se ve y dónde empieza, de 0 a 1, para la barra de avance.
+    const [bar, setBar] = useState({ size: 1, start: 0 });
     const reduced = prefersReducedMotion();
     const playing = autoplay > 0 && !paused && !reduced && slides.length > 1;
 
@@ -55,8 +63,10 @@ export function Carousel({
         }
 
         const width = element.clientWidth || 1;
+        const total = element.scrollWidth || width;
         setIndex(Math.round(element.scrollLeft / width));
         setEdges({ start: element.scrollLeft <= 4, end: element.scrollLeft + width >= element.scrollWidth - 4 });
+        setBar({ size: Math.min(1, width / total), start: total > 0 ? element.scrollLeft / total : 0 });
     }, []);
 
     const go = useCallback(
@@ -145,7 +155,36 @@ export function Carousel({
                 ))}
             </div>
 
-            {arrows && slides.length > 1 && (
+            {progress && slides.length > 1 && bar.size < 1 && (
+                <div className="mt-3 h-[3px] w-full overflow-hidden rounded-full bg-[var(--line)]" aria-hidden>
+                    <div className="h-full rounded-full bg-[var(--text)] transition-[margin] duration-150" style={{ width: `${bar.size * 100}%`, marginLeft: `${bar.start * 100}%` }} />
+                </div>
+            )}
+
+            {arrows && slides.length > 1 && arrowPlacement === 'top' && (
+                <div className="absolute -top-12 right-0 z-10 hidden gap-2 md:flex">
+                    <button
+                        type="button"
+                        onClick={() => go(index - 1)}
+                        disabled={perView === 'cards' && edges.start}
+                        aria-label="Anterior"
+                        className="grid size-10 place-items-center rounded-full border border-[var(--line-2)] text-[var(--text)] transition-colors hover:bg-[var(--surface-2)] disabled:opacity-30"
+                    >
+                        <CaretLeftIcon size={17} weight="bold" />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => go(index + 1)}
+                        disabled={perView === 'cards' && edges.end}
+                        aria-label="Siguiente"
+                        className="grid size-10 place-items-center rounded-full border border-[var(--line-2)] text-[var(--text)] transition-colors hover:bg-[var(--surface-2)] disabled:opacity-30"
+                    >
+                        <CaretRightIcon size={17} weight="bold" />
+                    </button>
+                </div>
+            )}
+
+            {arrows && slides.length > 1 && arrowPlacement === 'side' && (
                 <>
                     <button
                         type="button"

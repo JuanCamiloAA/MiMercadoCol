@@ -92,7 +92,24 @@ class ProductGridBlockData extends BlockData
             'columns_desktop' => [
                 'type' => 'select',
                 'label' => 'Columnas en computador',
-                'options' => self::options([4 => '4', 5 => '5', 6 => '6']),
+                'help' => 'Con 2 o 3 las fotos salen grandes, como en las tiendas de moda.',
+                'options' => self::options([2 => '2', 3 => '3', 4 => '4', 5 => '5', 6 => '6']),
+            ],
+            'title_align' => [
+                'type' => 'select',
+                'label' => 'Título',
+                'options' => self::options(['left' => 'A la izquierda', 'center' => 'Centrado']),
+            ],
+            'arrows' => [
+                'type' => 'select',
+                'label' => 'Flechas de la fila',
+                'options' => self::options(['side' => 'A los lados', 'top' => 'Redondas, junto al título']),
+                'show_if' => ['field' => 'layout', 'value' => 'carousel'],
+            ],
+            'scrollbar' => [
+                'type' => 'toggle',
+                'label' => 'Barra de avance debajo de la fila',
+                'show_if' => ['field' => 'layout', 'value' => 'carousel'],
             ],
             'columns_mobile' => [
                 'type' => 'select',
@@ -107,11 +124,6 @@ class ProductGridBlockData extends BlockData
                 'kinds' => self::targetKinds($context),
             ],
             'see_all_label' => ['type' => 'text', 'label' => 'Texto del enlace', 'max' => 24, 'help' => 'Vacío: «Ver todo». Por ejemplo «Ver todas» o «Ver más».'],
-            'background' => [
-                'type' => 'select',
-                'label' => 'Fondo',
-                'options' => self::options(['none' => 'Ninguno', 'soft' => 'Suave', 'brand' => 'Color de la marca']),
-            ],
             'show_price_per_unit' => [
                 'type' => 'toggle',
                 'label' => 'Mostrar el precio por unidad de medida',
@@ -140,8 +152,10 @@ class ProductGridBlockData extends BlockData
             'limit' => 10,
             'see_all_target' => null,
             'see_all_label' => null,
-            'background' => 'none',
             'show_price_per_unit' => true,
+            'title_align' => 'left',
+            'arrows' => 'side',
+            'scrollbar' => false,
         ];
     }
 

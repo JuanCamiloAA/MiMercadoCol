@@ -108,6 +108,11 @@ abstract class SettingsTabRequest extends FormRequest
             'receipt.copies' => 'las copias',
             'receipt.auto_print' => 'la impresión automática',
             'credit.block_on_overdue_days' => 'los días de mora',
+            'catalog.max_images' => 'el número de fotos',
+            'storefront_catalog.expiring_days' => 'los días para «por vencer»',
+            'storefront_catalog.overstock_days' => 'los días de cobertura',
+            'storefront_catalog.overstock_min_factor' => 'las veces el mínimo',
+            'storefront_catalog.low_margin_percent' => 'el margen bajo',
         ];
     }
 }

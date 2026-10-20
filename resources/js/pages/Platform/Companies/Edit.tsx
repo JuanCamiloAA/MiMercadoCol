@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Checkbox, Input, Select, Textarea } from '@/components/ui/Field';
-import { Badge, PageHeader } from '@/components/ui/Misc';
+import { Badge, PageHeader, Tabs } from '@/components/ui/Misc';
 import { Modal } from '@/components/ui/Modal';
 import { EmptyState, Table, TBody, TD, TH, THead, TR } from '@/components/ui/Table';
 import AppLayout from '@/layouts/AppLayout';
@@ -14,6 +14,7 @@ import { usePermission } from '@/lib/permissions';
 import type { MembershipStatus, PageProps } from '@/types';
 import { ToggleStatusModal } from './Index';
 import { MembershipBadge, UsageMeter } from '@/components/membership/MembershipParts';
+import { type PlanAccess, PlanAccessTab } from './PlanAccessTab';
 
 interface Option {
     value: string | number;
@@ -30,6 +31,7 @@ interface CompanyDetail {
     phone: string | null;
     address: string | null;
     city: string | null;
+    business_category_id: number | null;
     is_active: boolean;
     show_on_landing: boolean;
     deactivated_at: string | null;
@@ -53,11 +55,15 @@ interface CompaniesEditProps {
     company: CompanyDetail;
     plans: Option[];
     cycles: Option[];
+    /** Las activas y la actual, aunque ya no lo este. */
+    categories: Option[];
     statusOptions: Option[];
     usage: Record<'stores' | 'users' | 'registers', { used: number; limit: number | null }>;
     admins: { id: number; name: string; email: string; is_active: boolean; pending_password: boolean }[];
     events: { id: number; type: string; label: string; data: Record<string, unknown> | null; user: string | null; created_at: string | null }[];
     charges: { id: number; reference: string; concept: string; amount: number; status: string; status_label: string; method: string; charged_at: string | null }[];
+    /** Pestaña «Plan y funciones»: lo que tiene, sus excepciones y su precio especial. */
+    planAccess: PlanAccess;
 }
 
 const USAGE_LABELS = { stores: 'Sedes', users: 'Usuarios', registers: 'Cajas' } as const;
@@ -66,8 +72,9 @@ const USAGE_LABELS = { stores: 'Sedes', users: 'Usuarios', registers: 'Cajas' } 
  * Editar una empresa: datos legales y, a mano y con motivo, su membresia. Todo cambio de
  * membresia queda en la bitacora de abajo.
  */
-export default function CompaniesEdit({ company, plans, cycles, statusOptions, usage, admins, events, charges }: CompaniesEditProps) {
+export default function CompaniesEdit({ company, plans, cycles, categories, statusOptions, usage, admins, events, charges, planAccess }: CompaniesEditProps) {
     const { can } = usePermission();
+    const [tab, setTab] = useState<'general' | 'plan'>(() => (new URLSearchParams(window.location.search).get('pestana') === 'plan' ? 'plan' : 'general'));
     const { flash } = usePage<PageProps>().props;
     const [toggling, setToggling] = useState(false);
     const [paying, setPaying] = useState(false);
@@ -89,6 +96,7 @@ export default function CompaniesEdit({ company, plans, cycles, statusOptions, u
         phone: company.phone ?? '',
         address: company.address ?? '',
         city: company.city ?? '',
+        business_category_id: company.business_category_id !== null ? String(company.business_category_id) : '',
         show_on_landing: company.show_on_landing,
         membership_plan_id: company.membership_plan_id !== null ? String(company.membership_plan_id) : '',
         billing_cycle_id: company.billing_cycle_id !== null ? String(company.billing_cycle_id) : '',
@@ -141,6 +149,20 @@ export default function CompaniesEdit({ company, plans, cycles, statusOptions, u
                 </p>
             )}
 
+            <Tabs
+                className="mb-4"
+                tabs={[
+                    { value: 'general' as const, label: 'Datos y membresía' },
+                    { value: 'plan' as const, label: 'Plan y funciones' },
+                ]}
+                active={tab}
+                onChange={setTab}
+            />
+
+            {tab === 'plan' && <PlanAccessTab companyId={company.id} access={planAccess} plans={plans} />}
+
+            {tab === 'general' && (
+            <>
             <form onSubmit={submit} className="grid gap-4 lg:grid-cols-2">
                 <Card>
                     <CardHeader title="Datos de la empresa" description="El logo y el color se cambian en Ajustes > Marca de la empresa." />
@@ -149,6 +171,18 @@ export default function CompaniesEdit({ company, plans, cycles, statusOptions, u
                         <Input label="Razón social" required value={data.legal_name} onChange={(e) => setData('legal_name', e.target.value)} error={errors.legal_name} containerClassName="sm:col-span-2" />
                         <Input label="NIT" required value={data.tax_id} onChange={(e) => setData('tax_id', e.target.value)} error={errors.tax_id} />
                         <Input label="Ciudad" value={data.city} onChange={(e) => setData('city', e.target.value)} error={errors.city} />
+                        <div className="sm:col-span-2">
+                            <Select
+                                label="Clasificación"
+                                required
+                                options={categories}
+                                placeholder="¿Qué tipo de comercio es?"
+                                value={data.business_category_id}
+                                onChange={(e) => setData('business_category_id', e.target.value)}
+                                error={errors.business_category_id}
+                                hint="Con ella la landing agrupa sus tiendas."
+                            />
+                        </div>
                         <Input label="Correo" type="email" value={data.email} onChange={(e) => setData('email', e.target.value)} error={errors.email} />
                         <Input label="Teléfono" value={data.phone} onChange={(e) => setData('phone', e.target.value)} error={errors.phone} />
                         <Input label="Dirección" value={data.address} onChange={(e) => setData('address', e.target.value)} error={errors.address} containerClassName="sm:col-span-2" />
@@ -303,6 +337,8 @@ export default function CompaniesEdit({ company, plans, cycles, statusOptions, u
                             <li key={event.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2 text-[0.8125rem]">
                                 <span className="min-w-0">
                                     <span className="font-medium">{event.label}</span>
+                                    {typeof event.data?.label === 'string' && <span> · {event.data.label}</span>}
+                                    {typeof event.data?.price === 'string' && <span> · {event.data.price}</span>}
                                     {typeof event.data?.reason === 'string' && event.data.reason !== '' && <span className="text-[var(--muted)]"> — {event.data.reason}</span>}
                                     {event.user && <span className="text-[var(--muted)]"> · {event.user}</span>}
                                 </span>
@@ -312,6 +348,9 @@ export default function CompaniesEdit({ company, plans, cycles, statusOptions, u
                     </ol>
                 )}
             </Card>
+
+            </>
+            )}
 
             <ToggleStatusModal company={toggling ? company : null} onClose={() => setToggling(false)} />
             {paying && <ManualPaymentModal company={company} onClose={() => setPaying(false)} />}

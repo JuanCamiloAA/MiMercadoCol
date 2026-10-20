@@ -11,10 +11,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Una imagen del editor.
+ * Una imagen o un video del editor.
  *
  * Guarda el texto alternativo y el punto focal junto al archivo, no en el bloque que la usa:
- * la misma foto puede aparecer en dos sitios y su descripcion es una sola.
+ * la misma foto puede aparecer en dos sitios y su descripcion es una sola. Un video se distingue
+ * por su `mime` (`video/...`): no tiene recortes ni medidas, y solo lo aceptan los campos de
+ * video (`video_media_id`); los de imagen no lo ofrecen ni lo pintan.
  *
  * Sin empresa (`company_id` nulo) es un medio de plataforma: lo usa la plantilla base de la
  * tienda. Ninguna consulta normal lo devuelve —ni a una empresa ni al super usuario en
@@ -62,6 +64,21 @@ class MediaAsset extends Model
         return $this->company_id === null;
     }
 
+    public function isVideo(): bool
+    {
+        return str_starts_with((string) $this->mime, 'video/');
+    }
+
+    /** Solo imagenes (`image`) o solo videos (`video`). Lo viejo sin `mime` es imagen. */
+    public function scopeOfKind(Builder $query, string $kind): Builder
+    {
+        $column = $query->getModel()->getTable().'.mime';
+
+        return $kind === 'video'
+            ? $query->where($column, 'like', 'video/%')
+            : $query->where(fn (Builder $inner) => $inner->whereNull($column)->orWhere($column, 'not like', 'video/%'));
+    }
+
     protected function casts(): array
     {
         return [
@@ -100,6 +117,9 @@ class MediaAsset extends Model
                 ? collect([$small ? $disk->url($small).' '.ImageService::SMALL_WIDTH.'w' : null, $this->url().' '.$this->width.'w'])->filter()->implode(', ')
                 : null,
             'id' => $this->id,
+            'kind' => $this->isVideo() ? 'video' : 'image',
+            'mime' => $this->mime,
+            'bytes' => $this->bytes,
             'url' => $this->url(),
             'alt' => $this->alt,
             'width' => $this->width,

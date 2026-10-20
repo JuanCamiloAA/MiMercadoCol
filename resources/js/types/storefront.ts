@@ -8,6 +8,10 @@
 
 export interface MediaPayload {
     id?: number;
+    /** Un video de la biblioteca no tiene recortes ni medidas: solo se pinta en un campo de video. */
+    kind?: 'image' | 'video';
+    mime?: string | null;
+    bytes?: number | null;
     url: string;
     srcset?: string | null;
     alt: string | null;
@@ -25,9 +29,9 @@ export interface Target {
     href?: string | null;
 }
 
+/** El aviso de existencias. «Agotado» no existe: lo que no tiene disponible no llega a la tienda. */
 export interface StockInfo {
-    out: boolean;
-    level: 'out' | 'low' | 'ok';
+    level: 'low' | 'ok';
     note: string | null;
 }
 
@@ -79,6 +83,9 @@ export interface CardProduct {
     /** Familia con una sola presentación a la venta: se agrega directo. */
     single?: CardProduct | null;
     slug?: string;
+    /** Solo si la tarjeta lo pide: una línea de la descripción y la foto al pasar el mouse. */
+    description?: string | null;
+    image_hover?: string;
 }
 
 /** Una característica de un artículo con subartículos, con sus valores en orden. */
@@ -141,30 +148,42 @@ export interface NavItem {
     image: string | null;
     href: string;
     highlight: boolean;
+    /** «Categorías ⌄»: abre el menú grande en vez de ir a la página. */
+    opens_menu?: boolean;
 }
 
+/**
+ * La tarjeta de producto. Las claves opcionales son nuevas: un cascarón publicado antes no las
+ * trae y la tarjeta se pinta como siempre.
+ */
 export interface CardSettings {
     image_fit: 'contain' | 'cover';
-    image_bg: 'light' | 'white';
+    image_bg: 'light' | 'white' | 'tint';
     show_brand: boolean;
     show_content: boolean;
     show_unit_price: boolean;
     deal_badge: 'percent' | 'savings' | 'none';
-    add_button: 'outline' | 'solid';
+    add_button: 'outline' | 'solid' | 'icon' | 'none';
     stock_display: 'hidden' | 'low_only' | 'exact';
     low_stock_threshold: number;
-    price_size: 'md' | 'lg';
+    price_size: 'sm' | 'md' | 'lg';
+    style?: 'boxed' | 'flat' | 'minimal' | 'photo';
+    image_ratio?: '1:1' | '3:4' | '4:5';
+    text_align?: 'left' | 'center';
+    show_swatches?: boolean;
+    show_description?: boolean;
+    image_hover?: 'none' | 'second';
 }
 
 export interface StoreStructure {
     topbar: {
         enabled: boolean;
-        tone: 'brand_dark' | 'accent' | 'neutral' | 'deal';
+        tone: 'brand_dark' | 'accent' | 'neutral' | 'deal' | 'dark';
         rotate_seconds: number;
         messages: { icon: string | null; text: string; href: string | null }[];
     };
     header: {
-        style: 'light' | 'brand' | 'dark';
+        style: 'light' | 'brand' | 'dark' | 'minimal' | 'overlay';
         sticky: boolean;
         show_tagline: boolean;
         show_location: boolean;
@@ -173,9 +192,15 @@ export interface StoreStructure {
         search_placeholder: string;
         logo_mode: 'logo' | 'mark_name' | 'name';
         location: { store: string; mode: string | null };
+        layout?: 'search' | 'center' | 'inline';
+        overlay?: boolean;
+        sticky_style?: 'solid' | 'blur_dark' | 'blur_light';
+        search_style?: 'pill' | 'underline' | 'icon';
     };
     nav: {
         enabled: boolean;
+        style?: 'bar' | 'text' | 'none';
+        active_style?: 'none' | 'underline';
         show_deals_chip: boolean;
         deals_label: string;
         show_all_categories: boolean;
@@ -183,7 +208,9 @@ export interface StoreStructure {
         items: NavItem[];
     };
     categories: CategoryNode[];
-    mobile_nav: { items: ('home' | 'categories' | 'search' | 'orders' | 'account' | 'cart')[] };
+    mobile_nav: { enabled?: boolean; items: ('home' | 'categories' | 'search' | 'orders' | 'account' | 'cart')[] };
+    /** El botón flotante de WhatsApp: sin dirección no se pinta. */
+    floating?: { whatsapp_href: string | null; position: 'right' | 'left' };
     card: CardSettings;
     cart_bar: {
         enabled: boolean;
@@ -193,7 +220,7 @@ export interface StoreStructure {
     };
     category_page: {
         layout: 'sidebar' | 'top';
-        filters: ('subcategories' | 'brand' | 'price' | 'deals' | 'in_stock')[];
+        filters: ('subcategories' | 'brand' | 'price' | 'deals' | 'attributes')[];
         sorts: string[];
         default_sort: string;
         page_size: number;
@@ -207,8 +234,11 @@ export interface StoreStructure {
         related_limit: number;
     };
     search: { suggestions: boolean; popular_terms: string[]; empty_title: string; empty_text: string };
-    catalog: { show_out_of_stock: boolean; price_per_unit: boolean; hide_zero_price: boolean };
+    catalog: { show_out_of_stock?: boolean; price_per_unit: boolean; hide_zero_price: boolean };
     footer: {
+        style?: 'full' | 'minimal';
+        tone?: 'light' | 'dark' | 'brand';
+        newsletter?: boolean;
         columns: { title: string; links: { label: string; href: string }[] }[];
         contact: {
             phone: string | null;
@@ -236,6 +266,8 @@ export interface StoreStructure {
     company: { name: string | null; slug: string | null };
 }
 
+export type FontPair = 'moderna' | 'editorial' | 'cercana' | 'mercado' | 'grotesca' | 'minimal' | 'lujo' | 'tecnica' | 'vitrina' | 'urbano' | 'sastre';
+
 export interface StoreThemePayload {
     display_name?: string | null;
     tagline?: string | null;
@@ -245,10 +277,16 @@ export interface StoreThemePayload {
     deal_ink?: string;
     scheme?: 'light' | 'dark' | 'auto';
     allow_scheme_toggle?: boolean;
-    font_pair?: 'moderna' | 'editorial' | 'cercana' | 'mercado';
+    font_pair?: FontPair;
     radius?: 'sharp' | 'soft' | 'round';
     density?: 'cozy' | 'compact';
     button_style?: 'solid' | 'outline';
+    /** Formas nuevas: un retrato de antes no las trae y valen lo de siempre. */
+    logo_font?: 'none' | 'italiana' | 'cormorant' | 'playfair' | 'anton';
+    surface?: 'white' | 'warm' | 'cool' | 'sage' | 'sand';
+    heading_case?: 'normal' | 'upper';
+    container?: 'normal' | 'wide' | 'full';
+    button_shape?: 'default' | 'pill' | 'square';
     logo?: MediaPayload | null;
     favicon?: MediaPayload | null;
     mark?: MediaPayload | null;
@@ -279,6 +317,8 @@ export interface StoreBlock {
     is_visible: boolean;
     scheduled: boolean;
     data: Record<string, unknown>;
+    /** El diseño de la sección ya resuelto (`SectionShell`). Un retrato viejo en caché no lo trae. */
+    appearance?: Record<string, unknown>;
 }
 
 /** Zonas del cascarón que se pueden tocar en la vista previa para editarlas. */

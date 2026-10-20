@@ -23,3 +23,7 @@ Homestead.json
 Homestead.yaml
 npm-debug.log
 yarn-error.log
+
+# Credenciales de servicios (Firebase y similares): nunca al repositorio.
+/storage/*-firebase-adminsdk-*.json
+/storage/credentials/

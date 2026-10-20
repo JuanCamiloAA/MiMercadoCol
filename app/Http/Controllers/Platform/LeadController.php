@@ -22,7 +22,7 @@ class LeadController extends Controller
         $search = trim((string) $request->string('q'));
 
         $leads = PlatformLead::query()
-            ->with(['plan:id,name', 'cycle:id,name', 'handledBy:id,name,last_name', 'company:id,name'])
+            ->with(['plan:id,name', 'cycle:id,name', 'handledBy:id,name,last_name', 'company:id,name', 'businessCategory:id,name'])
             ->when(in_array($status, PlatformLead::STATUSES, true), fn ($query) => $query->where('status', $status))
             ->when($search !== '', fn ($query) => $query->where(fn ($inner) => $inner
                 ->where('company_name', 'like', "%{$search}%")
@@ -39,6 +39,7 @@ class LeadController extends Controller
                 'company_name' => $lead->company_name,
                 'tax_id' => $lead->tax_id,
                 'city' => $lead->city,
+                'category' => $lead->businessCategory?->name,
                 'contact_name' => $lead->contact_name,
                 'email' => $lead->email,
                 'phone' => $lead->phone,

@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Landing;
 
 use App\Models\BillingCycle;
+use App\Models\BusinessCategory;
 use App\Models\CompanySignup;
 use App\Models\MembershipPlan;
 use Illuminate\Foundation\Http\FormRequest;
@@ -42,6 +43,7 @@ class SignupRequest extends FormRequest
             'company_name' => ['required', 'string', 'max:120'],
             'tax_id' => ['required', 'string', 'max:40', 'unique:companies,tax_id'],
             'city' => ['required', 'string', 'max:80'],
+            'business_category_id' => ['required', 'integer', Rule::exists(BusinessCategory::class, 'id')->where('is_active', true)],
             'company_phone' => ['nullable', 'string', 'max:40'],
             'company_email' => ['required', 'email', 'max:160'],
 
@@ -89,7 +91,9 @@ class SignupRequest extends FormRequest
             'membership_plan_id.exists' => 'Ese plan no está disponible.',
             'billing_cycle_id.required' => 'Elige cada cuánto pagar.',
             'billing_cycle_id.exists' => 'Ese ciclo no está disponible.',
-            'company_name.required' => 'Escribe el nombre del mercado.',
+            'company_name.required' => 'Escribe el nombre de tu negocio.',
+            'business_category_id.required' => 'Elige qué tipo de comercio es.',
+            'business_category_id.exists' => 'Ese tipo de comercio no está disponible.',
             'tax_id.required' => 'Escribe el NIT.',
             'tax_id.unique' => 'Ese NIT ya tiene una cuenta. Si es tuyo, ingresa como empresa.',
             'city.required' => 'Escribe la ciudad.',

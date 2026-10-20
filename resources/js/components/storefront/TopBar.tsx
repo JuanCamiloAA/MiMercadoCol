@@ -9,6 +9,7 @@ const TONES: Record<StoreStructure['topbar']['tone'], string> = {
     accent: 'bg-[var(--accent)] text-[var(--accent-ink)]',
     neutral: 'bg-[var(--surface-2)] text-[var(--text)]',
     deal: 'bg-[var(--deal)] text-[var(--deal-ink)]',
+    dark: 'bg-[#14171A] text-white',
 };
 
 function Message({ message }: { message: StoreStructure['topbar']['messages'][number] }) {
@@ -49,7 +50,7 @@ export function TopBar({ topbar }: { topbar: StoreStructure['topbar'] }) {
 
     return (
         <div className={cn('text-[12.5px] font-semibold', TONES[topbar.tone] ?? TONES.brand_dark)}>
-            <div className="mx-auto flex h-9 w-full max-w-[1280px] items-center justify-center px-4 lg:px-6">
+            <div className="mx-auto flex h-9 w-full max-w-[var(--store-max,1280px)] items-center justify-center px-4 lg:px-[var(--store-gutter,1.5rem)]">
                 {/* Celular: uno a la vez. */}
                 <p className="flex min-w-0 justify-center md:hidden" aria-live="off">
                     <Message key={index} message={messages[index % messages.length]} />

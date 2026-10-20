@@ -6,10 +6,12 @@ use App\Models\Cart;
 use App\Models\Coupon;
 use App\Models\Customer;
 use App\Models\Order;
+use App\Models\PaymentMethod;
 use App\Models\ProductStock;
 use App\Models\Store;
 use App\Models\User;
 use App\Services\CartService;
+use App\Services\Payments\PaymentMethodCatalog;
 use App\Services\Storefront\StorefrontManager;
 use App\Services\Storefront\StorefrontPublisher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -141,12 +143,12 @@ class StorefrontCheckoutTest extends TestCase
 
     public function test_un_medio_de_pago_apagado_no_se_acepta(): void
     {
-        $this->publishSettings(['payments' => [
-            'cash_on_delivery' => true,
-            'card_on_delivery' => false,
-            'transfer' => false,
-            'customer_credit' => false,
-        ]]);
+        // Los medios de la tienda viven en Medios de pago: apagar «Datáfono al recibir» lo saca.
+        PaymentMethod::query()->withoutGlobalScopes()
+            ->where('company_id', $this->company->id)
+            ->where('system_key', 'card_on_delivery')
+            ->update(['is_active' => false]);
+        app(PaymentMethodCatalog::class)->forget();
 
         $customer = $this->onlineCustomer();
         $product = $this->makeProduct(['price' => 12000, 'online_price' => 12000, 'tax_rate' => 0, 'is_online_visible' => true], 40);

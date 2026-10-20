@@ -3,10 +3,12 @@
 namespace App\Http\Requests;
 
 use App\Models\Product;
+use App\Services\Catalog\CatalogImages;
 use App\Support\ScanCodeGuard;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreProductRequest extends FormRequest
 {
@@ -48,8 +50,9 @@ class StoreProductRequest extends FormRequest
             'is_online_visible' => ['boolean'],
             'is_featured' => ['boolean'],
             'description' => ['nullable', 'string', 'max:600'],
-            'images' => ['nullable', 'array', 'max:5'],
-            'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            // Cuantas, lo decide la empresa (Ajustes > Catalogo): se mide abajo con las que ya tiene.
+            'images' => ['nullable', 'array'],
+            'images.*' => CatalogImages::FILE_RULES,
             'initial_stocks' => ['array'],
             'initial_stocks.*.store_id' => ['required', 'integer', Rule::exists('stores', 'id')->where(fn ($query) => $query->where('company_id', $companyId))],
             'initial_stocks.*.quantity' => ['required', 'numeric', 'min:0'],
@@ -67,9 +70,14 @@ class StoreProductRequest extends FormRequest
             'price.required' => 'El precio al publico es obligatorio.',
             'cost.required' => 'El costo es obligatorio.',
             'tax_rate.in' => 'El IVA solo puede ser 0, 5 o 19.',
-            'images.max' => 'Maximo 5 imagenes por articulo.',
-            'images.*.image' => 'Cada archivo debe ser una imagen.',
-            'images.*.max' => 'Cada imagen debe pesar menos de 2 MB.',
+            ...CatalogImages::fileMessages(),
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            app(CatalogImages::class)->check($validator, (int) TenantContext::activeCompanyId(), 0, count((array) $this->file('images', [])));
+        });
     }
 }

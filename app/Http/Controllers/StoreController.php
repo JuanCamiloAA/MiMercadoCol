@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Register;
 use App\Models\Store;
 use App\Services\Membership\MembershipLimiter;
+use App\Support\Maps\MapConfig;
 use App\Support\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -40,7 +41,7 @@ class StoreController extends Controller
                 'employees_count' => $store->employees_count,
             ]);
 
-        return Inertia::render('Stores/Index', ['stores' => $stores]);
+        return Inertia::render('Stores/Index', ['stores' => $stores, 'map' => MapConfig::current()]);
     }
 
     public function store(Request $request, MembershipLimiter $limiter): RedirectResponse

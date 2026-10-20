@@ -1,38 +1,48 @@
 import {
-    MoneyIcon,
     ArrowUUpLeftIcon,
-    ArrowsSplitIcon,
     CheckCircleIcon,
-    CreditCardIcon,
     InfoIcon,
     LockKeyIcon,
     PencilSimpleIcon,
+    QrCodeIcon,
     TrashIcon,
-    WalletIcon,
     WarningCircleIcon,
     XIcon,
     type Icon,
 } from '@phosphor-icons/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { GATEWAY_KINDS, paymentIcon, type PaymentKind, type PresentedPaymentMethod } from '@/components/payments/payment-icons';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/cn';
 import { money } from '@/lib/format';
 
-export type PaymentMethod = 'cash' | 'card' | 'transfer' | 'credit' | 'store_credit' | 'exchange';
+export type { PaymentKind };
 
-/** Como vive un pago mientras se arma el cobro. */
+/** Como vive un pago mientras se arma el cobro. `key` es el id del medio, o `exchange`. */
 export interface PaymentLine {
-    method: PaymentMethod;
+    key: string;
+    method_id: number | null;
+    kind: PaymentKind;
+    name: string;
     amount: number;
     reference?: string | null;
 }
 
 /** Como viaja al servidor, con los nombres que espera el endpoint. */
-export interface PaymentPayload {
-    method: PaymentMethod;
+export type PaymentPayload = {
+    payment_method_id: number | null;
+    method: PaymentKind;
     amount: number;
     received_amount: number | null;
     reference: string | null;
+};
+
+/** El renglon que se cobra por la pasarela: la caja abre el QR o el datafono, no la venta. */
+export interface GatewayRequest {
+    payment_method_id: number;
+    amount: number;
+    mode: 'qr' | 'link' | 'terminal';
+    terminal_id: number | null;
 }
 
 interface DialogCustomer {
@@ -47,6 +57,8 @@ interface DialogCustomer {
     credit_term_days: number;
     /** Saldo a favor por devoluciones: se gasta como un medio mas. */
     store_credit?: number;
+    /** El consumidor final generico no cuenta como cliente registrado. */
+    is_generic?: boolean;
 }
 
 interface PaymentDialogProps {
@@ -55,8 +67,8 @@ interface PaymentDialogProps {
     /** Encabezado y linea de contexto. El cobro de un pedido no es una venta del mostrador. */
     title?: string;
     subtitle?: string;
-    /** Medios habilitados. Contraentrega, por ejemplo, no admite credito. */
-    allowedMethods?: PaymentMethod[];
+    /** Los medios que valen aqui y ahora, ya resueltos por el servidor. */
+    methods: PresentedPaymentMethod[];
     confirmLabel?: string;
     cancelLabel?: string;
     /** Total del tiquete, ya calculado por el servidor en cada cambio del carrito. */
@@ -72,6 +84,8 @@ interface PaymentDialogProps {
     submitting: boolean;
     onRequestCreditApproval?: (message: string) => void;
     onConfirm: (payments: PaymentPayload[]) => void;
+    /** Con un renglon de pasarela no se confirma la venta: se abre el cobro (QR, link o datafono). */
+    onStartGateway?: (payments: PaymentPayload[], gateway: GatewayRequest) => void;
     /**
      * Pagos que ya vienen puestos y no se tocan: el valor de una devolucion en un cambio. Cuentan
      * para el total y viajan con los demas.
@@ -83,35 +97,32 @@ interface PaymentDialogProps {
     onSellerChange?: (seller: number | null) => void;
 }
 
-interface MethodMeta {
-    label: string;
-    hint: string;
-    icon: Icon;
-    initials: string;
-}
-
-const METHODS: Record<PaymentMethod, MethodMeta> = {
-    cash: { label: 'Efectivo', hint: 'Genera cambio', icon: MoneyIcon, initials: 'EF' },
-    card: { label: 'Tarjeta', hint: 'Debito o credito', icon: CreditCardIcon, initials: 'TA' },
-    transfer: { label: 'Transferencia', hint: 'Nequi, Daviplata, PSE', icon: ArrowsSplitIcon, initials: 'TR' },
-    credit: { label: 'Credito', hint: 'Se le fia al cliente', icon: LockKeyIcon, initials: 'CR' },
-    store_credit: { label: 'Saldo a favor', hint: 'Por devoluciones', icon: WalletIcon, initials: 'SF' },
-    exchange: { label: 'Cambio', hint: 'Lo que devolvió', icon: ArrowUUpLeftIcon, initials: 'CB' },
-};
-
-const ORDER: PaymentMethod[] = ['cash', 'card', 'transfer', 'credit', 'store_credit'];
-
 const KEYPAD = ['7', '8', '9', '4', '5', '6', '1', '2', '3', '00', '0', 'C'];
 
-/** Atajo de teclado por medio: el cajero no suelta el teclado para buscar el raton. */
-const SHORTCUTS: Record<string, PaymentMethod> = { e: 'cash', t: 'card', r: 'transfer', c: 'credit' };
+/** Atajo de teclado por tipo: el primer medio de ese tipo. El cajero no suelta el teclado. */
+const SHORTCUTS: Record<string, PaymentKind> = { e: 'cash', t: 'card', r: 'transfer', c: 'credit', q: 'gateway_link' };
+
+const INITIALS: Record<PaymentKind, string> = {
+    cash: 'EF',
+    card: 'TA',
+    transfer: 'TR',
+    credit: 'CR',
+    store_credit: 'SF',
+    exchange: 'CB',
+    gateway_checkout: 'PL',
+    gateway_link: 'QR',
+    gateway_terminal: 'DI',
+    other: 'OT',
+};
+
+const isGateway = (kind: PaymentKind) => GATEWAY_KINDS.includes(kind);
 
 export default function PaymentDialog({
     open,
     onClose,
     title = 'Cobrar',
     subtitle,
-    allowedMethods = ORDER,
+    methods,
     confirmLabel = 'Confirmar la venta',
     cancelLabel = 'Volver al tiquete',
     total,
@@ -124,19 +135,23 @@ export default function PaymentDialog({
     submitting,
     onRequestCreditApproval,
     onConfirm,
+    onStartGateway,
     sellers,
     seller,
     onSellerChange,
     fixedPayments,
 }: PaymentDialogProps) {
     const [payments, setPayments] = useState<PaymentLine[]>([]);
-    const [active, setActive] = useState<PaymentMethod | null>(null);
+    const [active, setActive] = useState<string | null>(null);
     const [buffer, setBuffer] = useState('');
+    const [gatewayMode, setGatewayMode] = useState<'qr' | 'link'>('qr');
+    const [terminalId, setTerminalId] = useState<number | null>(null);
 
     // Los pagos fijos (el valor devuelto en un cambio) no se editan ni se quitan.
     const fixedKey = JSON.stringify(fixedPayments ?? []);
-    const isFixed = useCallback((method: PaymentMethod) => (fixedPayments ?? []).some((payment) => payment.method === method), [fixedPayments]);
+    const isFixed = useCallback((key: string) => (fixedPayments ?? []).some((payment) => payment.key === key), [fixedPayments]);
     const storeCreditAvailable = customer?.store_credit ?? 0;
+    const byKey = useMemo(() => new Map(methods.map((method) => [String(method.id), method])), [methods]);
 
     // Cada venta confirmada empieza un cobro en blanco (con los fijos); cerrar la modal no borra nada.
     useEffect(() => {
@@ -147,7 +162,7 @@ export default function PaymentDialog({
 
     // El servidor redondea el total solo cuando el cobro es todo en efectivo. La modal aplica
     // la misma regla, o el cajero asignaria un monto que el servidor despues no acepta.
-    const allCash = payments.every((payment) => payment.method === 'cash');
+    const allCash = payments.every((payment) => payment.kind === 'cash');
     const payable = useMemo(
         () => (allCash && cashRounding > 1 ? Math.round(total / cashRounding) * cashRounding : total),
         [allCash, cashRounding, total],
@@ -157,116 +172,151 @@ export default function PaymentDialog({
     const paid = useMemo(() => payments.reduce((sum, payment) => sum + payment.amount, 0), [payments]);
     const remaining = Math.max(0, payable - paid);
     const change = Math.max(0, paid - payable);
-    const creditUsed = useMemo(() => payments.find((payment) => payment.method === 'credit')?.amount ?? 0, [payments]);
+    const creditUsed = useMemo(() => payments.filter((payment) => payment.kind === 'credit').reduce((sum, payment) => sum + payment.amount, 0), [payments]);
     const available = customer?.available_credit ?? 0;
+    const gatewayLine = payments.find((payment) => isGateway(payment.kind)) ?? null;
 
     /** Lo que faltaria por cobrar si este medio no estuviera puesto. */
     const remainingExcluding = useCallback(
-        (method: PaymentMethod) =>
-            Math.max(0, payable - payments.filter((payment) => payment.method !== method).reduce((sum, payment) => sum + payment.amount, 0)),
+        (key: string) => Math.max(0, payable - payments.filter((payment) => payment.key !== key).reduce((sum, payment) => sum + payment.amount, 0)),
         [payments, payable],
+    );
+
+    /** Por que un medio no se puede usar ahora con este cliente, o null si se puede. */
+    const blockedReason = useCallback(
+        (method: PresentedPaymentMethod): string | null => {
+            if (method.kind === 'credit') {
+                if (!customer) {
+                    return 'Elige un cliente antes de vender a credito.';
+                }
+
+                if (!customer.credit_enabled) {
+                    return 'Este cliente no tiene credito habilitado.';
+                }
+
+                if (customer.credit_blocked) {
+                    return customer.blocked_reason ?? 'El credito de este cliente esta bloqueado.';
+                }
+
+                if (available <= 0) {
+                    return 'El cliente no tiene cupo disponible.';
+                }
+            }
+
+            if (method.kind === 'store_credit' && storeCreditAvailable <= 0) {
+                return 'El cliente no tiene saldo a favor.';
+            }
+
+            if (method.requires_customer && (!customer || customer.is_generic)) {
+                return 'Pide un cliente registrado.';
+            }
+
+            if (method.requires_credit_line && (!customer || !customer.credit_enabled || customer.credit_blocked)) {
+                return 'Pide un cliente con cupo de crédito.';
+            }
+
+            if (method.requires_store_credit && storeCreditAvailable <= 0) {
+                return 'Pide un cliente con saldo a favor.';
+            }
+
+            if (isGateway(method.kind) && gatewayLine && gatewayLine.key !== String(method.id)) {
+                return 'Un cobro admite un solo pago por pasarela.';
+            }
+
+            if (method.kind === 'gateway_terminal' && (method.terminals ?? []).length === 0) {
+                return 'No hay un datáfono para esta caja.';
+            }
+
+            return null;
+        },
+        [customer, available, storeCreditAvailable, gatewayLine],
     );
 
     /** Tope de cada medio. El efectivo no tiene: lo que sobre es cambio. */
     const limitFor = useCallback(
-        (method: PaymentMethod): number | null => {
-            if (method === 'cash') {
-                return null;
+        (key: string): number | null => {
+            const method = byKey.get(key);
+            const kind = method?.kind ?? payments.find((payment) => payment.key === key)?.kind;
+
+            if (kind === 'cash') {
+                return method?.max_amount ?? null;
             }
 
-            if (method === 'credit') {
-                return Math.min(remainingExcluding('credit'), available);
+            let limit = remainingExcluding(key);
+
+            if (kind === 'credit') {
+                limit = Math.min(limit, available);
             }
 
-            if (method === 'store_credit') {
-                return Math.min(remainingExcluding('store_credit'), storeCreditAvailable);
+            if (kind === 'store_credit') {
+                limit = Math.min(limit, storeCreditAvailable);
             }
 
-            return remainingExcluding(method);
+            return method?.max_amount ? Math.min(limit, method.max_amount) : limit;
         },
-        [remainingExcluding, available, storeCreditAvailable],
+        [byKey, payments, remainingExcluding, available, storeCreditAvailable],
     );
-
-    const creditBlockedReason = useMemo(() => {
-        if (!allowedMethods.includes('credit')) {
-            return 'Este cobro no admite credito.';
-        }
-
-        if (!customer) {
-            return 'Elige un cliente antes de vender a credito.';
-        }
-
-        if (!customer.credit_enabled) {
-            return 'Este cliente no tiene credito habilitado.';
-        }
-
-        if (customer.credit_blocked) {
-            return customer.blocked_reason ?? 'El credito de este cliente esta bloqueado.';
-        }
-
-        if (available <= 0) {
-            return 'El cliente no tiene cupo disponible.';
-        }
-
-        return null;
-    }, [customer, available, allowedMethods]);
 
     const needsCreditApproval = creditUsed > 0 && !canSellOnCredit && !creditApprovedBy && onRequestCreditApproval !== undefined;
 
     const setAmount = useCallback(
-        (method: PaymentMethod, amount: number) => {
+        (key: string, amount: number) => {
             setPayments((current) => {
                 const clean = Math.max(0, Math.round(amount));
 
                 if (clean === 0) {
-                    return current.filter((payment) => payment.method !== method);
+                    return current.filter((payment) => payment.key !== key);
                 }
 
-                const exists = current.some((payment) => payment.method === method);
-
-                if (exists) {
-                    return current.map((payment) => (payment.method === method ? { ...payment, amount: clean } : payment));
+                if (current.some((payment) => payment.key === key)) {
+                    return current.map((payment) => (payment.key === key ? { ...payment, amount: clean } : payment));
                 }
 
-                return [...current, { method, amount: clean, reference: null }];
+                const method = byKey.get(key);
+
+                if (!method) {
+                    return current;
+                }
+
+                return [...current, { key, method_id: method.id, kind: method.kind, name: method.name, amount: clean, reference: null }];
             });
         },
-        [],
+        [byKey],
     );
 
     /** Un toque asigna lo que falte, acotado al tope del medio. Ese es el camino rapido. */
     const chooseMethod = useCallback(
-        (method: PaymentMethod) => {
-            if (! allowedMethods.includes(method) || isFixed(method)) {
+        (method: PresentedPaymentMethod) => {
+            const key = String(method.id);
+
+            if (isFixed(key) || blockedReason(method) !== null) {
                 return;
             }
 
-            if (method === 'credit' && creditBlockedReason) {
-                return;
-            }
-
-            setActive(method);
+            setActive(key);
             setBuffer('');
 
-            const already = payments.find((payment) => payment.method === method);
+            if (method.kind === 'gateway_terminal') {
+                setTerminalId((current) => current ?? method.terminals?.[0]?.id ?? null);
+            }
 
-            if (already) {
+            if (payments.some((payment) => payment.key === key)) {
                 return;
             }
 
-            const limit = limitFor(method);
+            const limit = limitFor(key);
             const proposed = limit === null ? remaining : Math.min(remaining, limit);
 
             if (proposed > 0) {
-                setAmount(method, proposed);
+                setAmount(key, proposed);
             }
         },
-        [payments, limitFor, remaining, setAmount, creditBlockedReason, allowedMethods, isFixed],
+        [payments, limitFor, remaining, setAmount, blockedReason, isFixed],
     );
 
-    const removePayment = useCallback((method: PaymentMethod) => {
-        setPayments((current) => current.filter((payment) => payment.method !== method));
-        setActive((current) => (current === method ? null : current));
+    const removePayment = useCallback((key: string) => {
+        setPayments((current) => current.filter((payment) => payment.key !== key));
+        setActive((current) => (current === key ? null : current));
         setBuffer('');
     }, []);
 
@@ -305,8 +355,8 @@ export default function PaymentDialog({
         setAmount(active, Number(next) || 0);
     }, [active, buffer, setAmount]);
 
-    const setReference = useCallback((method: PaymentMethod, reference: string) => {
-        setPayments((current) => current.map((payment) => (payment.method === method ? { ...payment, reference } : payment)));
+    const setReference = useCallback((key: string, reference: string) => {
+        setPayments((current) => current.map((payment) => (payment.key === key ? { ...payment, reference } : payment)));
     }, []);
 
     // Si cambia el tiquete con la modal abierta, ningun medio puede quedar por encima de su tope.
@@ -315,19 +365,20 @@ export default function PaymentDialog({
             let touched = false;
 
             const clamped = current.map((payment) => {
-                if (payment.method === 'cash' || payment.method === 'exchange') {
+                if (payment.kind === 'cash' || payment.kind === 'exchange') {
                     return payment;
                 }
 
-                const others = current
-                    .filter((other) => other.method !== payment.method)
-                    .reduce((sum, other) => sum + other.amount, 0);
-                const ceiling =
-                    payment.method === 'credit'
-                        ? Math.min(Math.max(0, payable - others), available)
-                        : payment.method === 'store_credit'
-                          ? Math.min(Math.max(0, payable - others), storeCreditAvailable)
-                          : Math.max(0, payable - others);
+                const others = current.filter((other) => other.key !== payment.key).reduce((sum, other) => sum + other.amount, 0);
+                let ceiling = Math.max(0, payable - others);
+
+                if (payment.kind === 'credit') {
+                    ceiling = Math.min(ceiling, available);
+                }
+
+                if (payment.kind === 'store_credit') {
+                    ceiling = Math.min(ceiling, storeCreditAvailable);
+                }
 
                 if (payment.amount > ceiling) {
                     touched = true;
@@ -342,22 +393,71 @@ export default function PaymentDialog({
         });
     }, [payable, available, storeCreditAvailable]);
 
-    const canConfirm = payments.length > 0 && paid >= payable && creditUsed <= available && !needsCreditApproval && payable > 0;
+    // Lo que el servidor rechazaria: se dice antes de mandar.
+    const problem = useMemo((): string | null => {
+        for (const payment of payments) {
+            const method = byKey.get(payment.key);
+
+            if (!method) {
+                continue;
+            }
+
+            if (method.min_amount && payment.amount < method.min_amount) {
+                return `Con «${method.name}» se cobra desde ${money(method.min_amount)}.`;
+            }
+
+            if (method.requires_reference && (payment.reference ?? '').trim() === '') {
+                return `Falta ${(method.reference_label ?? 'la referencia').toLowerCase()} de «${method.name}».`;
+            }
+
+            if (!method.combinable && payments.length > 1) {
+                return `«${method.name}» no se combina con otros medios.`;
+            }
+        }
+
+        if (payments.filter((payment) => payment.kind === 'cash').length > 1) {
+            return 'Junta el efectivo en un solo pago: el cambio sale de una sola línea.';
+        }
+
+        if (gatewayLine && change > 0) {
+            return 'Con un pago por pasarela el efectivo no puede dejar cambio: ajusta el monto.';
+        }
+
+        return null;
+    }, [payments, byKey, gatewayLine, change]);
+
+    const canConfirm =
+        payments.length > 0 && paid >= payable && creditUsed <= available && !needsCreditApproval && payable > 0 && problem === null && (!gatewayLine || onStartGateway !== undefined);
 
     const confirm = useCallback(() => {
         if (!canConfirm || submitting) {
             return;
         }
 
-        onConfirm(
-            payments.map((payment) => ({
-                method: payment.method,
-                amount: payment.amount,
-                received_amount: payment.method === 'cash' ? payment.amount : null,
-                reference: payment.reference && payment.reference !== '' ? payment.reference : null,
-            })),
-        );
-    }, [canConfirm, submitting, onConfirm, payments]);
+        const toPayload = (payment: PaymentLine): PaymentPayload => ({
+            payment_method_id: payment.method_id,
+            method: payment.kind,
+            amount: payment.amount,
+            received_amount: payment.kind === 'cash' ? payment.amount : null,
+            reference: payment.reference && payment.reference !== '' ? payment.reference : null,
+        });
+
+        if (gatewayLine && onStartGateway && gatewayLine.method_id !== null) {
+            onStartGateway(
+                payments.filter((payment) => payment.key !== gatewayLine.key).map(toPayload),
+                {
+                    payment_method_id: gatewayLine.method_id,
+                    amount: gatewayLine.amount,
+                    mode: gatewayLine.kind === 'gateway_terminal' ? 'terminal' : gatewayMode,
+                    terminal_id: gatewayLine.kind === 'gateway_terminal' ? terminalId : null,
+                },
+            );
+
+            return;
+        }
+
+        onConfirm(payments.map(toPayload));
+    }, [canConfirm, submitting, onConfirm, onStartGateway, payments, gatewayLine, gatewayMode, terminalId]);
 
     // --- Teclado fisico ----------------------------------------------------
 
@@ -369,7 +469,7 @@ export default function PaymentDialog({
         const onKeyDown = (event: KeyboardEvent) => {
             const target = event.target as HTMLElement | null;
 
-            if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+            if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) {
                 return;
             }
 
@@ -394,7 +494,8 @@ export default function PaymentDialog({
                 return;
             }
 
-            const method = SHORTCUTS[event.key.toLowerCase()];
+            const kind = SHORTCUTS[event.key.toLowerCase()];
+            const method = kind ? methods.find((item) => item.kind === kind && (onStartGateway !== undefined || !isGateway(item.kind))) : undefined;
 
             if (method) {
                 event.preventDefault();
@@ -405,28 +506,32 @@ export default function PaymentDialog({
         window.addEventListener('keydown', onKeyDown);
 
         return () => window.removeEventListener('keydown', onKeyDown);
-    }, [open, typeDigits, backspace, confirm, chooseMethod]);
+    }, [open, typeDigits, backspace, confirm, chooseMethod, methods, onStartGateway]);
 
     if (!open) {
         return null;
     }
 
-    const notice = buildNotice({
-        payments: payments.length,
-        remaining,
-        change,
-        creditUsed,
-        available,
-        needsCreditApproval,
-    });
+    const notice = buildNotice({ payments: payments.length, remaining, change, creditUsed, available, needsCreditApproval, problem, gateway: gatewayLine !== null });
+    const activeMethod = active ? byKey.get(active) : undefined;
+    const activeLine = active ? payments.find((payment) => payment.key === active) : undefined;
+    const activeLimit = active ? limitFor(active) : null;
 
     // «Exacto» es lo que le toca al medio activo, no lo que falte: si ese medio ya tiene el
     // total asignado, lo que falta es cero y el primer billete quedaria rotulado «Exacto».
     const exact = active ? remainingExcluding(active) : remaining;
     const quickAmounts = [
         { value: exact, exact: true },
-        ...[20000, 50000, 100000].map((value) => ({ value, exact: false })),
+        ...(activeMethod?.kind === 'cash' ? [20000, 50000, 100000] : []).map((value) => ({ value, exact: false })),
     ].filter((option, index, array) => option.value > 0 && array.findIndex((other) => other.value === option.value) === index);
+
+    // Sin quien abra el cobro (un cambio, el cobro de un pedido) la pasarela no se ofrece.
+    const visible = methods.filter(
+        (method) =>
+            method.kind !== 'exchange' &&
+            (method.kind !== 'store_credit' || storeCreditAvailable > 0) &&
+            (onStartGateway !== undefined || !isGateway(method.kind)),
+    );
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Cobrar">
@@ -460,94 +565,136 @@ export default function PaymentDialog({
                 <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
                     <section className="flex w-full shrink-0 flex-col gap-4 border-b border-[var(--line)] p-5 lg:w-[35.375rem] lg:overflow-y-auto lg:border-b-0 lg:border-r">
                         <div>
-                            <p className="mb-2 text-[0.6875rem] font-semibold uppercase tracking-wider text-[var(--muted)]">
-                                Paso 1 · Medios de pago
-                            </p>
-                            <div className="grid grid-cols-2 gap-2">
-                                {ORDER.filter((method) => allowedMethods.includes(method) && (method !== 'store_credit' || storeCreditAvailable > 0)).map((method) => {
-                                    const meta = METHODS[method];
-                                    const MethodIcon = meta.icon;
-                                    const line = payments.find((payment) => payment.method === method);
-                                    const disabled = method === 'credit' && creditBlockedReason !== null;
-                                    const selected = active === method;
+                            <p className="mb-2 text-[0.6875rem] font-semibold uppercase tracking-wider text-[var(--muted)]">Paso 1 · Medios de pago</p>
+                            {visible.length === 0 ? (
+                                <p className="rounded-card border border-dashed border-[var(--line-2)] px-4 py-6 text-center text-[0.8125rem] text-[var(--muted)]">
+                                    No hay medios de pago para esta caja en este momento.
+                                </p>
+                            ) : (
+                                <div className="grid grid-cols-2 gap-2">
+                                    {visible.map((method) => {
+                                        const key = String(method.id);
+                                        const MethodIcon = paymentIcon(method.icon);
+                                        const line = payments.find((payment) => payment.key === key);
+                                        const reason = blockedReason(method);
+                                        const disabled = reason !== null;
+                                        const selected = active === key;
 
-                                    return (
-                                        <button
-                                            key={method}
-                                            type="button"
-                                            onClick={() => chooseMethod(method)}
-                                            disabled={disabled}
-                                            aria-disabled={disabled}
-                                            title={disabled ? (creditBlockedReason ?? undefined) : meta.hint}
-                                            className={cn(
-                                                'flex h-[4.375rem] items-center gap-3 rounded-card border px-3 text-left transition-colors',
-                                                disabled && 'cursor-not-allowed opacity-45',
-                                                !disabled && selected && 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]',
-                                                !disabled && !selected && line && 'border-[var(--accent)] bg-[var(--surface-2)]',
-                                                !disabled && !selected && !line && 'border-[var(--line-2)] bg-[var(--surface-2)] hover:border-[var(--line)]',
-                                            )}
-                                        >
-                                            <span
+                                        return (
+                                            <button
+                                                key={key}
+                                                type="button"
+                                                onClick={() => chooseMethod(method)}
+                                                disabled={disabled}
+                                                aria-disabled={disabled}
+                                                title={disabled ? reason ?? undefined : (method.description ?? undefined)}
                                                 className={cn(
-                                                    'grid size-[2.125rem] shrink-0 place-items-center rounded-control',
-                                                    line ? 'bg-[var(--accent)] text-[var(--accent-ink)]' : 'bg-[var(--surface-3)] text-[var(--muted)]',
+                                                    'flex h-[4.375rem] items-center gap-3 rounded-card border px-3 text-left transition-colors',
+                                                    disabled && 'cursor-not-allowed opacity-45',
+                                                    !disabled && selected && 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]',
+                                                    !disabled && !selected && line && 'border-[var(--accent)] bg-[var(--surface-2)]',
+                                                    !disabled && !selected && !line && 'border-[var(--line-2)] bg-[var(--surface-2)] hover:border-[var(--line)]',
+                                                    method.highlight && !line && !selected && !disabled && 'ring-1 ring-[var(--accent)]/40',
                                                 )}
                                             >
-                                                <MethodIcon size={18} weight={line ? 'fill' : 'regular'} />
-                                            </span>
-
-                                            <span className="min-w-0 flex-1">
-                                                <span className="block truncate text-[0.875rem] font-semibold">{meta.label}</span>
-                                                <span className="block truncate text-[0.6875rem] text-[var(--muted)]">
-                                                    {disabled ? creditBlockedReason : method === 'store_credit' ? `Tiene ${money(storeCreditAvailable)}` : meta.hint}
+                                                <span
+                                                    className={cn(
+                                                        'grid size-[2.125rem] shrink-0 place-items-center rounded-control',
+                                                        line ? 'bg-[var(--accent)] text-[var(--accent-ink)]' : 'bg-[var(--surface-3)] text-[var(--muted)]',
+                                                    )}
+                                                >
+                                                    <MethodIcon size={18} weight={line ? 'fill' : 'regular'} />
                                                 </span>
-                                            </span>
 
-                                            <span
-                                                className={cn(
-                                                    'shrink-0 font-mono text-[0.8125rem] tabular',
-                                                    line ? 'font-semibold text-[var(--text)]' : 'text-[var(--muted)]',
-                                                )}
-                                            >
-                                                {line ? money(line.amount) : 'Asignar'}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
+                                                <span className="min-w-0 flex-1">
+                                                    <span className="block truncate text-[0.875rem] font-semibold">{method.name}</span>
+                                                    <span className="block truncate text-[0.6875rem] text-[var(--muted)]">
+                                                        {disabled
+                                                            ? reason
+                                                            : method.kind === 'store_credit'
+                                                              ? `Tiene ${money(storeCreditAvailable)}`
+                                                              : (method.description ?? (method.kind === 'cash' ? 'Genera cambio' : ''))}
+                                                    </span>
+                                                </span>
+
+                                                <span className={cn('shrink-0 font-mono text-[0.8125rem] tabular', line ? 'font-semibold text-[var(--text)]' : 'text-[var(--muted)]')}>
+                                                    {line ? money(line.amount) : 'Asignar'}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
 
                         <div className={cn('flex flex-col gap-2.5', !active && 'opacity-45')}>
                             <p className="text-[0.6875rem] font-semibold uppercase tracking-wider text-[var(--muted)]">
-                                Paso 2 · Monto {active ? `· ${METHODS[active].label}` : ''}
+                                Paso 2 · Monto {activeMethod ? `· ${activeMethod.name}` : ''}
                             </p>
 
                             <div className="flex items-center justify-between rounded-card border border-[var(--accent)] bg-[var(--surface-2)] px-4 py-3">
-                                <span className="text-[0.84375rem] font-medium text-[var(--text)]">
-                                    {active ? METHODS[active].label : 'Elige un medio'}
-                                </span>
-                                <span className="font-mono text-[1.375rem] font-semibold tabular text-[var(--accent)]">
-                                    {money(active ? (payments.find((payment) => payment.method === active)?.amount ?? 0) : 0)}
-                                </span>
+                                <span className="text-[0.84375rem] font-medium text-[var(--text)]">{activeMethod ? activeMethod.name : 'Elige un medio'}</span>
+                                <span className="font-mono text-[1.375rem] font-semibold tabular text-[var(--accent)]">{money(activeLine?.amount ?? 0)}</span>
                             </div>
 
                             <p className="text-[0.71875rem] text-[var(--muted)]">
                                 {active === null
                                     ? 'Toca un medio de pago para asignarle un monto.'
-                                    : limitFor(active) === null
+                                    : activeLimit === null
                                       ? 'Sin tope: lo que exceda el total sale como cambio.'
-                                      : `Maximo ${money(limitFor(active) ?? 0)}`}
+                                      : `Maximo ${money(activeLimit)}`}
+                                {activeMethod?.min_amount ? ` · mínimo ${money(activeMethod.min_amount)}` : ''}
                             </p>
 
-                            {(active === 'card' || active === 'transfer') && (
+                            {activeMethod?.instructions && (
+                                <p className="whitespace-pre-line rounded-control bg-[var(--surface-2)] px-3 py-2 text-[0.75rem] text-[var(--muted)]">{activeMethod.instructions}</p>
+                            )}
+
+                            {activeMethod && (activeMethod.requires_reference || ['card', 'transfer', 'other'].includes(activeMethod.kind)) && (
                                 <input
                                     type="text"
                                     maxLength={60}
-                                    value={payments.find((payment) => payment.method === active)?.reference ?? ''}
-                                    onChange={(event) => setReference(active, event.target.value)}
-                                    placeholder="Voucher o referencia"
+                                    value={activeLine?.reference ?? ''}
+                                    onChange={(event) => active && setReference(active, event.target.value)}
+                                    placeholder={activeMethod.reference_label ?? 'Voucher o referencia'}
+                                    aria-label={activeMethod.reference_label ?? 'Voucher o referencia'}
                                     className="h-11 rounded-control border border-[var(--line)] bg-[var(--surface-2)] px-3 font-mono text-[0.875rem] focus:border-[var(--accent)] focus:outline-none"
                                 />
+                            )}
+
+                            {activeMethod?.kind === 'gateway_link' && (
+                                <div className="flex gap-1.5" role="radiogroup" aria-label="Cómo se cobra">
+                                    {(['qr', 'link'] as const).map((mode) => (
+                                        <button
+                                            key={mode}
+                                            type="button"
+                                            role="radio"
+                                            aria-checked={gatewayMode === mode}
+                                            onClick={() => setGatewayMode(mode)}
+                                            className={cn(
+                                                'h-10 flex-1 rounded-control border text-[0.8125rem] font-medium',
+                                                gatewayMode === mode ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]' : 'border-[var(--line)] bg-[var(--surface-2)]',
+                                            )}
+                                        >
+                                            {mode === 'qr' ? 'Mostrar QR' : 'Enviar link'}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+
+                            {activeMethod?.kind === 'gateway_terminal' && (activeMethod.terminals ?? []).length > 1 && (
+                                <select
+                                    value={terminalId ?? ''}
+                                    onChange={(event) => setTerminalId(Number(event.target.value))}
+                                    aria-label="Datáfono"
+                                    className="h-11 rounded-control border border-[var(--line)] bg-[var(--surface-2)] px-3 text-[0.875rem] focus:border-[var(--accent)] focus:outline-none"
+                                >
+                                    {(activeMethod.terminals ?? []).map((terminal) => (
+                                        <option key={terminal.id} value={terminal.id}>
+                                            {terminal.name}
+                                        </option>
+                                    ))}
+                                </select>
                             )}
 
                             <div className="flex flex-wrap gap-1.5">
@@ -590,9 +737,7 @@ export default function PaymentDialog({
                     <section className="flex min-w-0 flex-1 flex-col gap-3 p-5 lg:overflow-y-auto">
                         <div className="flex items-baseline justify-between">
                             <p className="text-[0.6875rem] font-semibold uppercase tracking-wider text-[var(--muted)]">Pagos aplicados</p>
-                            <span className="font-mono text-[0.71875rem] tabular text-[var(--muted)]">
-                                {payments.length} de {allowedMethods.length}
-                            </span>
+                            <span className="font-mono text-[0.71875rem] tabular text-[var(--muted)]">{payments.length}</span>
                         </div>
 
                         {payments.length === 0 ? (
@@ -606,57 +751,56 @@ export default function PaymentDialog({
                         ) : (
                             <ul className="flex flex-col gap-1.5">
                                 {payments.map((payment) => {
-                                    const meta = METHODS[payment.method];
-                                    const isCash = payment.method === 'cash';
+                                    const isCash = payment.kind === 'cash';
 
                                     return (
                                         <li
-                                            key={payment.method}
+                                            key={payment.key}
                                             className={cn(
                                                 'flex items-center gap-2.5 rounded-card border bg-[var(--surface-2)] px-3 py-2.5',
-                                                active === payment.method ? 'border-[var(--accent)]' : 'border-[var(--line)]',
+                                                active === payment.key ? 'border-[var(--accent)]' : 'border-[var(--line)]',
                                             )}
                                         >
                                             <span className="grid size-8 shrink-0 place-items-center rounded-control bg-[var(--surface-3)] font-mono text-[0.6875rem] font-semibold text-[var(--muted)]">
-                                                {meta.initials}
+                                                {payment.kind === 'exchange' ? <ArrowUUpLeftIcon size={15} /> : isGateway(payment.kind) ? <QrCodeIcon size={15} /> : INITIALS[payment.kind]}
                                             </span>
 
                                             <span className="min-w-0 flex-1">
-                                                <span className="block truncate text-[0.84375rem] font-medium text-[var(--text)]">{meta.label}</span>
+                                                <span className="block truncate text-[0.84375rem] font-medium text-[var(--text)]">{payment.name}</span>
                                                 <span className="block truncate text-[0.71875rem] text-[var(--muted)]">
                                                     {isCash && change > 0
                                                         ? `Cambio ${money(change)}`
                                                         : payment.reference
                                                           ? `Ref. ${payment.reference}`
-                                                          : meta.hint}
+                                                          : isGateway(payment.kind)
+                                                            ? 'Se cobra con la pasarela al confirmar'
+                                                            : (byKey.get(payment.key)?.description ?? '')}
                                                 </span>
                                             </span>
 
-                                            <span className="shrink-0 font-mono text-[0.9375rem] font-semibold tabular text-[var(--text)]">
-                                                {money(payment.amount)}
-                                            </span>
+                                            <span className="shrink-0 font-mono text-[0.9375rem] font-semibold tabular text-[var(--text)]">{money(payment.amount)}</span>
 
-                                            {!isFixed(payment.method) && (
+                                            {!isFixed(payment.key) && (
                                                 <>
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setActive(payment.method);
-                                                    setBuffer('');
-                                                }}
-                                                aria-label={`Editar ${meta.label}`}
-                                                className="grid size-8 shrink-0 place-items-center rounded-chip text-[var(--muted)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--text)]"
-                                            >
-                                                <PencilSimpleIcon size={15} />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => removePayment(payment.method)}
-                                                aria-label={`Quitar ${meta.label}`}
-                                                className="grid size-8 shrink-0 place-items-center rounded-chip text-[var(--muted)] transition-colors hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"
-                                            >
-                                                <TrashIcon size={15} />
-                                            </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setActive(payment.key);
+                                                            setBuffer('');
+                                                        }}
+                                                        aria-label={`Editar ${payment.name}`}
+                                                        className="grid size-8 shrink-0 place-items-center rounded-chip text-[var(--muted)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--text)]"
+                                                    >
+                                                        <PencilSimpleIcon size={15} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removePayment(payment.key)}
+                                                        aria-label={`Quitar ${payment.name}`}
+                                                        className="grid size-8 shrink-0 place-items-center rounded-chip text-[var(--muted)] transition-colors hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"
+                                                    >
+                                                        <TrashIcon size={15} />
+                                                    </button>
                                                 </>
                                             )}
                                         </li>
@@ -689,31 +833,16 @@ export default function PaymentDialog({
                                 <span className="font-mono tabular text-[var(--text)]">{money(paid)}</span>
                             </div>
                             <div className="mt-2 flex items-baseline justify-between border-t border-[var(--line)] pt-2">
-                                <span className="text-[0.84375rem] font-semibold text-[var(--text)]">
-                                    {remaining > 0 ? 'Falta por cobrar' : 'Cambio a entregar'}
-                                </span>
-                                <span
-                                    className="font-mono text-[1.625rem] font-semibold tabular"
-                                    style={{ color: remaining > 0 ? 'var(--warn)' : 'var(--accent)' }}
-                                >
+                                <span className="text-[0.84375rem] font-semibold text-[var(--text)]">{remaining > 0 ? 'Falta por cobrar' : 'Cambio a entregar'}</span>
+                                <span className="font-mono text-[1.625rem] font-semibold tabular" style={{ color: remaining > 0 ? 'var(--warn)' : 'var(--accent)' }}>
                                     {money(remaining > 0 ? remaining : change)}
                                 </span>
                             </div>
                         </div>
 
                         {creditUsed > 0 && customer && (
-                            <div
-                                className={cn(
-                                    'rounded-card border p-4',
-                                    creditUsed > available
-                                        ? 'border-[var(--danger)]/50 bg-[var(--danger-soft)]'
-                                        : 'border-[var(--line)] bg-[var(--surface-2)]',
-                                )}
-                            >
-                                <p
-                                    className="mb-2 text-[0.75rem] font-semibold uppercase tracking-wide"
-                                    style={{ color: creditUsed > available ? 'var(--danger)' : 'var(--muted)' }}
-                                >
+                            <div className={cn('rounded-card border p-4', creditUsed > available ? 'border-[var(--danger)]/50 bg-[var(--danger-soft)]' : 'border-[var(--line)] bg-[var(--surface-2)]')}>
+                                <p className="mb-2 text-[0.75rem] font-semibold uppercase tracking-wide" style={{ color: creditUsed > available ? 'var(--danger)' : 'var(--muted)' }}>
                                     {creditUsed > available ? 'Supera el cupo aprobado' : 'Credito del cliente'}
                                 </p>
                                 <dl className="flex flex-col gap-1.5 text-[0.78125rem]">
@@ -731,10 +860,7 @@ export default function PaymentDialog({
                                     </div>
                                     <div className="flex justify-between">
                                         <dt className="text-[var(--muted)]">Cupo disponible despues</dt>
-                                        <dd
-                                            className="font-mono tabular"
-                                            style={{ color: available - creditUsed < 0 ? 'var(--danger)' : 'var(--accent)' }}
-                                        >
+                                        <dd className="font-mono tabular" style={{ color: available - creditUsed < 0 ? 'var(--danger)' : 'var(--accent)' }}>
                                             {money(Math.max(0, available - creditUsed))}
                                         </dd>
                                     </div>
@@ -746,20 +872,13 @@ export default function PaymentDialog({
                             </div>
                         )}
 
-                        <p
-                            className="flex items-start gap-2 rounded-control px-3 py-2 text-[0.78125rem] font-medium"
-                            style={{ color: notice.color, backgroundColor: notice.background }}
-                        >
+                        <p className="flex items-start gap-2 rounded-control px-3 py-2 text-[0.78125rem] font-medium" style={{ color: notice.color, backgroundColor: notice.background }}>
                             <notice.icon size={16} weight="fill" className="mt-px shrink-0" />
                             {notice.text}
                         </p>
 
                         {needsCreditApproval && (
-                            <Button
-                                variant="warn"
-                                icon={<LockKeyIcon size={16} />}
-                                onClick={() => onRequestCreditApproval?.('Esta venta lleva credito y el cajero no tiene ese permiso.')}
-                            >
+                            <Button variant="warn" icon={<LockKeyIcon size={16} />} onClick={() => onRequestCreditApproval?.('Esta venta lleva credito y el cajero no tiene ese permiso.')}>
                                 Autorizar con PIN de supervisor
                             </Button>
                         )}
@@ -801,7 +920,7 @@ export default function PaymentDialog({
                                 {cancelLabel}
                             </Button>
                             <Button size="pos" className="flex-1" disabled={!canConfirm} loading={submitting} onClick={confirm}>
-                                {confirmLabel}
+                                {gatewayLine ? (gatewayLine.kind === 'gateway_terminal' ? 'Cobrar en el datáfono' : 'Cobrar con la pasarela') : confirmLabel}
                             </Button>
                         </div>
                     </section>
@@ -826,56 +945,39 @@ function buildNotice(state: {
     creditUsed: number;
     available: number;
     needsCreditApproval: boolean;
+    problem: string | null;
+    gateway: boolean;
 }): Notice {
+    const warn = { color: 'var(--warn)', background: 'var(--warn-soft)', icon: WarningCircleIcon };
+    const ok = { color: 'var(--accent)', background: 'var(--accent-soft)', icon: CheckCircleIcon };
+
     if (state.creditUsed > state.available) {
-        return {
-            text: `El credito supera el cupo disponible (${money(state.available)}). Baja el monto o pide autorizacion.`,
-            color: 'var(--danger)',
-            background: 'var(--danger-soft)',
-            icon: WarningCircleIcon,
-        };
+        return { text: `El credito supera el cupo disponible (${money(state.available)}). Baja el monto o pide autorizacion.`, color: 'var(--danger)', background: 'var(--danger-soft)', icon: WarningCircleIcon };
     }
 
     if (state.payments === 0) {
-        return {
-            text: 'Agrega al menos un medio de pago para poder confirmar.',
-            color: 'var(--muted)',
-            background: 'var(--surface-2)',
-            icon: InfoIcon,
-        };
+        return { text: 'Agrega al menos un medio de pago para poder confirmar.', color: 'var(--muted)', background: 'var(--surface-2)', icon: InfoIcon };
     }
 
     if (state.remaining > 0) {
-        return {
-            text: `Faltan ${money(state.remaining)} por asignar. Puedes repartirlos en otro medio de pago.`,
-            color: 'var(--warn)',
-            background: 'var(--warn-soft)',
-            icon: WarningCircleIcon,
-        };
+        return { ...warn, text: `Faltan ${money(state.remaining)} por asignar. Puedes repartirlos en otro medio de pago.` };
+    }
+
+    if (state.problem) {
+        return { ...warn, text: state.problem };
     }
 
     if (state.needsCreditApproval) {
-        return {
-            text: 'Falta la autorizacion del supervisor para dejar parte de la venta a credito.',
-            color: 'var(--warn)',
-            background: 'var(--warn-soft)',
-            icon: LockKeyIcon,
-        };
+        return { ...warn, icon: LockKeyIcon, text: 'Falta la autorizacion del supervisor para dejar parte de la venta a credito.' };
+    }
+
+    if (state.gateway) {
+        return { ...ok, text: 'Al confirmar se abre el cobro en la pasarela; la venta queda cuando el pago se apruebe.' };
     }
 
     if (state.change > 0) {
-        return {
-            text: `Entrega ${money(state.change)} de cambio y confirma la venta.`,
-            color: 'var(--accent)',
-            background: 'var(--accent-soft)',
-            icon: CheckCircleIcon,
-        };
+        return { ...ok, text: `Entrega ${money(state.change)} de cambio y confirma la venta.` };
     }
 
-    return {
-        text: 'El pago cuadra con el total. Confirma para imprimir el tiquete.',
-        color: 'var(--accent)',
-        background: 'var(--accent-soft)',
-        icon: CheckCircleIcon,
-    };
+    return { ...ok, text: 'El pago cuadra con el total. Confirma para imprimir el tiquete.' };
 }

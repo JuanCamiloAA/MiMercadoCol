@@ -31,7 +31,8 @@ interface TransferFormProps {
     destinations?: TransferWarehouse[];
     fromId: number | null;
     toId: number | null;
-    preload: number | null;
+    /** Artículos que entran solos: desde Existencias (uno) o desde Tienda en línea (varios). */
+    preload: StockProduct[];
     products: StockProduct[];
     counts: { total: number; low_stock: number };
 }
@@ -163,19 +164,16 @@ export default function TransferForm({
         });
     }, [isRequest]);
 
-    // Al llegar desde Existencias el artículo entra solo, una vez.
+    // Lo precargado entra solo, una vez. En una solicitud se propone lo que le falta a la bodega
+    // que pide para llegar a su mínimo; quien la arma lo puede cambiar.
     useEffect(() => {
-        if (preloaded.current || !preload) {
+        if (preloaded.current || preload.length === 0) {
             return;
         }
 
-        const found = catalog.find((product) => product.id === preload);
-
-        if (found) {
-            preloaded.current = true;
-            upsert(found);
-        }
-    }, [catalog, preload, upsert]);
+        preloaded.current = true;
+        preload.forEach((product) => upsert(product, isRequest ? Math.max(1, Math.ceil(product.min_stock - product.stock)) : 1));
+    }, [preload, upsert, isRequest]);
 
     const setQuantity = (productId: number, quantity: number) =>
         setLines((current) =>

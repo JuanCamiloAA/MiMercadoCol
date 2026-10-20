@@ -3,6 +3,7 @@
 namespace App\Storefront\Blocks;
 
 use App\Models\StorefrontBlock;
+use App\Support\MediaVariants;
 
 /**
  * Banner principal: una o varias laminas, solo o con uno o dos banners al lado.
@@ -44,7 +45,32 @@ class HeroBlockData extends BlockData
             'layout' => [
                 'type' => 'select',
                 'label' => 'Diseño',
-                'options' => self::options(['full' => 'Ancho completo', 'main_side' => 'Principal y banners al lado']),
+                'options' => self::options([
+                    'full' => 'Ancho completo',
+                    'main_side' => 'Principal y banners al lado',
+                    'split' => 'Texto en un panel y la foto al lado',
+                    'editorial' => 'Editorial: foto grande, texto abajo a la izquierda',
+                    'cover_center' => 'Portada: foto grande con el nombre al centro',
+                ]),
+            ],
+            // Los diseños de una sola foto llevan el texto en el bloque, no en cada lámina: usan la
+            // foto de la primera lámina.
+            'eyebrow' => ['type' => 'text', 'label' => 'Antetítulo', 'max' => 40, 'help' => 'Una línea pequeña arriba del título.', 'show_if' => ['field' => 'layout', 'value' => ['split', 'editorial']]],
+            'wordmark' => [
+                'type' => 'toggle',
+                'label' => 'El nombre de la tienda en grande',
+                'help' => 'Con la letra del nombre (Aspecto). Apagado, va el título.',
+                'show_if' => ['field' => 'layout', 'value' => 'cover_center'],
+            ],
+            'title' => ['type' => 'text', 'label' => 'Título', 'max' => 60, 'show_if' => ['field' => 'layout', 'value' => ['split', 'editorial', 'cover_center']]],
+            'subtitle' => ['type' => 'text', 'label' => 'Subtítulo', 'max' => 120, 'show_if' => ['field' => 'layout', 'value' => ['split', 'editorial', 'cover_center']]],
+            'button_label' => ['type' => 'text', 'label' => 'Texto del botón', 'max' => 30, 'show_if' => ['field' => 'layout', 'value' => ['split', 'editorial', 'cover_center']]],
+            'target' => ['type' => 'target', 'label' => 'A dónde lleva el botón', 'kinds' => self::targetKinds($context), 'show_if' => ['field' => 'layout', 'value' => ['split', 'editorial', 'cover_center']]],
+            'image_side' => [
+                'type' => 'select',
+                'label' => 'La foto va',
+                'options' => self::options(['right' => 'A la derecha', 'left' => 'A la izquierda']),
+                'show_if' => ['field' => 'layout', 'value' => 'split'],
             ],
             'slides' => [
                 'type' => 'repeater',
@@ -54,20 +80,26 @@ class HeroBlockData extends BlockData
                 'keep' => ['legacy_image'],
                 'item_defaults' => ['text_color' => 'light', 'overlay' => 30],
                 'item' => [
-                    'media_id' => ['type' => 'media', 'label' => 'Imagen para computador', 'help' => 'Apaisada, idealmente 1600 × 600.'],
-                    'media_mobile_id' => ['type' => 'media', 'label' => 'Imagen para celular', 'help' => 'Opcional. Más alta que ancha; si falta se usa la de computador recortada.'],
+                    ...MediaVariants::field('media_id', [
+                        'type' => 'media',
+                        'label' => 'Imagen de la lámina',
+                        'help' => 'Computador apaisada (1600 × 600); celular más alta que ancha. Las de celular y las de modo oscuro son opcionales: si faltan, se usa la de computador o la clara.',
+                    ]),
                     'title' => ['type' => 'text', 'label' => 'Título', 'max' => 60],
                     'text' => ['type' => 'textarea', 'label' => 'Texto', 'max' => 160, 'rows' => 2],
                     'button_label' => ['type' => 'text', 'label' => 'Texto del botón', 'max' => 30],
                     'target' => ['type' => 'target', 'label' => 'A dónde lleva', 'kinds' => self::targetKinds($context)],
+                    // «Diseño de esta lámina»: el color y el velo ya vivían en la fila; lo nuevo va en `style`.
                     'text_color' => [
                         'type' => 'select',
                         'label' => 'Color del texto',
+                        'group' => 'design',
                         'options' => self::options(['light' => 'Claro (sobre foto oscura)', 'dark' => 'Oscuro (sobre foto clara)']),
                     ],
-                    'overlay' => ['type' => 'number', 'label' => 'Oscurecer la foto (%)', 'min' => 0, 'max' => 60, 'step' => 10],
+                    'overlay' => ['type' => 'number', 'label' => 'Oscurecer la foto (%)', 'min' => 0, 'max' => 60, 'step' => 10, 'group' => 'design'],
                     'visible_from' => ['type' => 'datetime', 'label' => 'Se ve desde', 'help' => 'Vacío: desde ya.'],
                     'visible_to' => ['type' => 'datetime', 'label' => 'Se ve hasta', 'help' => 'Vacío: sin fin.'],
+                    'style' => BannerStyle::field(['ratio', 'text_position', 'title_size', 'overlay_style', 'button_style']),
                 ],
             ],
             'side' => [
@@ -79,7 +111,7 @@ class HeroBlockData extends BlockData
                 'item_defaults' => ['kind' => 'image', 'tone' => 'accent'],
                 'item' => [
                     'kind' => ['type' => 'select', 'label' => 'Qué lleva', 'options' => self::options(['image' => 'Una imagen', 'color' => 'Un color con texto'])],
-                    'media_id' => ['type' => 'media', 'label' => 'Imagen', 'show_if' => ['field' => 'kind', 'value' => 'image']],
+                    ...MediaVariants::field('media_id', ['type' => 'media', 'label' => 'Imagen', 'show_if' => ['field' => 'kind', 'value' => 'image']]),
                     'tone' => [
                         'type' => 'select',
                         'label' => 'Color',
@@ -89,6 +121,7 @@ class HeroBlockData extends BlockData
                     'title' => ['type' => 'text', 'label' => 'Título', 'max' => 40],
                     'text' => ['type' => 'text', 'label' => 'Texto', 'max' => 80],
                     'target' => ['type' => 'target', 'label' => 'A dónde lleva', 'kinds' => self::targetKinds($context)],
+                    ...self::bannerDesign(['text_position', 'title_size', 'overlay_style']),
                 ],
             ],
             'autoplay' => [
@@ -99,7 +132,8 @@ class HeroBlockData extends BlockData
             'height' => [
                 'type' => 'select',
                 'label' => 'Alto',
-                'options' => self::options(['low' => 'Bajo', 'medium' => 'Medio', 'high' => 'Alto']),
+                'help' => '«Pantalla completa» es lo mismo que Diseño › Alto de la sección › 100 %.',
+                'options' => self::options(['low' => 'Bajo', 'medium' => 'Medio', 'high' => 'Alto', 'full' => 'Pantalla completa']),
             ],
         ];
     }
@@ -112,6 +146,13 @@ class HeroBlockData extends BlockData
             'side' => [],
             'autoplay' => 5,
             'height' => 'medium',
+            'eyebrow' => null,
+            'wordmark' => false,
+            'title' => null,
+            'subtitle' => null,
+            'button_label' => null,
+            'target' => null,
+            'image_side' => 'right',
         ];
     }
 
@@ -169,6 +210,8 @@ class HeroBlockData extends BlockData
             $issues[] = ['level' => 'block', 'message' => 'Necesita al menos una lámina.'];
         }
 
+        $fields = $this->fields();
+
         foreach ($payload['slides'] ?? [] as $index => $slide) {
             $where = 'La lámina '.($index + 1);
 
@@ -176,12 +219,13 @@ class HeroBlockData extends BlockData
                 array_push($issues, ...$this->imageIssues($slide['media_id'] ?? null, $media, $where));
             }
 
-            array_push($issues, ...$this->imageIssues($slide['media_mobile_id'] ?? null, $media, $where.' (celular)', required: false));
+            array_push($issues, ...$this->variantIssues($fields['slides']['item'], 'media_id', $slide, $media, $where));
         }
 
         foreach ($payload['side'] ?? [] as $index => $side) {
             if (($side['kind'] ?? 'image') === 'image') {
                 array_push($issues, ...$this->imageIssues($side['media_id'] ?? null, $media, 'El banner lateral '.($index + 1)));
+                array_push($issues, ...$this->variantIssues($fields['side']['item'], 'media_id', $side, $media, 'El banner lateral '.($index + 1)));
             }
         }
 

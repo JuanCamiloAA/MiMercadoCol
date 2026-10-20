@@ -12,12 +12,15 @@ use App\Services\BrandThemeService;
 use App\Services\Landing\LandingManager;
 use App\Services\Landing\LandingRenderer;
 use App\Services\PlatformSettingsService;
+use App\Support\SectionAppearance;
+use App\Support\Uploads;
+use App\Support\VideoOptions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -29,7 +32,7 @@ class LandingAdminController extends Controller
     /** Los ajustes de la landing y de la marca de plataforma que se editan aqui. */
     public const SETTINGS = [
         'platform.name', 'platform.support_email', 'platform.leads_notify_email',
-        'platform.brand_accent', 'platform.brand_logo', 'platform.font_body', 'platform.font_display', 'platform.font_numeric',
+        'platform.brand_accent', 'platform.brand_logo', 'platform.brand_logo_dark', 'platform.brand_mark', 'platform.font_body', 'platform.font_display', 'platform.font_numeric',
         'landing.seo_title', 'landing.seo_description', 'landing.seo_image', 'landing.favicon', 'landing.whatsapp',
         'landing.terms_text', 'landing.privacy_text',
     ];
@@ -48,6 +51,8 @@ class LandingAdminController extends Controller
         return Inertia::render('Platform/Landing/Editor', [
             'blocks' => $this->blocksPayload(),
             'catalogue' => LandingBlockCatalogue::toArray(),
+            // Las opciones de la pestaña «Diseño» de cada seccion (tamaño, fondo, animacion).
+            'appearanceCatalogue' => SectionAppearance::groups(SectionAppearance::SURFACE_LANDING),
             'icons' => array_values((array) config('landing_icons')),
             'settings' => $this->settingsPayload(),
             'fontOptions' => app(BrandThemeService::class)->fontOptions(),
@@ -69,10 +74,14 @@ class LandingAdminController extends Controller
     /** El borrador pintado con el mismo componente de la pagina publica, para el `iframe`. */
     public function preview(Request $request): Response
     {
+        // El modo que el editor está revisando (Claro | Oscuro); sin él, el de la página.
+        $scheme = $request->validate(['scheme' => ['nullable', Rule::in(['light', 'dark'])]])['scheme'] ?? null;
+
         return Inertia::render('Landing/Public', [
             ...app(LandingController::class)->pageProps($request),
             'blocks' => $this->renderer->resolve(array_values(array_filter($this->manager->draftSnapshot(), fn ($block) => $block['is_visible']))),
             'isPreview' => true,
+            'previewScheme' => $scheme,
         ]);
     }
 
@@ -91,6 +100,14 @@ class LandingAdminController extends Controller
     public function update(Request $request, LandingBlock $block): JsonResponse
     {
         $request->validate(['data' => ['required', 'array']]);
+
+        // El diseño de la seccion se rechaza, no se limpia: quien edita tiene que saber que eso no va.
+        $violations = SectionAppearance::violations($request->input('data.appearance'), SectionAppearance::SURFACE_LANDING);
+
+        if ($violations !== []) {
+            throw ValidationException::withMessages(['data' => $violations]);
+        }
+
         $block = $this->manager->update($block, $request->input('data'));
 
         return response()->json([
@@ -161,9 +178,24 @@ class LandingAdminController extends Controller
         ]);
 
         $file = $request->file('image');
-        $path = $file->storeAs('landing/'.now()->format('Y/m'), Str::uuid().'.'.$file->extension(), 'public');
+        $path = $file->storeAs('landing/'.now()->format('Y/m'), Str::uuid().'.'.$file->extension(), Uploads::diskName());
 
-        return response()->json(['path' => $path, 'url' => Storage::disk('public')->url($path)]);
+        return response()->json(['path' => $path, 'url' => Uploads::url($path)]);
+    }
+
+    /**
+     * Sube un video de la landing (el bloque «Video con pasos»). Como la imagen: responde la ruta,
+     * que es lo que se guarda en el bloque, y el archivo queda en el disco de archivos subidos.
+     */
+    public function uploadVideo(Request $request): JsonResponse
+    {
+        [$rules, $messages] = VideoOptions::uploadRules();
+        $request->validate(['video' => $rules], $messages);
+
+        $file = $request->file('video');
+        $path = $file->storeAs('landing/videos/'.now()->format('Y/m'), Str::uuid().'.'.$file->extension(), Uploads::diskName());
+
+        return response()->json(['path' => $path, 'url' => Uploads::url($path)]);
     }
 
     public function updateSettings(Request $request): RedirectResponse
@@ -175,6 +207,8 @@ class LandingAdminController extends Controller
             'leads_notify_email' => ['nullable', 'email', 'max:160'],
             'brand_accent' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'brand_logo' => ['nullable', 'string', 'regex:#^landing/[A-Za-z0-9/_\-.]+$#'],
+            'brand_logo_dark' => ['nullable', 'string', 'regex:#^landing/[A-Za-z0-9/_\-.]+$#'],
+            'brand_mark' => ['nullable', 'string', 'regex:#^landing/[A-Za-z0-9/_\-.]+$#'],
             'font_body' => ['required', Rule::in(array_keys($fonts['body'] ?? []))],
             'font_display' => ['required', Rule::in(array_keys($fonts['display'] ?? []))],
             'font_numeric' => ['required', Rule::in(array_keys($fonts['numeric'] ?? []))],
@@ -198,6 +232,8 @@ class LandingAdminController extends Controller
             'platform.leads_notify_email' => ($data['leads_notify_email'] ?? null) ?: null,
             'platform.brand_accent' => strtoupper($data['brand_accent']),
             'platform.brand_logo' => ($data['brand_logo'] ?? null) ?: null,
+            'platform.brand_logo_dark' => ($data['brand_logo_dark'] ?? null) ?: null,
+            'platform.brand_mark' => ($data['brand_mark'] ?? null) ?: null,
             'platform.font_body' => $data['font_body'],
             'platform.font_display' => $data['font_display'],
             'platform.font_numeric' => $data['font_numeric'],
@@ -232,13 +268,6 @@ class LandingAdminController extends Controller
     {
         $definition = LandingBlockCatalogue::for($block->type);
         $data = $definition->normalize($block->data ?? []);
-        $images = [];
-
-        foreach ($definition->fields() as $key => $field) {
-            if ($field['type'] === 'image') {
-                $images[$key] = is_string($data[$key] ?? null) && $data[$key] !== '' ? Storage::disk('public')->url($data[$key]) : null;
-            }
-        }
 
         return [
             'id' => $block->id,
@@ -246,7 +275,8 @@ class LandingAdminController extends Controller
             'type' => $block->type,
             'is_visible' => (bool) $block->is_visible,
             'data' => $data,
-            'image_urls' => (object) $images,
+            // Por clave las imagenes y videos del bloque; por ruta, los de sus listas.
+            'image_urls' => (object) $definition->mediaUrlMap($data),
         ];
     }
 
@@ -270,7 +300,7 @@ class LandingAdminController extends Controller
      */
     protected function settingsPayload(): array
     {
-        $url = fn (?string $path) => $path ? Storage::disk('public')->url($path) : null;
+        $url = fn (?string $path) => Uploads::url($path);
 
         return [
             'platform_name' => $this->platform->get('platform.name') ?? '',
@@ -279,6 +309,10 @@ class LandingAdminController extends Controller
             'brand_accent' => $this->platform->get('platform.brand_accent'),
             'brand_logo' => $this->platform->get('platform.brand_logo'),
             'brand_logo_url' => $url($this->platform->get('platform.brand_logo')),
+            'brand_logo_dark' => $this->platform->get('platform.brand_logo_dark'),
+            'brand_logo_dark_url' => $url($this->platform->get('platform.brand_logo_dark')),
+            'brand_mark' => $this->platform->get('platform.brand_mark'),
+            'brand_mark_url' => $url($this->platform->get('platform.brand_mark')),
             'font_body' => $this->platform->get('platform.font_body'),
             'font_display' => $this->platform->get('platform.font_display'),
             'font_numeric' => $this->platform->get('platform.font_numeric'),

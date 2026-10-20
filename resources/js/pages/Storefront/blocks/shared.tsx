@@ -18,9 +18,21 @@ export function text(value: unknown): string {
 }
 
 /** Un enlace a un destino ya resuelto; sin destino es un bloque quieto. */
-export function TargetLink({ target, className, children, ariaLabel }: { target: Target | null | undefined; className?: string; children: ReactNode; ariaLabel?: string }) {
+export function TargetLink({
+    target,
+    className,
+    children,
+    ariaLabel,
+    heroFill = false,
+}: {
+    target: Target | null | undefined;
+    className?: string;
+    children: ReactNode;
+    ariaLabel?: string;
+    heroFill?: boolean;
+}) {
     return (
-        <StoreLink href={target?.href ?? null} className={className} ariaLabel={ariaLabel}>
+        <StoreLink href={target?.href ?? null} className={className} ariaLabel={ariaLabel} heroFill={heroFill}>
             {children}
         </StoreLink>
     );

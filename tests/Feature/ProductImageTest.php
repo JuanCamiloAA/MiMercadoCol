@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Product;
 use App\Models\ProductImage;
+use App\Services\SettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -21,6 +22,8 @@ class ProductImageTest extends TestCase
         // Archivos con mime declarado en vez de imagenes generadas: asi la prueba corre
         // aunque la extension GD no este habilitada en el PHP de la maquina.
         Storage::fake('public');
+        // Estas pruebas suben dos fotos: la empresa monta hasta cinco (por defecto es una).
+        app(SettingsService::class)->set($this->company->id, 'catalog.max_images', 5);
     }
 
     public function test_al_crear_un_articulo_la_primera_imagen_queda_de_portada(): void

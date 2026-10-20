@@ -4,10 +4,14 @@ namespace App\Http\Requests\Services;
 
 use App\Models\Product;
 use App\Models\Service;
+use App\Models\ServiceImage;
+use App\Services\Catalog\CatalogImages;
 use App\Support\ScanCodeGuard;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 /**
  * Crear un servicio. Los componentes (misma empresa, activos, sin repetir, enteros si no son
@@ -65,7 +69,11 @@ class StoreServiceRequest extends FormRequest
             ],
             'name' => ['required', 'string', 'max:160'],
             'description' => ['nullable', 'string', 'max:2000'],
-            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            // Varias fotos; cuantas, lo decide la empresa (Ajustes > Catalogo). `image` suelta
+            // sigue valiendo y cuenta como una mas.
+            'images' => ['nullable', 'array'],
+            'images.*' => CatalogImages::FILE_RULES,
+            'image' => ['nullable', ...CatalogImages::FILE_RULES],
             'open_price' => ['boolean'],
             'price' => ['required', 'integer', $this->boolean('open_price') ? 'min:0' : 'min:1'],
             'online_price' => ['nullable', 'integer', 'min:1'],
@@ -104,8 +112,35 @@ class StoreServiceRequest extends FormRequest
             'components.*.unit_price.integer' => 'El precio del artículo va en pesos enteros.',
             'components.*.unit_price.min' => 'El precio del artículo no puede ser negativo.',
             'image.image' => 'El archivo debe ser una imagen.',
-            'image.max' => 'La imagen debe pesar menos de 2 MB.',
+            'image.mimes' => 'Las fotos van en JPG, PNG o WebP.',
+            'image.max' => 'Cada foto debe pesar menos de 4 MB.',
+            ...CatalogImages::fileMessages(),
         ];
+    }
+
+    public function after(): array
+    {
+        return [
+            fn (Validator $validator) => app(CatalogImages::class)->check(
+                $validator,
+                (int) TenantContext::activeCompanyId(),
+                $this->ignoredServiceId() ? ServiceImage::query()->where('service_id', $this->ignoredServiceId())->count() : 0,
+                count($this->uploadedImages()),
+            ),
+        ];
+    }
+
+    /**
+     * Las fotos que llegaron, en el orden en que se eligieron.
+     *
+     * @return list<UploadedFile>
+     */
+    public function uploadedImages(): array
+    {
+        $files = array_values(array_filter((array) $this->file('images', []), fn ($file) => $file instanceof UploadedFile));
+        $single = $this->file('image');
+
+        return $single instanceof UploadedFile ? [...$files, $single] : $files;
     }
 
     /**
@@ -115,7 +150,7 @@ class StoreServiceRequest extends FormRequest
      */
     public function serviceData(): array
     {
-        $data = collect($this->validated())->except(['image'])->all();
+        $data = collect($this->validated())->except(['image', 'images'])->all();
         $data['components'] = array_values($data['components'] ?? []);
         $data['open_price'] = $this->boolean('open_price');
         $data['is_active'] = $this->boolean('is_active');

@@ -49,6 +49,23 @@ return [
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url(env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
+        // Brevo por su relevo SMTP (587 con STARTTLS). La clave es la «clave SMTP» (xsmtpsib-), no la
+        // de la API (xkeysib-), y el usuario es el «Login» de SMTP y API > SMTP en Brevo. El remitente
+        // (MAIL_FROM_ADDRESS) tiene que estar verificado alla, o Brevo rechaza el envio.
+        // El host es el nombre viejo (sendinblue) a proposito: desde Colombia el DNS manda al relevo de
+        // Sao Paulo, cuyo certificado no incluye smtp-relay.brevo.com y el STARTTLS falla. Es el mismo
+        // servidor y valida completo; no apagues verify_peer para usar el nombre nuevo.
+        'brevo' => [
+            'transport' => 'smtp',
+            'scheme' => 'smtp',
+            'host' => env('BREVO_SMTP_HOST', 'smtp-relay.sendinblue.com'),
+            'port' => (int) env('BREVO_SMTP_PORT', 587),
+            'username' => env('BREVO_SMTP_LOGIN'),
+            'password' => env('BREVO_SMTP_KEY'),
+            'timeout' => null,
+            'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url(env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
+        ],
+
         'ses' => [
             'transport' => 'ses',
         ],

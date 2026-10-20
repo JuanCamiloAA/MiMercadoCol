@@ -31,6 +31,7 @@ class ContactRequest extends FormRequest
             'company_name' => ['nullable', 'string', 'max:120'],
             'tax_id' => ['nullable', 'string', 'max:40'],
             'city' => ['nullable', 'string', 'max:80'],
+            'business_category_id' => ['nullable', 'integer', Rule::exists('business_categories', 'id')->where('is_active', true)],
             'contact_name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email', 'max:160'],
             'phone' => ['nullable', 'string', 'max:40'],

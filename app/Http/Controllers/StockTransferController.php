@@ -106,7 +106,9 @@ class StockTransferController extends Controller
             'fromId' => $fromId,
             'toId' => $mine->skip(1)->first()?->id,
             // Un articulo precargado cuando se llega desde Existencias.
-            'preload' => $request->integer('product') ?: null,
+            'preload' => $request->integer('product') > 0
+                ? $this->catalog->rowsFor($companyId, $storeId, [$request->integer('product')], $fromId)
+                : [],
             'products' => $catalog['products'],
             'counts' => ['total' => $catalog['total'], 'low_stock' => $catalog['low_stock']],
         ]);

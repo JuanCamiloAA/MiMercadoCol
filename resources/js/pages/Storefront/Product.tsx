@@ -1,5 +1,6 @@
 import { CaretRightIcon, ShieldCheckIcon, TruckIcon } from '@phosphor-icons/react';
 import { AddToCartControl } from '@/components/storefront/AddToCartControl';
+import { ImageCarousel } from '@/components/storefront/ImageCarousel';
 import { StoreIcon } from '@/components/storefront/icons';
 import { Price } from '@/components/storefront/Price';
 import { ProductShelf } from '@/components/storefront/ProductShelf';
@@ -11,7 +12,8 @@ import { StoreBlocks } from '@/pages/Storefront/blocks/StoreBlocks';
 import type { CardProduct, StoreBlock } from '@/types/storefront';
 
 interface ProductProps {
-    product: CardProduct & { description: string | null; tax_rate: number };
+    /** `images`: todas sus fotos, la portada primero (el carrusel). Sin ellas, la de la tarjeta. */
+    product: CardProduct & { description: string | null; tax_rate: number; images?: string[] };
     breadcrumbs: { label: string; href: string }[];
     related: CardProduct[];
     blocks: StoreBlock[];
@@ -53,18 +55,21 @@ export default function StorefrontProduct({ product, breadcrumbs, related, block
             </nav>
 
             <article className="grid gap-5 rounded-[var(--store-radius)] border border-[var(--line)] bg-[var(--surface)] p-3 md:grid-cols-2 md:gap-8 md:p-6">
-                <div className="relative aspect-square overflow-hidden rounded-[var(--store-radius)] bg-white">
-                    {product.image ? (
-                        <img src={product.image} alt={product.name} className="h-full w-full object-contain p-6" />
-                    ) : (
+                <ImageCarousel
+                    images={product.images && product.images.length > 0 ? product.images : product.image ? [product.image] : []}
+                    alt={product.name}
+                    resetKey={product.id}
+                    fallback={
                         <span className="grid h-full w-full place-items-center text-[var(--muted)] opacity-50">
                             <StoreIcon name={product.category_icon} size={120} weight="duotone" />
                         </span>
-                    )}
-                    {badge && (
-                        <span className="absolute left-3 top-3 rounded-[8px] bg-[var(--deal)] px-2.5 py-1 text-[15px] font-extrabold text-[var(--deal-ink)] shadow">{badge}</span>
-                    )}
-                </div>
+                    }
+                    overlay={
+                        badge ? (
+                            <span className="absolute left-3 top-3 rounded-[8px] bg-[var(--deal)] px-2.5 py-1 text-[15px] font-extrabold text-[var(--deal-ink)] shadow">{badge}</span>
+                        ) : undefined
+                    }
+                />
 
                 <div className="flex flex-col gap-3">
                     {product.brand && <p className="text-[12.5px] font-bold uppercase tracking-wide text-[var(--muted)]">{product.brand}</p>}

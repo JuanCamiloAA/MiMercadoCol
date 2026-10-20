@@ -111,7 +111,7 @@ class MembershipEnforcementTest extends TestCase
         $this->actingAs($admin)->withSession($this->withActiveStore())
             ->get(route('promotions.index'))
             ->assertForbidden()
-            ->assertInertia(fn (Assert $page) => $page->where('message', 'Tu plan no incluye Promociones y cupones. Cámbialo en Ajustes > Membresía.'));
+            ->assertInertia(fn (Assert $page) => $page->where('message', 'Tu plan no incluye «Ver las promociones». Cámbialo en Ajustes > Membresía.'));
 
         $this->actingAs($admin)->withSession($this->withActiveStore())
             ->get(route('storefront.editor.index'))

@@ -11,6 +11,7 @@ use App\Models\Register;
 use App\Models\Store;
 use App\Services\Membership\MembershipService;
 use App\Services\PaymentTermService;
+use App\Services\Platform\BusinessCategoryCatalog;
 use App\Services\SettingsService;
 use Illuminate\Database\Seeder;
 
@@ -27,6 +28,8 @@ class CompanySeeder extends Seeder
                 'phone' => '604 444 1122',
                 'address' => 'Carrera 48 # 32-15, Medellin',
                 'city' => 'Medellín',
+                // El catalogo lo siembra su migracion, antes que las empresas.
+                'business_category_id' => app(BusinessCategoryCatalog::class)->defaultId(),
                 'currency' => 'COP',
                 'is_active' => true,
             ]

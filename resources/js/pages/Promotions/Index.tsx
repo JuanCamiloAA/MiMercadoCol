@@ -61,6 +61,8 @@ interface PromotionsIndexProps {
     metrics: { running: number; scheduled: number; ended: number };
     types: SelectOption[];
     categories: SelectOption[];
+    /** Una promoción nueva ya armada con unos artículos (desde Tienda en línea). */
+    prefill?: { name: string; targets: Target[] } | null;
 }
 
 interface FormState {
@@ -100,7 +102,7 @@ const EMPTY: FormState = {
 /** Los tipos que se arman con articulos concretos; el porcentaje admite categorias. */
 const PRODUCT_ONLY: PromotionType[] = ['special_price', 'n_for_m', 'bundle'];
 
-export default function PromotionsIndex({ promotions, filters: initialFilters, metrics, types, categories }: PromotionsIndexProps) {
+export default function PromotionsIndex({ promotions, filters: initialFilters, metrics, types, categories, prefill = null }: PromotionsIndexProps) {
     const { can } = usePermission();
     const { filters, update, reset, hasActive } = useFilters('promotions.index', initialFilters);
 
@@ -121,6 +123,21 @@ export default function PromotionsIndex({ promotions, filters: initialFilters, m
         setForm({ ...EMPTY });
         setOpen(true);
     };
+
+    // Llegando con artículos elegidos se abre el formulario ya armado: un descuento en línea,
+    // con el porcentaje por decidir.
+    const prefilled = useRef(false);
+
+    useEffect(() => {
+        if (prefilled.current || !prefill) {
+            return;
+        }
+
+        prefilled.current = true;
+        setEditing(null);
+        setForm({ ...EMPTY, name: prefill.name, type: 'percent_off', targets: prefill.targets });
+        setOpen(true);
+    }, [prefill]);
 
     const openEdit = (promotion: PromotionRow) => {
         setEditing(promotion);

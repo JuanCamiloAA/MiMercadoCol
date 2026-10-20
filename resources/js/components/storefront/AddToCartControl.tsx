@@ -29,7 +29,8 @@ export function AddToCartControl({
     className,
 }: {
     item: Item;
-    variant?: 'solid' | 'outline';
+    /** `icon`: un «+» redondo (va sobre la foto de la tarjeta); con cantidad, un contador pequeño. */
+    variant?: 'solid' | 'outline' | 'icon';
     size?: 'md' | 'lg';
     className?: string;
 }) {
@@ -37,7 +38,6 @@ export function AddToCartControl({
     const { interactive } = usePreviewMode();
     const quantity = quantityOf(cart, item.key);
     const step = item.step || 1;
-    const out = item.stock?.out ?? false;
     const unit = item.sold_by_weight ? ' kg' : '';
 
     const set = (next: number) => {
@@ -48,15 +48,32 @@ export function AddToCartControl({
 
     const height = size === 'lg' ? 'h-12' : 'h-11';
 
-    if (out) {
-        return (
+    if (variant === 'icon') {
+        return quantity <= 0 ? (
             <button
                 type="button"
-                disabled
-                className={cn(height, 'flex w-full cursor-not-allowed items-center justify-center rounded-[var(--store-radius-sm)] bg-[var(--surface-2)] text-[13.5px] font-bold text-[var(--muted)]', className)}
+                onClick={() => set(step)}
+                aria-label={`Agregar ${item.name} al carrito`}
+                className={cn(
+                    'grid size-11 place-items-center rounded-full bg-[var(--accent)] text-[var(--accent-ink)] shadow-lg transition-[filter,transform] hover:scale-105 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
+                    className,
+                )}
             >
-                Agotado
+                <PlusIcon size={20} weight="bold" />
             </button>
+        ) : (
+            <div className={cn('flex h-11 items-center gap-1 rounded-full bg-[var(--accent)] px-1.5 text-[var(--accent-ink)] shadow-lg', className)}>
+                <button type="button" onClick={() => set(quantity - step)} aria-label={quantity - step <= 0 ? `Quitar ${item.name} del carrito` : `Quitar uno de ${item.name}`} className={STEP_BUTTON}>
+                    <MinusIcon size={15} weight="bold" />
+                </button>
+                <span className="min-w-6 text-center text-[14px] font-extrabold tabular-nums" aria-hidden>
+                    {number(quantity)}
+                    {unit}
+                </span>
+                <button type="button" onClick={() => set(quantity + step)} aria-label={`Agregar uno más de ${item.name}`} className={STEP_BUTTON}>
+                    <PlusIcon size={15} weight="bold" />
+                </button>
+            </div>
         );
     }
 
@@ -68,7 +85,7 @@ export function AddToCartControl({
                 aria-label={`Agregar ${item.name} al carrito`}
                 className={cn(
                     height,
-                    'flex w-full items-center justify-center gap-1.5 rounded-[var(--store-radius-sm)] text-[14px] font-bold transition-[filter,background-color] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
+                    'flex w-full items-center justify-center gap-1.5 rounded-[var(--store-btn-radius,var(--store-radius-sm))] text-[14px] font-bold transition-[filter,background-color] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
                     variant === 'solid'
                         ? 'bg-[var(--accent)] text-[var(--accent-ink)] hover:brightness-110 active:brightness-95'
                         : 'border-2 border-[var(--accent)] bg-transparent text-[var(--accent)] hover:bg-[var(--accent-soft)]',
@@ -85,7 +102,7 @@ export function AddToCartControl({
         <div
             className={cn(
                 height,
-                'flex w-full items-center justify-between overflow-hidden rounded-[var(--store-radius-sm)] bg-[var(--accent)] px-1.5 text-[var(--accent-ink)]',
+                'flex w-full items-center justify-between overflow-hidden rounded-[var(--store-btn-radius,var(--store-radius-sm))] bg-[var(--accent)] px-1.5 text-[var(--accent-ink)]',
                 className,
             )}
         >

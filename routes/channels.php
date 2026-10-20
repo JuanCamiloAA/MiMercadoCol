@@ -49,6 +49,13 @@ Broadcast::channel('company.{company}.catalog', function (User $user, string $co
     return ChannelAccess::companyWithAny($user, $company, ['products.index.view']);
 });
 
+// El aviso de «cambio esto» que mantiene al dia las pestañas abiertas. Basta ser de la empresa:
+// lleva solo el tema y la sede, y los datos se vuelven a pedir por la ruta de siempre, que exige
+// su propio permiso.
+Broadcast::channel('company.{company}.changes', function (User $user, string $company) {
+    return ChannelAccess::company($user, $company);
+});
+
 // El `{import}` no se mira: quien puede ver las importaciones de su empresa puede seguir el
 // avance de cualquiera de ellas, y el id ya esta acotado por la empresa del nombre del canal.
 Broadcast::channel('company.{company}.imports.{import}', function (User $user, string $company) {

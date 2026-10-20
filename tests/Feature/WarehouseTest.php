@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\Cart;
+use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\ProductStock;
 use App\Models\SalePayment;
@@ -11,7 +11,6 @@ use App\Models\StockTransfer;
 use App\Models\Store;
 use App\Models\User;
 use App\Models\Warehouse;
-use App\Services\CartService;
 use App\Services\OrderService;
 use App\Services\SaleService;
 use App\Services\StockService;
@@ -146,15 +145,13 @@ class WarehouseTest extends TestCase
         ], stock: 0);
         $this->putStock($solo_atras->id, $deposito, 500);
 
-        $this->get(route('storefront.home'))->assertOk();
-        $this->post(route('storefront.cart.store'), ['product_id' => $solo_atras->id, 'quantity' => 1]);
+        // Se mide contra la bodega que respalda la tienda: los 500 de atras no cuentan, porque el
+        // alistador no los va a encontrar en el estante que despacha. Ni se muestra ni se agrega.
+        $this->get(route('storefront.search'))->assertOk()->assertDontSee('Panela solo en bodega', false);
+        $this->post(route('storefront.cart.store'), ['product_id' => $solo_atras->id, 'quantity' => 1])
+            ->assertSessionHas('error', 'Este artículo se agotó.');
 
-        $cart = Cart::query()->withoutGlobalScopes()->firstOrFail();
-        $summary = app(CartService::class)->summary($cart, $this->store);
-
-        // El carrito mide contra la bodega que respalda la tienda: los 500 de atras no cuentan,
-        // porque el alistador no los va a encontrar en el estante que despacha.
-        $this->assertSame(0.0, (float) $summary['items'][0]['available']);
+        $this->assertSame(0, CartItem::query()->count());
     }
 
     public function test_bajo_minimo_se_mide_contra_la_sede_entera(): void

@@ -79,21 +79,17 @@ class StorefrontFamilyListingTest extends TestCase
             ->assertJsonFragment(['name' => 'Aceite de girasol', 'href' => '/tienda/articulo/'.$oil->slug]);
     }
 
-    public function test_agotada_solo_si_todas_sus_presentaciones_lo_estan(): void
+    public function test_sin_presentaciones_disponibles_la_familia_no_tiene_tarjeta(): void
     {
         $this->makeFamily('Aceite de oliva', 'Volumen', null, [['250 ml', null, 18900], ['500 ml', null, 32900, ['initial_stocks' => []]]]);
         $this->makeFamily('Vinagre', 'Volumen', null, [['250 ml', null, 2900, ['initial_stocks' => []]], ['500 ml', null, 4900, ['initial_stocks' => []]]]);
 
+        // Antes salia «Agotada»; ahora la tienda no ofrece lo que no puede entregar.
         $this->get(route('storefront.category', ['categorySlug' => 'despensa', 'sort' => 'name']))->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('results.total', 2)
-            ->where('results.items', function ($items) {
-                $cards = collect($items)->keyBy('name');
-
-                return $cards['Aceite de oliva']['stock']['out'] === false
-                    // Con una presentacion agotada, el «Desde» sale de las que hay.
-                    && $cards['Aceite de oliva']['price'] === 18900
-                    && $cards['Vinagre']['stock']['out'] === true;
-            }));
+            ->where('results.total', 1)
+            ->where('results.items.0.name', 'Aceite de oliva')
+            // Con una presentacion agotada, el «Desde» sale de las que hay.
+            ->where('results.items.0.price', 18900));
     }
 
     public function test_un_estante_no_repite_la_familia(): void

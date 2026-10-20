@@ -5,10 +5,10 @@ namespace App\Services;
 use App\Models\Product;
 use App\Models\Service;
 use App\Models\ServiceComponent;
+use App\Services\Catalog\CatalogImages;
 use App\Support\ScanCodeGuard;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -20,15 +20,19 @@ use Illuminate\Validation\ValidationException;
  */
 class ServiceManager
 {
-    public function __construct(protected ImageService $images) {}
+    public function __construct(protected CatalogImages $catalogImages) {}
 
     /**
      * @param  array<string, mixed>  $data  Campos del servicio y `components`: list<{product_id, quantity, unit_price?, returnable_by_default}>
      */
-    public function save(?Service $service, array $data, int $companyId, ?UploadedFile $image = null): Service
+    /**
+     * @param  list<UploadedFile>|UploadedFile|null  $images  fotos nuevas: se agregan al final de la galeria
+     */
+    public function save(?Service $service, array $data, int $companyId, array|UploadedFile|null $images = null): Service
     {
         $components = array_values($data['components'] ?? []);
-        unset($data['components'], $data['image']);
+        unset($data['components'], $data['image'], $data['images']);
+        $images = $images instanceof UploadedFile ? [$images] : ($images ?? []);
 
         $this->assertComponents($components, $companyId);
 
@@ -44,7 +48,7 @@ class ServiceManager
             $data['is_featured'] = false;
         }
 
-        return DB::transaction(function () use ($service, $data, $components, $companyId, $image) {
+        return DB::transaction(function () use ($service, $data, $components, $companyId, $images) {
             $service ??= new Service(['company_id' => $companyId]);
             $service->fill($data);
             $service->company_id = $companyId;
@@ -74,10 +78,13 @@ class ServiceManager
                 ]);
             }
 
-            if ($image && $image->isValid()) {
-                $stored = $this->images->storeProductImage($image, $companyId, 'services');
-                Storage::disk('public')->delete(array_filter([$service->image_path, $service->thumb_path]));
-                $service->update(['image_path' => $stored['path'], 'thumb_path' => $stored['thumb_path']]);
+            // Cuantas caben ya lo midio el formulario contra el tope de la empresa (`CatalogImages`).
+            // La primera foto queda de portada en `image_path`, que es lo que leen los listados.
+            $created = $this->catalogImages->append($service->images(), $images, $companyId, 'services');
+            $first = $created->first();
+
+            if ($first && ! $service->image_path) {
+                $service->update(['image_path' => $first->path, 'thumb_path' => $first->thumb_path]);
             }
 
             return $service->refresh()->load('components.product');

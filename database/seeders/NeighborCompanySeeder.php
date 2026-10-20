@@ -11,6 +11,7 @@ use App\Models\Register;
 use App\Models\StockMovement;
 use App\Models\Store;
 use App\Models\User;
+use App\Services\Platform\BusinessCategoryCatalog;
 use App\Services\Platform\CompanyProvisioner;
 use App\Services\StockService;
 use App\Services\WarehouseService;
@@ -72,6 +73,7 @@ class NeighborCompanySeeder extends Seeder
                 'phone' => '6043331122',
                 'address' => 'Carrera 43A # 38 Sur-15',
                 'city' => 'Envigado',
+                'business_category_id' => app(BusinessCategoryCatalog::class)->defaultId(),
             ],
             'store' => [
                 'name' => 'Envigado Centro',

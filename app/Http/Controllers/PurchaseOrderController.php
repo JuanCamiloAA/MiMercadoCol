@@ -101,16 +101,41 @@ class PurchaseOrderController extends Controller
         $companyId = TenantContext::requireCompanyId();
         $storeId = StoreContext::requireStoreId();
 
+        // Precarga (desde «Tienda en linea»): la bodega donde se va a recibir y los articulos.
+        // Una bodega de otra sede del usuario es pasarse a esa sede, como en el selector.
+        $warehouse = $this->warehouses->forCompany($companyId)->firstWhere('id', $request->integer('warehouse'));
+
+        if ($warehouse && (int) $warehouse->store_id !== $storeId && StoreContext::setActiveStore((int) $warehouse->store_id)) {
+            $storeId = (int) $warehouse->store_id;
+        }
+
+        $warehouse = $warehouse && (int) $warehouse->store_id === $storeId ? $warehouse : null;
+        $preloadIds = collect((array) $request->query('products', []))
+            ->filter(fn ($id) => ctype_digit((string) $id))
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->take(100)
+            ->values()
+            ->all();
+
         $suppliers = $this->supplierOptions($companyId);
+        $preload = $this->catalog->rowsFor($companyId, $storeId, $preloadIds, null);
+        // Con precarga, el proveedor principal del primer articulo: los demas se resaltan, no se
+        // filtran, y la orden se puede separar despues.
+        $preloadSupplier = collect($preload[0]['suppliers'] ?? [])->firstWhere('is_primary', true)['id'] ?? null;
         // Sin proveedores no hay a quien pedirle: la pantalla lo dice en vez de dejar armar
         // una orden que despues no se puede guardar.
-        $supplierId = $request->integer('supplier') ?: ($suppliers[0]['value'] ?? null);
+        $supplierId = $request->integer('supplier')
+            ?: (collect($suppliers)->contains('value', $preloadSupplier) ? $preloadSupplier : null)
+            ?: ($suppliers[0]['value'] ?? null);
 
         $catalog = $this->catalog->catalog($companyId, $storeId, $supplierId);
 
         return Inertia::render('Purchases/Create', [
             'suppliers' => $suppliers,
             'supplierId' => $supplierId,
+            'preload' => $supplierId !== null && $preloadIds !== [] ? $this->catalog->rowsFor($companyId, $storeId, $preloadIds, $supplierId) : [],
+            'warehouse' => $warehouse ? ['id' => $warehouse->id, 'name' => $warehouse->name] : null,
             'products' => $catalog['products'],
             'counts' => [
                 'total' => $catalog['total'],
@@ -212,7 +237,14 @@ class PurchaseOrderController extends Controller
             'items.*.origin' => ['nullable', Rule::in(PurchaseOrderItem::ORIGINS)],
             // Separar al crear: se arma todo de una pasada y se parte al guardar.
             'split' => ['nullable', 'boolean'],
+            // Donde se espera recibirla, si no es la de recibo por defecto (la que respalda la
+            // tienda, cuando se compra lo que alli se agoto). Solo una bodega activa de la sede.
+            'warehouse_id' => [
+                'nullable', 'integer',
+                Rule::in($this->warehouses->forStore($storeId)->pluck('id')->all()),
+            ],
         ], [
+            'warehouse_id.in' => 'Esa bodega no es de esta sede o esta inactiva.',
             'supplier_id.required' => 'Elige el proveedor.',
             'items.required' => 'La orden debe tener al menos un articulo.',
             'items.*.product_id.distinct' => 'Un articulo no puede ir dos veces en la misma orden.',
@@ -238,7 +270,7 @@ class PurchaseOrderController extends Controller
                 'company_id' => $companyId,
                 'store_id' => $storeId,
                 // Donde se espera recibirla. Se puede cambiar al descargar el camion.
-                'warehouse_id' => $this->warehouses->receivingDefaultFor($storeId)->id,
+                'warehouse_id' => ! empty($validated['warehouse_id']) ? (int) $validated['warehouse_id'] : $this->warehouses->receivingDefaultFor($storeId)->id,
                 'supplier_id' => $supplierId,
                 'payment_term_id' => $term?->id,
                 'code' => $this->numbers->nextPurchaseOrderCode($companyId),

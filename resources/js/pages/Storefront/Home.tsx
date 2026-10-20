@@ -10,11 +10,13 @@ interface HomeProps {
     blocks: StoreBlock[];
     /** Sin bloques publicados: las ofertas y los destacados, para que la tienda no quede en blanco. */
     fallback: { deals: CardProduct[]; featured: CardProduct[] } | null;
+    /** El encabezado va transparente sobre el banner de borde a borde (`StorefrontRenderer::headerOverlay`). */
+    headerOverlay?: boolean;
 }
 
-export default function StorefrontHome({ blocks, fallback }: HomeProps) {
+export default function StorefrontHome({ blocks, fallback, headerOverlay = false }: HomeProps) {
     return (
-        <StoreLayout title="Tienda" current="home">
+        <StoreLayout title="Tienda" current="home" headerOverlay={headerOverlay}>
             <h1 className="sr-only">Portada de la tienda</h1>
 
             {blocks.length > 0 ? (

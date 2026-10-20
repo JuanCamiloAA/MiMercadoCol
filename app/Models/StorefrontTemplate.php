@@ -26,19 +26,30 @@ class StorefrontTemplate extends Model
      */
     public const DESIGN_KEYS = [
         'blocks' => true,
-        'theme' => ['scheme', 'allow_scheme_toggle', 'font_pair', 'radius', 'density', 'button_style'],
+        // Nunca el acento ni el rojo de oferta: son de la sede. La plantilla los sugiere aparte
+        // (`palette_suggestion`) y la sede decide aplicarlos desde Aspecto.
+        'theme' => [
+            'scheme', 'allow_scheme_toggle', 'font_pair', 'radius', 'density', 'button_style',
+            'logo_font', 'surface', 'heading_case', 'container', 'button_shape',
+        ],
         'settings' => [
             'topbar', 'header', 'nav', 'mobile_nav', 'card', 'cart_bar',
-            'category_page', 'product_page', 'search', 'footer', 'catalog',
+            'category_page', 'product_page', 'search', 'footer', 'catalog', 'floating',
         ],
         'settings_except' => [
             'footer' => ['contact', 'social', 'legal_text', 'terms_target', 'privacy_target', 'pqrs_target'],
         ],
     ];
 
+    /** Las familias de comercio con que se filtra la galeria de plantillas. */
+    public const AUDIENCE_GROUPS = ['Mercado', 'Moda', 'Belleza y hogar', 'Ferretería'];
+
+    /** Los colores que una plantilla puede sugerir; los aplica la sede desde Aspecto, si quiere. */
+    public const PALETTE_KEYS = ['accent', 'deal_color'];
+
     protected $fillable = [
-        'name', 'description', 'preview_media_id', 'draft', 'published', 'published_at',
-        'published_by_user_id', 'is_default', 'is_active',
+        'name', 'slug', 'description', 'audience', 'audience_group', 'palette_suggestion', 'sort_order',
+        'preview_media_id', 'draft', 'published', 'published_at', 'published_by_user_id', 'is_default', 'is_active',
     ];
 
     protected function casts(): array
@@ -46,10 +57,26 @@ class StorefrontTemplate extends Model
         return [
             'draft' => 'array',
             'published' => 'array',
+            'palette_suggestion' => 'array',
+            'sort_order' => 'integer',
             'published_at' => 'datetime',
             'is_default' => 'boolean',
             'is_active' => 'boolean',
         ];
+    }
+
+    /**
+     * Los colores sugeridos que se pueden aplicar: solo las claves conocidas y hexadecimales
+     * validos. Lo demas que traiga el JSON se ignora.
+     *
+     * @return array<string, string>
+     */
+    public function paletteSuggestion(): array
+    {
+        return array_filter(
+            array_intersect_key($this->palette_suggestion ?? [], array_flip(self::PALETTE_KEYS)),
+            fn ($value) => is_string($value) && preg_match('/^#[0-9A-Fa-f]{6}$/', $value) === 1,
+        );
     }
 
     public function versions(): HasMany
@@ -66,6 +93,17 @@ class StorefrontTemplate extends Model
     public function previewMedia(): BelongsTo
     {
         return $this->belongsTo(MediaAsset::class, 'preview_media_id')->withoutGlobalScopes();
+    }
+
+    /**
+     * La miniatura entera para la galeria: la copia angosta si existe, si no el original. No la
+     * variante `wide`: recortada a 16:9 se comia el nombre que lleva abajo.
+     */
+    public function previewThumbnail(): ?string
+    {
+        $payload = $this->previewMedia?->toPayload();
+
+        return $payload ? ($payload['variants']['sm'] ?? $payload['url']) : null;
     }
 
     public function publishedBy(): BelongsTo

@@ -7,6 +7,7 @@ import AppLayout from '@/layouts/AppLayout';
 import { cn } from '@/lib/cn';
 import { AppearanceTab } from './tabs/AppearanceTab';
 import { BrandTab } from './tabs/BrandTab';
+import { CatalogTab } from './tabs/CatalogTab';
 import { CompanyTab } from './tabs/CompanyTab';
 import { MembershipTab } from './tabs/MembershipTab';
 import { CreditTab } from './tabs/CreditTab';
@@ -34,6 +35,7 @@ const TABS: TabDefinition[] = [
     { key: 'pos_rules', slug: 'reglas', label: 'Reglas de caja', component: PosRulesTab },
     { key: 'receipt', slug: 'tiquete', label: 'Tiquete', component: ReceiptTab },
     { key: 'credit', slug: 'credito', label: 'Crédito', component: CreditTab },
+    { key: 'catalog', slug: 'catalogo', label: 'Catálogo', component: CatalogTab },
 ];
 
 /**

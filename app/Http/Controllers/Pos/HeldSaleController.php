@@ -3,41 +3,55 @@
 namespace App\Http\Controllers\Pos;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\HeldSale;
+use App\Models\PaymentTransaction;
+use App\Services\PosCustomerPresenter;
 use App\Services\RegisterSessionService;
 use App\Support\StoreContext;
 use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
- * Tiquetes suspendidos: se guardan tal cual estan para retomarlos mas tarde.
+ * Tiquetes suspendidos: se guardan tal cual estan para retomarlos mas tarde, con su cliente.
  */
 class HeldSaleController extends Controller
 {
-    public function __construct(protected RegisterSessionService $sessions) {}
+    public function __construct(
+        protected RegisterSessionService $sessions,
+        protected PosCustomerPresenter $customers,
+    ) {}
 
+    /**
+     * El cliente viaja completo y calculado ahora (cupo, saldo, saldo a favor): al retomar el
+     * tiquete la caja lo deja puesto sin volver a buscarlo, y con los numeros de este momento.
+     */
     public function index(Request $request): JsonResponse
     {
         $storeId = StoreContext::requireStoreId();
 
         $held = HeldSale::query()
             ->where('store_id', $storeId)
-            ->with('customer:id,name')
+            ->whereNotIn('id', PaymentTransaction::heldSaleIdsAwaiting($storeId))
+            ->with('customer')
             ->orderByDesc('created_at')
             ->limit(20)
-            ->get()
-            ->map(fn (HeldSale $sale) => [
-                'id' => $sale->id,
-                'label' => $sale->label,
-                'total' => $sale->total,
-                'customer' => $sale->customer?->name,
-                'payload' => $sale->payload,
-                'created_at' => $sale->created_at->toIso8601String(),
-            ])
-            ->values();
+            ->get();
 
-        return response()->json(['held' => $held]);
+        // Uno desactivado despues de suspender no se vuelve a poner: se avisa y se elige otro.
+        $presented = $this->customers->present($held->pluck('customer')->filter(fn (?Customer $customer) => $customer?->is_active)->unique('id')->values());
+
+        return response()->json(['held' => $held->map(fn (HeldSale $sale) => [
+            'id' => $sale->id,
+            'label' => $sale->label,
+            'total' => $sale->total,
+            'customer' => $sale->customer_id ? $presented->get($sale->customer_id) : null,
+            'customer_name' => $sale->customer?->name,
+            'payload' => $sale->payload,
+            'created_at' => $sale->created_at->toIso8601String(),
+        ])->values()]);
     }
 
     public function store(Request $request): JsonResponse
@@ -51,10 +65,12 @@ class HeldSaleController extends Controller
         $validated = $request->validate([
             'label' => ['required', 'string', 'max:40'],
             'total' => ['required', 'integer', 'min:0'],
-            'customer_id' => ['nullable', 'integer'],
+            // Solo un cliente de esta empresa: el id llega del navegador.
+            'customer_id' => ['nullable', 'integer', Rule::exists('customers', 'id')->where('company_id', $companyId)],
             'payload' => ['required', 'array'],
         ], [
             'label.required' => 'Ponle un nombre al tiquete suspendido.',
+            'customer_id.exists' => 'Ese cliente no es de esta empresa.',
             'payload.required' => 'El tiquete esta vacio.',
         ]);
 

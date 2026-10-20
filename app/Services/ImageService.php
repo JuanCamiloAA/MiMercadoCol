@@ -3,8 +3,8 @@
 namespace App\Services;
 
 use App\Support\TenantContext;
+use App\Support\Uploads;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
@@ -59,7 +59,7 @@ class ImageService
         // Sin GD se guarda el original: pesa mas, pero la marca no se queda sin imagen.
         if (! $source) {
             $extension = strtolower($file->guessExtension() ?: $file->getClientOriginalExtension() ?: 'png');
-            $path = $file->storeAs($directory, "{$base}-{$token}.{$extension}", 'public');
+            $path = $file->storeAs($directory, "{$base}-{$token}.{$extension}", Uploads::diskName());
 
             return $slot === 'mark' ? ['path' => $path, 'favicon' => $path, 'touch' => $path] : ['path' => $path];
         }
@@ -71,10 +71,10 @@ class ImageService
                 'touch' => "{$directory}/mark-".self::TOUCH_SIZE."-{$token}.png",
             ];
 
-            Storage::disk('public')->put($paths['path'], $this->png($this->square($source, self::MARK_SIZE)));
-            Storage::disk('public')->put($paths['favicon'], $this->png($this->square($source, self::FAVICON_SIZE)));
+            Uploads::disk()->put($paths['path'], $this->png($this->square($source, self::MARK_SIZE)));
+            Uploads::disk()->put($paths['favicon'], $this->png($this->square($source, self::FAVICON_SIZE)));
             // iOS no respeta la transparencia del icono: se le pone el fondo del acento.
-            Storage::disk('public')->put($paths['touch'], $this->png($this->square($source, self::TOUCH_SIZE, $accent)));
+            Uploads::disk()->put($paths['touch'], $this->png($this->square($source, self::TOUCH_SIZE, $accent)));
 
             imagedestroy($source);
 
@@ -82,7 +82,7 @@ class ImageService
         }
 
         $path = "{$directory}/{$base}-{$token}.png";
-        Storage::disk('public')->put($path, $this->png($this->fitWidth($source, self::LOGO_WIDTH)));
+        Uploads::disk()->put($path, $this->png($this->fitWidth($source, self::LOGO_WIDTH)));
         imagedestroy($source);
 
         return ['path' => $path];
@@ -94,7 +94,7 @@ class ImageService
      */
     public function storeTouchIcon(string $markPath, int $companyId, string $accent): ?string
     {
-        $disk = Storage::disk('public');
+        $disk = Uploads::disk();
         $source = $this->canWritePng() && $disk->exists($markPath) ? @imagecreatefromstring((string) $disk->get($markPath)) : false;
 
         if (! $source) {
@@ -118,7 +118,7 @@ class ImageService
      */
     public function storeReceiptLogo(string $sourcePath, int $companyId): ?array
     {
-        $disk = Storage::disk('public');
+        $disk = Uploads::disk();
 
         if (! $disk->exists($sourcePath)) {
             return null;
@@ -176,7 +176,7 @@ class ImageService
         $paths = array_values(array_unique(array_filter($value, fn ($path) => is_string($path) && str_starts_with($path, 'brand/'))));
 
         if ($paths !== []) {
-            Storage::disk('public')->delete($paths);
+            Uploads::disk()->delete($paths);
         }
     }
 
@@ -391,20 +391,20 @@ class ImageService
         $name = Str::random(32);
 
         if (! $this->canResize()) {
-            return ['path' => $file->store($directory, 'public'), 'thumb_path' => null];
+            return ['path' => $file->store($directory, Uploads::diskName()), 'thumb_path' => null];
         }
 
         $source = $this->read($file);
 
         if (! $source) {
-            return ['path' => $file->store($directory, 'public'), 'thumb_path' => null];
+            return ['path' => $file->store($directory, Uploads::diskName()), 'thumb_path' => null];
         }
 
         $path = "{$directory}/{$name}.jpg";
         $thumbPath = "{$directory}/{$name}-thumb.jpg";
 
-        Storage::disk('public')->put($path, $this->encode($this->resize($source, self::MAX_WIDTH)));
-        Storage::disk('public')->put($thumbPath, $this->encode($this->resize($source, self::THUMB_WIDTH)));
+        Uploads::disk()->put($path, $this->encode($this->resize($source, self::MAX_WIDTH)));
+        Uploads::disk()->put($thumbPath, $this->encode($this->resize($source, self::THUMB_WIDTH)));
 
         imagedestroy($source);
 
@@ -427,17 +427,17 @@ class ImageService
         $directory = $folder.'/'.(TenantContext::activeCompanyId() ?? 0);
 
         if (! $this->canResize()) {
-            return $file->store($directory, 'public');
+            return $file->store($directory, Uploads::diskName());
         }
 
         $source = $this->read($file);
 
         if (! $source) {
-            return $file->store($directory, 'public');
+            return $file->store($directory, Uploads::diskName());
         }
 
         $path = $directory.'/'.Str::random(32).'.jpg';
-        Storage::disk('public')->put($path, $this->encode($this->resize($source, $width)));
+        Uploads::disk()->put($path, $this->encode($this->resize($source, $width)));
         imagedestroy($source);
 
         return $path;
@@ -459,18 +459,18 @@ class ImageService
         $name = Str::random(32);
 
         if (! $this->canResize()) {
-            return ['path' => $file->store($directory, 'public'), 'width' => null, 'height' => null, 'variants' => []];
+            return ['path' => $file->store($directory, Uploads::diskName()), 'width' => null, 'height' => null, 'variants' => []];
         }
 
         $source = $this->read($file);
 
         if (! $source) {
-            return ['path' => $file->store($directory, 'public'), 'width' => null, 'height' => null, 'variants' => []];
+            return ['path' => $file->store($directory, Uploads::diskName()), 'width' => null, 'height' => null, 'variants' => []];
         }
 
         $full = $this->resize($source, self::BANNER_WIDTH);
         $path = $directory.'/'.$name.'.jpg';
-        Storage::disk('public')->put($path, $this->encode($full));
+        Uploads::disk()->put($path, $this->encode($full));
 
         $variants = [];
 
@@ -482,7 +482,7 @@ class ImageService
             }
 
             $variantPath = $directory.'/'.$name.'-'.$key.($this->supportsWebp() ? '.webp' : '.jpg');
-            Storage::disk('public')->put($variantPath, $this->encodeVariant($cropped));
+            Uploads::disk()->put($variantPath, $this->encodeVariant($cropped));
             $variants[$key] = $variantPath;
 
             imagedestroy($cropped);
@@ -493,7 +493,7 @@ class ImageService
 
         if ($small) {
             $smallPath = $directory.'/'.$name.'-sm'.($this->supportsWebp() ? '.webp' : '.jpg');
-            Storage::disk('public')->put($smallPath, $this->encodeVariant($small));
+            Uploads::disk()->put($smallPath, $this->encodeVariant($small));
             $variants['sm'] = $smallPath;
             imagedestroy($small);
         }

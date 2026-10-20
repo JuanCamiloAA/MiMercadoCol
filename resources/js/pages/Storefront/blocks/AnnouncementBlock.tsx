@@ -1,4 +1,5 @@
 import { MegaphoneIcon } from '@phosphor-icons/react';
+import { StoreIcon } from '@/components/storefront/icons';
 import { cn } from '@/lib/cn';
 import { TargetLink, TONES, text, type BlockProps, type Target } from './shared';
 
@@ -22,7 +23,7 @@ export function AnnouncementBlock({ data }: BlockProps) {
                 link?.href && 'hover:underline',
             )}
         >
-            <MegaphoneIcon size={18} weight="fill" className="shrink-0" />
+            {text(data.icon) ? <StoreIcon name={text(data.icon)} size={18} weight="fill" className="shrink-0" /> : <MegaphoneIcon size={18} weight="fill" className="shrink-0" />}
             {message}
         </TargetLink>
     );

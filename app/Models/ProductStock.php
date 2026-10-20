@@ -11,13 +11,15 @@ class ProductStock extends Model
 {
     use BelongsToCompany, HasFactory;
 
-    protected $fillable = ['company_id', 'product_id', 'store_id', 'warehouse_id', 'quantity', 'reserved_quantity', 'location'];
+    /** `out_of_stock_since` la mantiene solo `StockService`: desde cuando el disponible esta en cero. */
+    protected $fillable = ['company_id', 'product_id', 'store_id', 'warehouse_id', 'quantity', 'reserved_quantity', 'out_of_stock_since', 'location'];
 
     protected function casts(): array
     {
         return [
             'quantity' => 'float',
             'reserved_quantity' => 'float',
+            'out_of_stock_since' => 'datetime',
         ];
     }
 

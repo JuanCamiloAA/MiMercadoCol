@@ -3,10 +3,12 @@
 namespace App\Http\Requests;
 
 use App\Models\Product;
+use App\Services\Catalog\CatalogImages;
 use App\Support\ScanCodeGuard;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class UpdateProductRequest extends FormRequest
 {
@@ -49,8 +51,9 @@ class UpdateProductRequest extends FormRequest
             'is_online_visible' => ['boolean'],
             'is_featured' => ['boolean'],
             'description' => ['nullable', 'string', 'max:600'],
-            'images' => ['nullable', 'array', 'max:5'],
-            'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            // Cuantas, lo decide la empresa (Ajustes > Catalogo): se mide abajo con las que ya tiene.
+            'images' => ['nullable', 'array'],
+            'images.*' => CatalogImages::FILE_RULES,
         ];
     }
 
@@ -62,9 +65,14 @@ class UpdateProductRequest extends FormRequest
             'sku.unique' => 'Ya hay un articulo con ese SKU.',
             'barcode.unique' => 'Ya hay un articulo con ese codigo de barras.',
             'tax_rate.in' => 'El IVA solo puede ser 0, 5 o 19.',
-            'images.max' => 'Maximo 5 imagenes por articulo.',
-            'images.*.image' => 'Cada archivo debe ser una imagen.',
-            'images.*.max' => 'Cada imagen debe pesar menos de 2 MB.',
+            ...CatalogImages::fileMessages(),
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            app(CatalogImages::class)->check($validator, (int) TenantContext::activeCompanyId(), $this->route('product')->images()->count(), count((array) $this->file('images', [])));
+        });
     }
 }

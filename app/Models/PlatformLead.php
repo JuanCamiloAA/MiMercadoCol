@@ -38,13 +38,19 @@ class PlatformLead extends Model
     ];
 
     protected $fillable = [
-        'source', 'company_name', 'tax_id', 'city', 'contact_name', 'email', 'phone', 'estimated_stores',
+        'source', 'company_name', 'tax_id', 'city', 'business_category_id', 'contact_name', 'email', 'phone', 'estimated_stores',
         'membership_plan_id', 'billing_cycle_id', 'message', 'status', 'notes', 'handled_by_user_id', 'company_id',
     ];
 
     protected function casts(): array
     {
         return ['estimated_stores' => 'integer'];
+    }
+
+    /** Alimentos, textiles, belleza…: con ella la landing agrupa las tiendas. */
+    public function businessCategory(): BelongsTo
+    {
+        return $this->belongsTo(BusinessCategory::class);
     }
 
     public function plan(): BelongsTo

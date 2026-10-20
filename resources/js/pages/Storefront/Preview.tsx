@@ -18,6 +18,9 @@ interface PreviewProps {
     catalog?: Omit<CatalogProps, 'blocks'> | null;
     product?: Omit<ProductProps, 'blocks'> | null;
     cartPage?: Omit<CartProps, 'blocks'> | null;
+    headerOverlay?: boolean;
+    /** El modo que el editor está revisando: Claro | Oscuro. */
+    previewScheme?: 'light' | 'dark' | null;
 }
 
 /**
@@ -28,7 +31,7 @@ interface PreviewProps {
  * sea de verdad el de un celular o un computador. Le habla al editor por `postMessage`: tocar
  * un bloque o una zona (barra superior, encabezado, menú, pie...) abre su sección allá.
  */
-export default function StorefrontPreview({ view, shell, blocks, cart, catalog, product, cartPage }: PreviewProps) {
+export default function StorefrontPreview({ view, shell, blocks, cart, catalog, product, cartPage, headerOverlay = false, previewScheme = null }: PreviewProps) {
     const [activeUuid, setActiveUuid] = useState<string | null>(null);
     const [activeZone, setActiveZone] = useState<ShellZone | null>(null);
 
@@ -65,8 +68,8 @@ export default function StorefrontPreview({ view, shell, blocks, cart, catalog, 
     }, []);
 
     const root = useMemo(
-        () => ({ shell, cart, preview: { interactive: false, activeZone, onSelectZone: selectZone } }),
-        [shell, cart, activeZone, selectZone],
+        () => ({ shell, cart, scheme: previewScheme, preview: { interactive: false, activeZone, onSelectZone: selectZone } }),
+        [shell, cart, previewScheme, activeZone, selectZone],
     );
 
     const selection = useMemo(() => ({ activeUuid, onSelect: selectBlock }), [activeUuid, selectBlock]);
@@ -74,7 +77,7 @@ export default function StorefrontPreview({ view, shell, blocks, cart, catalog, 
     return (
         <PreviewRootContext.Provider value={root}>
             <BlockSelectionContext.Provider value={selection}>
-                {view === 'home' && <StorefrontHome blocks={blocks} fallback={null} />}
+                {view === 'home' && <StorefrontHome blocks={blocks} fallback={null} headerOverlay={headerOverlay} />}
                 {(view === 'category' || view === 'search') && catalog && <StorefrontCatalog {...catalog} blocks={blocks} />}
                 {view === 'product' && product && <StorefrontProduct {...product} blocks={blocks} />}
                 {view === 'cart' && cartPage && <StorefrontCart {...cartPage} blocks={blocks} />}

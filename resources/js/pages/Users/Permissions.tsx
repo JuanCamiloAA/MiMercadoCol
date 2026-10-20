@@ -1,6 +1,7 @@
 import { useForm, usePage } from '@inertiajs/react';
 import { ArrowLeftIcon } from '@phosphor-icons/react';
 import type { FormEvent } from 'react';
+import { PlanHiddenNote } from '@/components/membership/PlanTree';
 import { PermissionMatrix } from '@/components/PermissionMatrix';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { Card, CardHeader } from '@/components/ui/Card';
@@ -19,7 +20,7 @@ interface UserPermissionsProps {
 }
 
 export default function UserPermissions({ user, userPermissions }: UserPermissionsProps) {
-    const { permissionMatrix } = usePage<PageProps>().props;
+    const { permissionMatrix, permissionMatrixHidden } = usePage<PageProps>().props;
 
     const { data, setData, put, processing } = useForm({ permissions: userPermissions });
 
@@ -67,6 +68,7 @@ export default function UserPermissions({ user, userPermissions }: UserPermissio
                             selected={data.permissions}
                             onChange={(permissions) => setData('permissions', permissions)}
                             baseline={userPermissions}
+                            footer={<PlanHiddenNote hidden={permissionMatrixHidden ?? 0} />}
                         />
                     ) : (
                         <p className="text-[0.8125rem] text-[var(--muted)]">No se pudo cargar el catalogo de permisos.</p>

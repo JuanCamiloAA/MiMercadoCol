@@ -1,4 +1,6 @@
 import {
+    ArrowUUpLeftIcon,
+    ArticleIcon,
     BabyIcon,
     BasketIcon,
     BeerBottleIcon,
@@ -9,6 +11,7 @@ import {
     CakeIcon,
     CalendarIcon,
     CarrotIcon,
+    ChatCircleIcon,
     CheeseIcon,
     ClockIcon,
     CoffeeIcon,
@@ -17,9 +20,11 @@ import {
     CookingPotIcon,
     CowIcon,
     CreditCardIcon,
+    DressIcon,
     DropIcon,
     EggIcon,
     EnvelopeIcon,
+    FilmStripIcon,
     FireIcon,
     FirstAidIcon,
     FishIcon,
@@ -35,6 +40,7 @@ import {
     LeafIcon,
     LightningIcon,
     MapPinIcon,
+    MedalIcon,
     MegaphoneIcon,
     MoneyIcon,
     OrangeSliceIcon,
@@ -47,9 +53,12 @@ import {
     PlantIcon,
     PopcornIcon,
     ReceiptIcon,
+    RulerIcon,
+    ScissorsIcon,
     SealPercentIcon,
     ShieldCheckIcon,
     ShoppingCartIcon,
+    SlideshowIcon,
     SparkleIcon,
     SquaresFourIcon,
     StarIcon,
@@ -60,10 +69,16 @@ import {
     TimerIcon,
     ToiletPaperIcon,
     TShirtIcon,
+    PantsIcon,
+    HoodieIcon,
+    SneakerIcon,
+    HandbagIcon,
     TruckIcon,
+    VideoCameraIcon,
     WalletIcon,
     WhatsappLogoIcon,
     WineIcon,
+    WrenchIcon,
 } from '@phosphor-icons/react';
 import type { ComponentType } from 'react';
 
@@ -74,10 +89,12 @@ type IconComponent = ComponentType<{ size?: number; weight?: 'regular' | 'fill' 
  *
  * Importarlos con `import * as` metía la librería entera —casi cinco megas— en el paquete de
  * la tienda. Cada nombre de `config/storefront_icons.php` va aquí; si falta, sale el neutro.
- * Los que no están en esa lista (Image, Images, SquaresFour, TextAa) son los de los tipos de
- * bloque en el editor.
+ * Los que no están en esa lista (Image, Images, SquaresFour, TextAa, VideoCamera, FilmStrip,
+ * Slideshow, Article, Medal) son los de los tipos de bloque en el editor.
  */
 const ICONS: Record<string, IconComponent> = {
+    ArrowUUpLeft: ArrowUUpLeftIcon,
+    Article: ArticleIcon,
     Baby: BabyIcon,
     Basket: BasketIcon,
     BeerBottle: BeerBottleIcon,
@@ -88,6 +105,7 @@ const ICONS: Record<string, IconComponent> = {
     Cake: CakeIcon,
     Calendar: CalendarIcon,
     Carrot: CarrotIcon,
+    ChatCircle: ChatCircleIcon,
     Cheese: CheeseIcon,
     Clock: ClockIcon,
     Coffee: CoffeeIcon,
@@ -99,6 +117,7 @@ const ICONS: Record<string, IconComponent> = {
     Drop: DropIcon,
     Egg: EggIcon,
     Envelope: EnvelopeIcon,
+    FilmStrip: FilmStripIcon,
     Fire: FireIcon,
     FirstAid: FirstAidIcon,
     Fish: FishIcon,
@@ -114,6 +133,7 @@ const ICONS: Record<string, IconComponent> = {
     Leaf: LeafIcon,
     Lightning: LightningIcon,
     MapPin: MapPinIcon,
+    Medal: MedalIcon,
     Megaphone: MegaphoneIcon,
     Money: MoneyIcon,
     OrangeSlice: OrangeSliceIcon,
@@ -126,9 +146,12 @@ const ICONS: Record<string, IconComponent> = {
     Plant: PlantIcon,
     Popcorn: PopcornIcon,
     Receipt: ReceiptIcon,
+    Ruler: RulerIcon,
+    Scissors: ScissorsIcon,
     SealPercent: SealPercentIcon,
     ShieldCheck: ShieldCheckIcon,
     ShoppingCart: ShoppingCartIcon,
+    Slideshow: SlideshowIcon,
     Sparkle: SparkleIcon,
     SquaresFour: SquaresFourIcon,
     Star: StarIcon,
@@ -139,10 +162,17 @@ const ICONS: Record<string, IconComponent> = {
     Timer: TimerIcon,
     ToiletPaper: ToiletPaperIcon,
     TShirt: TShirtIcon,
+    Dress: DressIcon,
+    Pants: PantsIcon,
+    Hoodie: HoodieIcon,
+    Sneaker: SneakerIcon,
+    Handbag: HandbagIcon,
     Truck: TruckIcon,
+    VideoCamera: VideoCameraIcon,
     Wallet: WalletIcon,
     WhatsappLogo: WhatsappLogoIcon,
     Wine: WineIcon,
+    Wrench: WrenchIcon,
 };
 
 /** Busca un ícono del catálogo por su nombre; si no está, cae en uno neutro. */

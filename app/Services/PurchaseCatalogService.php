@@ -225,6 +225,36 @@ class PurchaseCatalogService
     }
 
     /**
+     * Unos articulos puntuales con todo lo de la tarjeta, para precargar la orden (desde
+     * «Tienda en linea»). En el orden en que se pidieron; los inactivos no entran.
+     *
+     * @param  list<int>  $ids
+     * @return list<array<string, mixed>>
+     */
+    public function rowsFor(int $companyId, int $storeId, array $ids, ?int $supplierId): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $products = Product::query()
+            ->withoutGlobalScopes()
+            ->where('company_id', $companyId)
+            ->where('is_active', true)
+            ->whereIn('id', $ids)
+            ->with(['suppliers.supplier:id,name', 'family:id,name'])
+            ->get()
+            ->keyBy('id');
+        $stock = $this->suggestions->stockByProduct($companyId, $storeId, $products->keys()->all());
+
+        return collect($ids)
+            ->filter(fn (int $id) => $products->has($id))
+            ->map(fn (int $id) => $this->row($products->get($id), (float) ($stock[$id] ?? 0), $supplierId))
+            ->values()
+            ->all();
+    }
+
+    /**
      * @return Collection<int, Product>
      */
     public function productsFor(int $companyId, array $ids): Collection
