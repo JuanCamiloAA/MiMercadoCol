@@ -21,6 +21,11 @@ interface ThemeToggleProps {
     compact?: boolean;
     /** En vertical cabe en la columna de iconos del punto de venta. */
     orientation?: 'horizontal' | 'vertical';
+    /**
+     * Solo de muestra, marcando `fallback`: la vista previa de un editor fija el modo que se
+     * revisa, y tocar aqui le cambiaria el tema a quien edita en todas sus pantallas.
+     */
+    locked?: boolean;
     className?: string;
 }
 
@@ -33,8 +38,8 @@ interface ThemeToggleProps {
  * Son tres botones a la vista en vez de uno que rota, porque un cajero con guantes no debe
  * tener que adivinar cuantas veces tocar para volver al que tenia.
  */
-export function ThemeToggle({ fallback, compact = false, orientation = 'horizontal', className }: ThemeToggleProps) {
-    const { preference, setPreference } = useTheme(fallback);
+export function ThemeToggle({ fallback, compact = false, orientation = 'horizontal', locked = false, className }: ThemeToggleProps) {
+    const { preference, setPreference } = useTheme(fallback, locked);
     const size = compact ? 'size-7' : 'size-8';
 
     return (
@@ -57,12 +62,14 @@ export function ThemeToggle({ fallback, compact = false, orientation = 'horizont
                         type="button"
                         role="radio"
                         aria-checked={active}
+                        aria-disabled={locked || undefined}
                         aria-label={option.label}
                         title={option.label}
-                        onClick={() => setPreference(option.value)}
+                        onClick={() => !locked && setPreference(option.value)}
                         className={cn(
                             'grid place-items-center rounded-chip transition-colors',
                             size,
+                            locked && 'cursor-default',
                             'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--accent)]',
                             active
                                 ? 'bg-[var(--surface)] text-[var(--text)] shadow-sm'

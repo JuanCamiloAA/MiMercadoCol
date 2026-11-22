@@ -36,7 +36,9 @@ import { BAND_BG, bool, list, Section, SectionTitle, text } from '@/components/l
 import { MediaCarouselBlock, VideoBlock, VideoShowcaseBlock } from '@/components/landing/LandingMedia';
 import { type Bounds, inBounds, type LatLng, type MapConfig } from '@/components/maps/types';
 import { SectionShell } from '@/components/sections/SectionShell';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useDocumentTheme } from '@/hooks/use-document-theme';
+import type { ThemePreference } from '@/hooks/use-theme';
 import { cn } from '@/lib/cn';
 import { pickUrls } from '@/lib/media-variants';
 import { money } from '@/lib/format';
@@ -160,19 +162,40 @@ export interface LandingBlockView {
     appearance?: Record<string, unknown> | null;
 }
 
+/**
+ * El modo de la página: con el que nace mientras el visitante no escoja y si está fijo (la vista
+ * previa del editor fija el que se revisa). El selector usa estos mismos valores que la página:
+ * con otros, cada uno aplicaría un tema distinto.
+ */
+export interface LandingTheme {
+    fallback: ThemePreference;
+    locked: boolean;
+}
+
 interface Context {
     site: LandingSite;
     panel: { name: string; url: string } | null;
     isPreview: boolean;
+    theme: LandingTheme;
+    /** El encabezado decide si se ofrece el selector de modo; lo pintan el encabezado y el pie. */
+    themeToggle: boolean;
 }
 
+interface LandingBlocksProps {
+    blocks: LandingBlockView[];
+    site: LandingSite;
+    panel: { name: string; url: string } | null;
+    isPreview: boolean;
+    theme?: LandingTheme;
+}
 
 /**
  * Pinta la landing bloque por bloque. Lo mismo en la página pública y en la vista previa del
  * editor: los datos de la base (sedes, empresas, planes) ya vienen resueltos del servidor.
  */
-export function LandingBlocks({ blocks, site, panel, isPreview }: { blocks: LandingBlockView[] } & Context) {
-    const context: Context = { site, panel, isPreview };
+export function LandingBlocks({ blocks, site, panel, isPreview, theme = { fallback: 'light', locked: false } }: LandingBlocksProps) {
+    const themeToggle = !blocks.some((block) => block.type === 'header' && block.data.theme_toggle === false);
+    const context: Context = { site, panel, isPreview, theme, themeToggle };
 
     return (
         <>
@@ -245,7 +268,7 @@ function LandingBlock({ block, context }: { block: LandingBlockView; context: Co
         case 'contact':
             return <ContactBlock data={block.data} site={context.site} />;
         case 'footer':
-            return <FooterBlock data={block.data} site={context.site} />;
+            return <FooterBlock data={block.data} context={context} />;
         default:
             return null;
     }
@@ -270,6 +293,15 @@ function CtaLink({ href, children, variant = 'primary', className }: { href: str
             {children}
         </a>
     );
+}
+
+/** Claro, oscuro o el del equipo, para quien visita. En la vista previa solo muestra el modo que se revisa. */
+function LandingThemeToggle({ context, className }: { context: Context; className?: string }) {
+    if (!context.themeToggle) {
+        return null;
+    }
+
+    return <ThemeToggle fallback={context.theme.fallback} locked={context.theme.locked} compact className={className} />;
 }
 
 function HeaderBlock({ data, context }: { data: Record<string, unknown>; context: Context }) {
@@ -319,6 +351,8 @@ function HeaderBlock({ data, context }: { data: Record<string, unknown>; context
                 </nav>
 
                 <div className="ml-auto hidden items-center gap-2 md:flex">
+                    {/* Entre tableta y escritorio angosto no cabe junto a los enlaces: ahi queda el del pie. */}
+                    <LandingThemeToggle context={context} className="hidden lg:inline-flex" />
                     {access}
                     {!context.panel && text(data.cta_label) && (
                         <a href={text(data.cta_url) || context.site.signup_url} className="inline-flex h-10 items-center rounded-control bg-[var(--accent)] px-4 text-[0.875rem] font-semibold text-[var(--accent-ink)]">
@@ -341,6 +375,12 @@ function HeaderBlock({ data, context }: { data: Record<string, unknown>; context
                             </a>
                         ))}
                     </nav>
+                    {context.themeToggle && (
+                        <div className="mt-2 flex items-center justify-between gap-3 border-t border-[var(--line)] px-2 pt-3">
+                            <span className="text-[0.875rem] font-medium text-[var(--muted)]">Modo de pantalla</span>
+                            <LandingThemeToggle context={context} />
+                        </div>
+                    )}
                     <div className="mt-3 flex flex-wrap gap-2">
                         {access}
                         {!context.panel && text(data.cta_label) && (
@@ -2083,7 +2123,8 @@ function ContactInput({
     );
 }
 
-function FooterBlock({ data, site }: { data: Record<string, unknown>; site: LandingSite }) {
+function FooterBlock({ data, context }: { data: Record<string, unknown>; context: Context }) {
+    const site = context.site;
     const links = list<{ label: string; url: string }>(data.links).filter((link) => link.label && link.url);
     const social = list<{ network: string; url: string }>(data.social).filter((item) => item.url);
 
@@ -2137,9 +2178,17 @@ function FooterBlock({ data, site }: { data: Record<string, unknown>; site: Land
                     )}
                 </div>
             </div>
-            <p className="mx-auto mt-10 w-full max-w-[70rem] text-[0.8125rem] text-[var(--muted)]">
-                © {new Date().getFullYear()} {site.name}. {text(data.legal)}
-            </p>
+            <div className="mx-auto mt-10 flex w-full max-w-[70rem] flex-wrap items-center justify-between gap-4">
+                <p className="text-[0.8125rem] text-[var(--muted)]">
+                    © {new Date().getFullYear()} {site.name}. {text(data.legal)}
+                </p>
+                {context.themeToggle && (
+                    <div className="flex items-center gap-2 text-[0.8125rem] text-[var(--muted)]">
+                        Modo de pantalla
+                        <LandingThemeToggle context={context} />
+                    </div>
+                )}
+            </div>
         </footer>
     );
 }

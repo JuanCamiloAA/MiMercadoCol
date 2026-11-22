@@ -13,6 +13,16 @@
         $defaultTheme = match ($storeTheme['scheme'] ?? 'light') { 'dark' => 'dark', 'auto' => 'system', default => 'light' };
         $themeToggle = (bool) ($storeTheme['allow_scheme_toggle'] ?? false);
     }
+    // La landing, la contratacion y los textos legales nacen claros y respetan la eleccion del
+    // visitante, sin importar los ajustes del panel; la vista previa del editor fija el modo que
+    // revisa. Igual que en sus paginas de React: si no coinciden, el tema parpadea al cargar.
+    if (request()->routeIs('home', 'legal.*', 'signup.*')) {
+        $defaultTheme = 'light';
+        $themeToggle = true;
+    } elseif (request()->routeIs('platform.landing.preview') && in_array(request()->query('scheme'), ['light', 'dark'], true)) {
+        $defaultTheme = request()->query('scheme');
+        $themeToggle = false;
+    }
     $factoryFonts = 'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap';
     $factoryFavicon = app(\App\Services\BrandThemeService::class)->defaultFavicon(null);
 @endphp

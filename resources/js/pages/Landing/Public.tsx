@@ -1,7 +1,7 @@
 import { Head } from '@inertiajs/react';
 import type { MouseEvent } from 'react';
 import { BrandStyle } from '@/components/brand/BrandStyle';
-import { LandingBlocks, type LandingBlockView, type LandingSite } from '@/components/landing/LandingBlocks';
+import { LandingBlocks, type LandingBlockView, type LandingSite, type LandingTheme } from '@/components/landing/LandingBlocks';
 import { useFlash } from '@/hooks/use-flash';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -19,8 +19,10 @@ interface LandingPublicProps {
  * el borrador, dentro de un `iframe`.
  */
 export default function LandingPublic({ site, panel, blocks, isPreview, previewScheme = null }: LandingPublicProps) {
-    // En la vista previa manda el modo que revisa el editor, sin tocar lo que escogió quien mira.
-    useTheme(previewScheme ?? 'light', previewScheme !== null);
+    // Nace clara y quien la visita la cambia con el selector. En la vista previa manda el modo que
+    // revisa el editor, sin tocar lo que escogió quien mira.
+    const theme: LandingTheme = { fallback: previewScheme ?? 'light', locked: previewScheme !== null };
+    useTheme(theme.fallback, theme.locked);
     useFlash();
 
     // En la vista previa los enlaces no navegan: el marco se quedaria en otra pagina.
@@ -41,7 +43,7 @@ export default function LandingPublic({ site, panel, blocks, isPreview, previewS
             </Head>
             <BrandStyle />
 
-            <LandingBlocks blocks={blocks} site={site} panel={panel} isPreview={isPreview} />
+            <LandingBlocks blocks={blocks} site={site} panel={panel} isPreview={isPreview} theme={theme} />
         </div>
     );
 }

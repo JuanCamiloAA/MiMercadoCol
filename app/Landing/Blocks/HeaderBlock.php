@@ -2,7 +2,7 @@
 
 namespace App\Landing\Blocks;
 
-/** Encabezado: logo, enlaces, «Ingresar como empresa» y «Contratar». Obligatorio. */
+/** Encabezado: logo, enlaces, «Ingresar como empresa», «Contratar» y el selector de modo. Obligatorio. */
 class HeaderBlock extends LandingBlock
 {
     public function type(): string
@@ -53,6 +53,7 @@ class HeaderBlock extends LandingBlock
             'login_label' => ['type' => 'text', 'label' => 'Botón de acceso de empresas', 'max' => 30],
             'cta_label' => ['type' => 'text', 'label' => 'Botón destacado', 'max' => 24],
             'cta_url' => ['type' => 'url', 'label' => 'Destino del botón destacado'],
+            'theme_toggle' => ['type' => 'toggle', 'label' => 'Selector de modo claro y oscuro', 'help' => 'Cada visitante cambia entre claro, oscuro o el de su equipo, y su elección se recuerda. Va en el encabezado, en el menú del celular y en el pie.'],
         ];
     }
 
@@ -70,6 +71,7 @@ class HeaderBlock extends LandingBlock
             'login_label' => 'Ingresar como empresa',
             'cta_label' => 'Contratar',
             'cta_url' => '/contratar',
+            'theme_toggle' => true,
         ];
     }
 

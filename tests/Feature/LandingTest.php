@@ -88,6 +88,45 @@ class LandingTest extends TestCase
         $this->assertSame(2, LandingVersion::query()->max('number'));
     }
 
+    public function test_el_selector_de_modo_viene_encendido_y_se_puede_quitar(): void
+    {
+        // Una version publicada antes de que existiera la opcion tambien lo trae.
+        $version = LandingVersion::query()->orderByDesc('number')->firstOrFail();
+        $version->update(['snapshot' => collect($version->snapshot)->map(function (array $block) {
+            unset($block['data']['theme_toggle']);
+
+            return $block;
+        })->all()]);
+
+        $this->assertTrue($this->publicBlock('header')['data']['theme_toggle']);
+
+        $header = $this->block('header');
+        $this->actingAs($this->super)
+            ->patchJson(route('platform.landing.blocks.update', $header->uuid), ['data' => array_merge($header->data, ['theme_toggle' => false])])
+            ->assertOk();
+        $this->actingAs($this->super)->post(route('platform.landing.publish'), ['note' => 'Sin selector'])->assertSessionHasNoErrors();
+
+        auth('web')->logout();
+        $this->assertFalse($this->publicBlock('header')['data']['theme_toggle']);
+    }
+
+    public function test_la_landing_nace_clara_y_respeta_la_eleccion_del_visitante(): void
+    {
+        // Sin bloquear: el guion de la cabecera aplica lo que el visitante escogio antes de pintar.
+        $html = $this->get('/')->assertOk()->getContent();
+        $this->assertStringContainsString('data-theme-default="light"', $html);
+        $this->assertStringContainsString('data-theme-locked="0"', $html);
+
+        $this->assertStringContainsString('data-theme-locked="0"', $this->get(route('legal.terms'))->getContent());
+
+        // La vista previa del editor nace con el modo que se revisa, sin mirar lo guardado.
+        $preview = $this->actingAs($this->super)->get(route('platform.landing.preview', ['scheme' => 'dark']))
+            ->assertInertia(fn (Assert $page) => $page->where('previewScheme', 'dark'))
+            ->getContent();
+        $this->assertStringContainsString('data-theme="dark"', $preview);
+        $this->assertStringContainsString('data-theme-locked="1"', $preview);
+    }
+
     public function test_los_datos_se_limpian_al_guardar(): void
     {
         $hero = $this->block('hero');
