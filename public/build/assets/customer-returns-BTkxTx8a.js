@@ -1,0 +1,1 @@
+const s={requested:"warn",approved:"info",received:"warn",resolved:"accent",rejected:"danger",cancelled:"neutral"},t={restock:"accent",waste:"danger",none:"neutral"};function r(e,n){return n.includes(e)?"waste":"restock"}export{s as C,t as D,r as s};
