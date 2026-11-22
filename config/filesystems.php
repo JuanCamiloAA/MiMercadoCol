@@ -64,12 +64,16 @@ return [
          * Firebase Storage (un bucket de Cloud Storage). Lo publico va bajo `public/` y se sirve con
          * el enlace de descarga de Firebase; lo privado, bajo `private/`, sin enlace: lo sirve la
          * aplicacion con permiso. La llave es la de la cuenta de servicio del proyecto.
+         *
+         * `FIREBASE_ROOT` mete todo en una carpeta propia (`local` en el equipo de desarrollo): asi
+         * otro ambiente puede usar el mismo bucket sin pisar ni borrar los archivos de produccion,
+         * que tienen las mismas rutas. En produccion va vacio.
          */
         'firebase' => [
             'driver' => 'firebase',
             'credentials' => env('FIREBASE_CREDENTIALS'),
             'bucket' => env('FIREBASE_STORAGE_BUCKET'),
-            'root' => 'public',
+            'root' => trim(env('FIREBASE_ROOT', '').'/public', '/'),
             'public' => true,
             // El token de los enlaces publicos. Vacio, sale de la llave de la aplicacion; cambiarlo
             // exige `php artisan uploads:firebase --retag` para que los enlaces viejos sigan sirviendo.
@@ -81,7 +85,7 @@ return [
             'driver' => 'firebase',
             'credentials' => env('FIREBASE_CREDENTIALS'),
             'bucket' => env('FIREBASE_STORAGE_BUCKET'),
-            'root' => 'private',
+            'root' => trim(env('FIREBASE_ROOT', '').'/private', '/'),
             'public' => false,
             'throw' => true,
         ],

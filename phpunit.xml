@@ -30,6 +30,7 @@
         <env name="UPLOADS_DISK" value="public"/>
         <env name="PRIVATE_UPLOADS_DISK" value="local"/>
         <env name="FIREBASE_STORAGE_BUCKET" value=""/>
+        <env name="FIREBASE_ROOT" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <!-- Sin avisos a las pestañas: cada peticion de prueba intentaria hablar con Reverb. Las
              pruebas de tiempo real lo encienden y fingen el evento. -->
