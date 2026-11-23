@@ -8,12 +8,11 @@ use App\Models\Role;
 use App\Models\Store;
 use App\Models\User;
 use App\Services\Membership\MembershipLimiter;
+use App\Services\UserAccountService;
 use App\Services\UserPermissionService;
 use App\Support\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -69,34 +68,11 @@ class UserController extends Controller
         ]);
     }
 
-    public function store(StoreUserRequest $request, MembershipLimiter $limiter): RedirectResponse
+    public function store(StoreUserRequest $request, UserAccountService $accounts): RedirectResponse
     {
-        $companyId = TenantContext::requireCompanyId();
-        $validated = $request->validated();
+        TenantContext::requireCompanyId();
 
-        $limiter->assertCanAdd(TenantContext::company(), 'users', 'email');
-
-        $temporaryPassword = Str::password(12, true, true, false);
-
-        $user = User::create([
-            'company_id' => $companyId,
-            'name' => $validated['name'],
-            'last_name' => $validated['last_name'] ?? null,
-            'email' => $validated['email'],
-            'document' => $validated['document'] ?? null,
-            'phone' => $validated['phone'] ?? null,
-            'job_title' => $validated['job_title'] ?? null,
-            'password' => Hash::make($temporaryPassword),
-            'is_active' => true,
-            'password_change_required' => true,
-        ]);
-
-        /** @var Role $role */
-        $role = Role::query()->where('company_id', $companyId)->where('name', $validated['role'])->firstOrFail();
-
-        $user->syncRoles([$role]);
-        $this->permissions->applyRoleTemplate($user, $role, $request->user());
-        $user->stores()->sync($validated['store_ids'] ?? []);
+        [, $temporaryPassword] = $accounts->createForCompany(TenantContext::company(), $request->validated(), $request->user());
 
         return redirect()->route('users.index')
             ->with('success', 'El usuario quedo creado.')
@@ -146,33 +122,13 @@ class UserController extends Controller
         ]);
     }
 
-    public function update(UpdateUserRequest $request, User $user): RedirectResponse
+    public function update(UpdateUserRequest $request, User $user, UserAccountService $accounts): RedirectResponse
     {
         $this->authorizeCompany($user);
 
-        $companyId = TenantContext::requireCompanyId();
-        $validated = $request->validated();
+        TenantContext::requireCompanyId();
 
-        $user->update([
-            'name' => $validated['name'],
-            'last_name' => $validated['last_name'] ?? null,
-            'email' => $validated['email'],
-            'document' => $validated['document'] ?? null,
-            'phone' => $validated['phone'] ?? null,
-            'job_title' => $validated['job_title'] ?? null,
-        ]);
-
-        $currentRole = $user->roles->first()?->name;
-
-        if ($validated['role'] !== $currentRole) {
-            /** @var Role $role */
-            $role = Role::query()->where('company_id', $companyId)->where('name', $validated['role'])->firstOrFail();
-            $user->syncRoles([$role]);
-            // Cambiar de rol reemplaza los permisos: es la unica via en que la plantilla se aplica entera.
-            $this->permissions->applyRoleTemplate($user, $role, $request->user());
-        }
-
-        $user->stores()->sync($validated['store_ids'] ?? []);
+        $accounts->updateCompanyUser($user, $request->validated(), $request->user());
 
         return redirect()->route('users.index')->with('success', 'El usuario quedo actualizado.');
     }

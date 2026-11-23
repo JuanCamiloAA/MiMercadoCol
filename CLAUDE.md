@@ -299,6 +299,13 @@ leyendo el código.
 - **Empresa activa**: se lee con `TenantContext::activeCompanyId()` / `TenantContext::company()`, nunca con
   `$user->company`. El super usuario no tiene empresa propia: la elige en el selector y vive en sesion.
   Sin elegir esta en consolidado, y las rutas de empresa pasan por `company.selected`.
+- **Plataforma > Usuarios**, dos pestañas. *De plataforma* (`PlatformUserController`): super usuarios, rol global
+  `super_admin` (sin `company_id`), sin empresa ni sedes; no se eliminan, se desactivan (firman lo de plataforma y el
+  indice unico de `users.email` cuenta tambien las filas borradas). *De empresas* (`PlatformCompanyUserController`):
+  todas las cuentas de todas las empresas; la empresa se elige al crear y no se cambia. Cada pestaña responde 404 a
+  la cuenta de la otra. Crear y editar cuentas de empresa va siempre por `UserAccountService` (tambien desde
+  Usuarios dentro de la empresa): tope del plan, clave temporal, rol con su plantilla y sedes. Las sedes del listado
+  se leen sin `CompanyScope`, o la empresa elegida en el selector esconderia las de las demas.
 - **Aprovisionar una empresa**: siempre por `CompanyProvisioner`, que usan Empresas, la contratacion en linea
   y la carga masiva. Una empresa creada por otro camino queda sin roles, sin caja o sin tienda.
 - **Membresia**: el estado lo mueve `MembershipService` (y el comando `membership:process`), nunca un

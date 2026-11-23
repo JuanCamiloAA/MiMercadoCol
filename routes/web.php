@@ -37,8 +37,10 @@ use App\Http\Controllers\Platform\LeadController;
 use App\Http\Controllers\Platform\MapSettingsController;
 use App\Http\Controllers\Platform\MembershipPlanController;
 use App\Http\Controllers\Platform\PaymentGatewayController;
+use App\Http\Controllers\Platform\PlatformCompanyUserController;
 use App\Http\Controllers\Platform\PlatformImportController;
 use App\Http\Controllers\Platform\PlatformMediaController;
+use App\Http\Controllers\Platform\PlatformUserController;
 use App\Http\Controllers\Platform\StoreTemplateController;
 use App\Http\Controllers\Platform\StoreTemplateDraftController;
 use App\Http\Controllers\Pos\AuthorizationController as PosAuthorizationController;
@@ -587,6 +589,23 @@ Route::middleware(['auth', 'verified.company', 'force.password.change', 'super.a
     Route::post('empresas/{company}/excepciones/{exception}/terminar', [CompanyEntitlementController::class, 'end'])->middleware('permission:companies.index.entitlements')->name('companies.entitlements.end');
     Route::post('empresas/{company}/precio-especial', [CompanyEntitlementController::class, 'storePrice'])->middleware('permission:companies.index.entitlements')->name('companies.prices.store');
     Route::post('empresas/{company}/precio-especial/{price}/terminar', [CompanyEntitlementController::class, 'endPrice'])->middleware('permission:companies.index.entitlements')->name('companies.prices.end');
+
+    // Usuarios, en dos pestañas: de plataforma (super usuarios, sin empresa ni sede) y de empresas
+    // (todas las cuentas de todas las empresas). Se crean y editan en una ventana del listado, por
+    // eso no hay pantallas de crear ni de editar. Las de empresas van antes de las que llevan {user}.
+    Route::get('usuarios/empresas', [PlatformCompanyUserController::class, 'index'])->middleware('permission:platform.company_users.view')->name('platform.company_users.index');
+    Route::get('usuarios/empresas/opciones/{company}', [PlatformCompanyUserController::class, 'options'])->middleware('permission:platform.company_users.create|platform.company_users.edit')->name('platform.company_users.options');
+    Route::post('usuarios/empresas', [PlatformCompanyUserController::class, 'store'])->middleware('permission:platform.company_users.create')->name('platform.company_users.store');
+    Route::put('usuarios/empresas/{user}', [PlatformCompanyUserController::class, 'update'])->middleware('permission:platform.company_users.edit')->name('platform.company_users.update');
+    Route::post('usuarios/empresas/{user}/estado', [PlatformCompanyUserController::class, 'toggle'])->middleware('permission:platform.company_users.deactivate')->name('platform.company_users.toggle');
+    Route::post('usuarios/empresas/{user}/clave', [PlatformCompanyUserController::class, 'resetPassword'])->middleware(['permission:platform.company_users.reset_password', 'throttle:20,1'])->name('platform.company_users.reset_password');
+    Route::post('usuarios/empresas/{user}/permisos', [PlatformCompanyUserController::class, 'permissions'])->middleware('permission:companies.index.switch')->name('platform.company_users.permissions');
+
+    Route::get('usuarios', [PlatformUserController::class, 'index'])->middleware('permission:platform.users.view')->name('platform.users.index');
+    Route::post('usuarios', [PlatformUserController::class, 'store'])->middleware('permission:platform.users.create')->name('platform.users.store');
+    Route::put('usuarios/{user}', [PlatformUserController::class, 'update'])->middleware('permission:platform.users.edit')->name('platform.users.update');
+    Route::post('usuarios/{user}/estado', [PlatformUserController::class, 'toggle'])->middleware('permission:platform.users.deactivate')->name('platform.users.toggle');
+    Route::post('usuarios/{user}/clave', [PlatformUserController::class, 'resetPassword'])->middleware(['permission:platform.users.reset_password', 'throttle:20,1'])->name('platform.users.reset_password');
 
     // Planes y ciclos de la membresia.
     Route::get('planes', [MembershipPlanController::class, 'index'])->middleware('permission:platform.plans.view')->name('platform.plans.index');
