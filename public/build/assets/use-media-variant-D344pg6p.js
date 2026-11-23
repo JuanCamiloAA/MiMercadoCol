@@ -1,1 +1,0 @@
-import{u as n}from"./use-document-theme-kX4QVZNl.js";import{b as a,M as r}from"./use-media-query-BOCs669_.js";import{a as c,p as m}from"./media-variants-C9eSovTR.js";function d(s,o){const t=n(),i=a(r),e=c(s,o,t);return(i?e.mobile:null)??e.desktop}function k(s,o){const t=n(),i=a(r),e=m(s,o,t);return(i?e.mobile:null)??e.desktop}export{d as a,k as u};
