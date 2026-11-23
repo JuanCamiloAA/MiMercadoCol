@@ -809,30 +809,6 @@ class PermissionHelper
                 'order' => 30,
                 'super_admin_only' => true,
                 'pages' => [
-                    'users' => [
-                        'display' => 'Usuarios de la plataforma',
-                        'route' => 'platform.users.index',
-                        'actions' => ['view', 'create', 'edit', 'deactivate', 'reset_password'],
-                        'labels' => [
-                            'view' => 'Ver los super usuarios',
-                            'create' => 'Crear super usuarios',
-                            'edit' => 'Editar sus datos',
-                            'deactivate' => 'Activar y desactivar super usuarios',
-                            'reset_password' => 'Restablecer su contraseña',
-                        ],
-                    ],
-                    'company_users' => [
-                        'display' => 'Usuarios de las empresas',
-                        'route' => 'platform.company_users.index',
-                        'actions' => ['view', 'create', 'edit', 'deactivate', 'reset_password'],
-                        'labels' => [
-                            'view' => 'Ver los usuarios de todas las empresas',
-                            'create' => 'Crear usuarios en cualquier empresa',
-                            'edit' => 'Editar sus datos, rol y sedes',
-                            'deactivate' => 'Activar y desactivar usuarios de empresa',
-                            'reset_password' => 'Restablecer su contraseña',
-                        ],
-                    ],
                     'leads' => [
                         'display' => 'Solicitudes de contratación',
                         'route' => 'platform.leads.index',
