@@ -182,6 +182,14 @@ class User extends Authenticatable
         return $query->where('is_active', true);
     }
 
+    /** Los super usuarios: el rol global `super_admin`, el mismo que revisa `isSuperAdmin()`. */
+    public function scopeSuperAdmins(Builder $query): Builder
+    {
+        return $query->whereHas('roles', fn (Builder $roles) => $roles
+            ->where('roles.name', 'super_admin')
+            ->whereNull('roles.company_id'));
+    }
+
     /**
      * Paginas que puede abrir, en formato `modulo.pagina`. El menu se pinta con esto.
      *

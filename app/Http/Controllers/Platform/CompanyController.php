@@ -26,7 +26,6 @@ use App\Services\Membership\PlanCatalogue;
 use App\Services\Platform\BusinessCategoryCatalog;
 use App\Services\Platform\CompanyProvisioner;
 use App\Support\Maps\MapConfig;
-use App\Support\StoreContext;
 use App\Support\TenantContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -312,9 +311,7 @@ class CompanyController extends Controller
      */
     public function enter(Company $company): RedirectResponse
     {
-        session([TenantContext::SESSION_KEY => $company->id]);
-        session()->forget(StoreContext::SESSION_KEY);
-        TenantContext::forgetCompany();
+        TenantContext::enter($company->id);
 
         return redirect()->route('dashboard')->with('success', "Ahora trabajas en {$company->name}.");
     }
