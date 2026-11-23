@@ -13,6 +13,7 @@
 /bootstrap/ssr
 /node_modules
 /public/hot
+/public/build/manifest.json
 /public/storage
 /storage/*.key
 /storage/pail
@@ -26,3 +27,4 @@ yarn-error.log
 # Credenciales de servicios (Firebase y similares): nunca al repositorio.
 /storage/*-firebase-adminsdk-*.json
 /storage/credentials/
+
