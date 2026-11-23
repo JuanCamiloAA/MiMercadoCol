@@ -1,1 +1,0 @@
-import{K as t,r as o,t as n}from"./app-CuZrwb8w.js";function c(){const{flash:r}=t().props,s=o.useRef("");o.useEffect(()=>{const e=JSON.stringify(r??{});e!==s.current&&(s.current=e,r!=null&&r.success&&n.success(r.success),r!=null&&r.error&&n.error(r.error),r!=null&&r.warning&&n.warning(r.warning),r!=null&&r.info&&n.info(r.info))},[r])}export{c as u};
