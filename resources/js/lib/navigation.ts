@@ -221,15 +221,6 @@ export const NAVIGATION: NavSection[] = [
         title: 'Plataforma',
         entries: [
             { label: 'Empresas', routeName: 'companies.index', permission: 'companies.index.view', icon: BankIcon, match: ['companies.'], superAdminOnly: true },
-            {
-                key: 'platform_users',
-                label: 'Usuarios',
-                icon: UserGearIcon,
-                links: [
-                    { label: 'De plataforma', routeName: 'platform.users.index', permission: 'platform.users.view', icon: UserGearIcon, match: ['platform.users.'], superAdminOnly: true },
-                    { label: 'De empresas', routeName: 'platform.company_users.index', permission: 'platform.company_users.view', icon: UsersThreeIcon, match: ['platform.company_users.'], superAdminOnly: true },
-                ],
-            },
             { label: 'Solicitudes', routeName: 'platform.leads.index', permission: 'platform.leads.view', icon: TrayIcon, match: ['platform.leads.'], superAdminOnly: true },
             { label: 'Planes de membresía', routeName: 'platform.plans.index', permission: 'platform.plans.view', icon: CrownSimpleIcon, match: ['platform.plans.'], superAdminOnly: true },
             { label: 'Ciclos de cobro', routeName: 'platform.billing_cycles.index', permission: 'platform.billing_cycles.view', icon: ArrowsClockwiseIcon, match: ['platform.billing_cycles.'], superAdminOnly: true },

@@ -81,16 +81,6 @@ final class TenantContext
     }
 
     /**
-     * El super usuario pasa a trabajar en esa empresa. La sede elegida era de la anterior: se olvida.
-     */
-    public static function enter(int $companyId): void
-    {
-        session([self::SESSION_KEY => $companyId]);
-        session()->forget(StoreContext::SESSION_KEY);
-        self::forgetCompany();
-    }
-
-    /**
      * Olvida la empresa guardada en la peticion (despues de editarla).
      */
     public static function forgetCompany(): void
