@@ -11,6 +11,7 @@ leyendo el código.
 |---|---|
 | Código | Inglés: tablas, columnas, modelos, rutas, componentes, variables |
 | Interfaz | Español de Colombia |
+| Tildes | Todo texto visible va con tildes y eñes. `node scripts/tildes.mjs` falla si reaparece una palabra del diccionario; una cadena que es código va en `ALLOW` o con `tildes-ok` en su línea. Las «dudosas» se deciden a mano |
 | Comentarios | Español, y solo donde expliquen una decisión no obvia |
 | Moneda | COP entero, sin decimales, en `bigInteger`. Se formatea con `money()` de `lib/format.ts` |
 | Impuestos | El precio al público **incluye** IVA; la base se calcula hacia atrás con `Money::baseFromGross` |
