@@ -19,8 +19,8 @@ class CatalogSeeder extends Seeder
     protected const CATEGORIES = [
         ['name' => 'Frutas y verduras', 'icon' => 'Carrot'],
         ['name' => 'Carnes y pescados', 'icon' => 'Fish'],
-        ['name' => 'Lacteos y huevos', 'icon' => 'Egg'],
-        ['name' => 'Panaderia', 'icon' => 'Bread'],
+        ['name' => 'Lácteos y huevos', 'icon' => 'Egg'],
+        ['name' => 'Panadería', 'icon' => 'Bread'],
         ['name' => 'Despensa', 'icon' => 'Basket'],
         ['name' => 'Bebidas', 'icon' => 'BeerBottle'],
         ['name' => 'Aseo del hogar', 'icon' => 'Broom'],
@@ -30,7 +30,7 @@ class CatalogSeeder extends Seeder
     /** @var list<array{name: string, tax_id: string, contact: string, lead: int, days: list<string>}> */
     protected const SUPPLIERS = [
         ['name' => 'Distribuidora El Trigal', 'tax_id' => '890234567-1', 'contact' => 'Alberto Mesa', 'lead' => 2, 'days' => ['lun', 'jue']],
-        ['name' => 'Lacteos del Oriente', 'tax_id' => '811345678-2', 'contact' => 'Claudia Rios', 'lead' => 1, 'days' => ['mar', 'vie']],
+        ['name' => 'Lácteos del Oriente', 'tax_id' => '811345678-2', 'contact' => 'Claudia Ríos', 'lead' => 1, 'days' => ['mar', 'vie']],
         ['name' => 'Central de Abastos SAS', 'tax_id' => '900456789-3', 'contact' => 'Jorge Naranjo', 'lead' => 1, 'days' => ['lun', 'mie', 'vie']],
         ['name' => 'Carnes La Sabana', 'tax_id' => '830567890-4', 'contact' => 'Marta Villa', 'lead' => 2, 'days' => ['mie', 'sab']],
         ['name' => 'Bebidas Nacionales', 'tax_id' => '860678901-5', 'contact' => 'Pedro Lemus', 'lead' => 3, 'days' => ['jue']],
@@ -51,9 +51,9 @@ class CatalogSeeder extends Seeder
         ['Banano criollo', 0, 2, 'kg', 2600, 3900, 0, 30, 'Del campo'],
         ['Naranja valencia', 0, 2, 'kg', 2400, 3700, 0, 30, 'Del campo'],
         ['Aguacate hass', 0, 2, 'kg', 6800, 9900, 0, 15, 'Del campo'],
-        ['Limon tahiti', 0, 2, 'kg', 2900, 4500, 0, 20, 'Del campo'],
+        ['Limón Tahití', 0, 2, 'kg', 2900, 4500, 0, 20, 'Del campo'],
         ['Lechuga batavia', 0, 2, 'unit', 1800, 2800, 0, 20, 'Del campo'],
-        ['Platano harton verde', 0, 2, 'kg', 2500, 3800, 0, 30, 'Del campo'],
+        ['Plátano hartón verde', 0, 2, 'kg', 2500, 3800, 0, 30, 'Del campo'],
 
         // Carnes y pescados (1)
         ['Pechuga de pollo', 1, 3, 'kg', 12500, 17900, 0, 20, 'Pollo Fino'],
@@ -62,12 +62,12 @@ class CatalogSeeder extends Seeder
         ['Costilla de cerdo', 1, 3, 'kg', 14200, 19900, 0, 12, 'La Sabana'],
         ['Filete de tilapia', 1, 3, 'kg', 19500, 27900, 0, 10, 'Mar Abierto'],
         ['Chorizo santarrosano x5', 1, 3, 'pack', 7800, 11500, 19, 15, 'La Sabana'],
-        ['Jamon de cerdo tajado 200 g', 1, 3, 'pack', 6200, 9200, 19, 18, 'Zenu'],
-        ['Salchicha ranchera 500 g', 1, 3, 'pack', 9400, 13500, 19, 15, 'Zenu'],
+        ['Jamón de cerdo tajado 200 g', 1, 3, 'pack', 6200, 9200, 19, 18, 'Zenú'],
+        ['Salchicha ranchera 500 g', 1, 3, 'pack', 9400, 13500, 19, 15, 'Zenú'],
 
         // Lacteos y huevos (2)
         ['Leche entera 1 L', 2, 1, 'l', 3100, 4200, 0, 60, 'Colanta'],
-        ['Leche deslactosada 1 L', 2, 1, 'l', 3400, 4700, 0, 40, 'Alqueria'],
+        ['Leche deslactosada 1 L', 2, 1, 'l', 3400, 4700, 0, 40, 'Alquería'],
         ['Huevos AA x30', 2, 1, 'pack', 15200, 20500, 0, 30, 'Santa Reyes'],
         ['Huevos A x12', 2, 1, 'pack', 6200, 8600, 0, 40, 'Santa Reyes'],
         ['Queso campesino 500 g', 2, 1, 'pack', 9800, 13900, 0, 20, 'Colanta'],
@@ -79,10 +79,10 @@ class CatalogSeeder extends Seeder
         // Panaderia (3)
         ['Pan tajado integral 500 g', 3, 0, 'pack', 4900, 7200, 19, 25, 'Bimbo'],
         ['Pan blanco tajado 450 g', 3, 0, 'pack', 4200, 6300, 19, 25, 'Bimbo'],
-        ['Arepa de maiz blanco x5', 3, 0, 'pack', 3200, 4800, 0, 30, 'Doria'],
+        ['Arepa de maíz blanco x5', 3, 0, 'pack', 3200, 4800, 0, 30, 'Doria'],
         ['Tortillas de trigo x8', 3, 0, 'pack', 5400, 7900, 19, 15, 'Bimbo'],
         ['Galletas saltinas x3 tacos', 3, 0, 'pack', 4600, 6800, 19, 25, 'Noel'],
-        ['Ponque casero 350 g', 3, 0, 'unit', 6100, 8900, 19, 12, 'Ramo'],
+        ['Ponqué casero 350 g', 3, 0, 'unit', 6100, 8900, 19, 12, 'Ramo'],
 
         // Despensa (4)
         ['Arroz blanco 1 kg', 4, 0, 'kg', 3600, 5100, 0, 80, 'Diana'],
@@ -91,36 +91,36 @@ class CatalogSeeder extends Seeder
         ['Lenteja 500 g', 4, 0, 'pack', 3400, 4900, 0, 30, 'La Huerta'],
         ['Aceite de girasol 1 L', 4, 0, 'l', 8900, 12500, 19, 40, 'Premier'],
         ['Panela redonda 500 g', 4, 0, 'unit', 2600, 3900, 0, 40, 'Trapiche'],
-        ['Azucar blanca 1 kg', 4, 0, 'kg', 4200, 5900, 0, 50, 'Incauca'],
+        ['Azúcar blanca 1 kg', 4, 0, 'kg', 4200, 5900, 0, 50, 'Incauca'],
         ['Sal refinada 1 kg', 4, 0, 'kg', 1800, 2700, 0, 40, 'Refisal'],
-        ['Cafe molido 500 g', 4, 0, 'pack', 16500, 22900, 5, 25, 'Sello Rojo'],
+        ['Café molido 500 g', 4, 0, 'pack', 16500, 22900, 5, 25, 'Sello Rojo'],
         ['Chocolate de mesa 500 g', 4, 0, 'pack', 9200, 13200, 5, 20, 'Corona'],
         ['Pasta espagueti 500 g', 4, 0, 'pack', 3100, 4600, 19, 35, 'Doria'],
-        ['Atun en agua 160 g', 4, 0, 'unit', 4300, 6200, 19, 40, 'Van Camps'],
+        ['Atún en agua 160 g', 4, 0, 'unit', 4300, 6200, 19, 40, 'Van Camps'],
         ['Salsa de tomate 400 g', 4, 0, 'unit', 5100, 7400, 19, 25, 'Fruco'],
         ['Mayonesa 380 g', 4, 0, 'unit', 7200, 10400, 19, 20, 'Fruco'],
-        ['Harina de maiz precocida 1 kg', 4, 0, 'kg', 4100, 5900, 0, 35, 'Promasa'],
+        ['Harina de maíz precocida 1 kg', 4, 0, 'kg', 4100, 5900, 0, 35, 'Promasa'],
         ['Avena en hojuelas 500 g', 4, 0, 'pack', 4700, 6800, 5, 20, 'Quaker'],
 
         // Bebidas (5)
-        ['Gaseosa cola 1.5 L', 5, 4, 'l', 4600, 6800, 19, 40, 'Postobon'],
+        ['Gaseosa cola 1.5 L', 5, 4, 'l', 4600, 6800, 19, 40, 'Postobón'],
         ['Agua sin gas 600 ml', 5, 4, 'unit', 1400, 2300, 19, 60, 'Cristal'],
         ['Jugo de naranja 1 L', 5, 4, 'l', 4900, 7200, 19, 25, 'Hit'],
         ['Cerveza lata 330 ml', 5, 4, 'unit', 3100, 4600, 19, 60, 'Aguila'],
         ['Malta 350 ml', 5, 4, 'unit', 2400, 3600, 19, 30, 'Pony'],
-        ['Te frio limon 400 ml', 5, 4, 'unit', 2600, 3900, 19, 30, 'Mr Tea'],
+        ['Té frío limón 400 ml', 5, 4, 'unit', 2600, 3900, 19, 30, 'Mr Tea'],
 
         // Aseo del hogar (6)
-        ['Papel higienico x12 rollos', 6, 5, 'pack', 18500, 26500, 19, 25, 'Familia'],
+        ['Papel higiénico x12 rollos', 6, 5, 'pack', 18500, 26500, 19, 25, 'Familia'],
         ['Detergente en polvo 2 kg', 6, 5, 'pack', 16200, 22900, 19, 20, 'Fab'],
-        ['Jabon liquido loza 500 ml', 6, 5, 'unit', 5600, 8200, 19, 25, 'Axion'],
+        ['Jabón líquido loza 500 ml', 6, 5, 'unit', 5600, 8200, 19, 25, 'Axion'],
         ['Blanqueador 1 L', 6, 5, 'l', 3900, 5800, 19, 30, 'Clorox'],
         ['Limpiador multiusos 1 L', 6, 5, 'l', 6100, 8900, 19, 20, 'Fabuloso'],
         ['Bolsas para basura x20', 6, 5, 'pack', 7300, 10500, 19, 20, 'Vanyplas'],
 
         // Cuidado personal (7)
         ['Shampoo 400 ml', 7, 5, 'unit', 12400, 17900, 19, 18, 'Savital'],
-        ['Jabon de tocador x3', 7, 5, 'pack', 6800, 9800, 19, 25, 'Protex'],
+        ['Jabón de tocador x3', 7, 5, 'pack', 6800, 9800, 19, 25, 'Protex'],
         ['Crema dental 150 g', 7, 5, 'unit', 7200, 10400, 19, 25, 'Colgate'],
         ['Desodorante roll-on 50 ml', 7, 5, 'unit', 9100, 13200, 19, 18, 'Rexona'],
     ];
@@ -135,13 +135,13 @@ class CatalogSeeder extends Seeder
         4 => [
             'Granos y arroz' => ['icon' => 'Grains', 'products' => ['Arroz blanco 1 kg', 'Arroz blanco 5 kg', 'Frijol cargamanto 500 g', 'Lenteja 500 g', 'Avena en hojuelas 500 g']],
             'Aceites y salsas' => ['icon' => 'Drop', 'products' => ['Aceite de girasol 1 L', 'Salsa de tomate 400 g', 'Mayonesa 380 g']],
-            'Café y chocolate' => ['icon' => 'Coffee', 'products' => ['Cafe molido 500 g', 'Chocolate de mesa 500 g']],
-            'Enlatados y pastas' => ['icon' => 'CookingPot', 'products' => ['Atun en agua 160 g', 'Pasta espagueti 500 g']],
+            'Café y chocolate' => ['icon' => 'Coffee', 'products' => ['Café molido 500 g', 'Chocolate de mesa 500 g']],
+            'Enlatados y pastas' => ['icon' => 'CookingPot', 'products' => ['Atún en agua 160 g', 'Pasta espagueti 500 g']],
         ],
         6 => [
-            'Detergentes' => ['icon' => 'Drop', 'products' => ['Detergente en polvo 2 kg', 'Jabon liquido loza 500 ml', 'Blanqueador 1 L']],
+            'Detergentes' => ['icon' => 'Drop', 'products' => ['Detergente en polvo 2 kg', 'Jabón líquido loza 500 ml', 'Blanqueador 1 L']],
             'Limpieza de superficies' => ['icon' => 'Sparkle', 'products' => ['Limpiador multiusos 1 L']],
-            'Papel y bolsas' => ['icon' => 'ToiletPaper', 'products' => ['Papel higienico x12 rollos', 'Bolsas para basura x20']],
+            'Papel y bolsas' => ['icon' => 'ToiletPaper', 'products' => ['Papel higiénico x12 rollos', 'Bolsas para basura x20']],
         ],
     ];
 
@@ -154,10 +154,10 @@ class CatalogSeeder extends Seeder
     protected const IMAGE_URLS = [
         'Arroz blanco 1 kg' => 'https://images.openfoodfacts.org/images/products/770/251/100/0014/front_en.30.400.jpg',
         'Queso campesino 500 g' => 'https://images.openfoodfacts.org/images/products/770/212/901/5523/front_es.3.400.jpg',
-        'Atun en agua 160 g' => 'https://images.openfoodfacts.org/images/products/770/236/700/3917/front_es.99.400.jpg',
+        'Atún en agua 160 g' => 'https://images.openfoodfacts.org/images/products/770/236/700/3917/front_es.99.400.jpg',
         'Avena en hojuelas 500 g' => 'https://images.openfoodfacts.org/images/products/770/219/310/1283/front_fr.14.400.jpg',
         'Kumis 1 L' => 'https://images.openfoodfacts.org/images/products/770/200/104/8076/front_es.15.400.jpg',
-        'Cafe molido 500 g' => 'https://images.openfoodfacts.org/images/products/770/203/211/0988/front_es.4.400.jpg',
+        'Café molido 500 g' => 'https://images.openfoodfacts.org/images/products/770/203/211/0988/front_es.4.400.jpg',
         'Mayonesa 380 g' => 'https://images.openfoodfacts.org/images/products/770/204/703/8772/front_es.7.400.jpg',
         'Aceite de girasol 1 L' => 'https://images.openfoodfacts.org/images/products/770/101/800/7151/front_es.3.400.jpg',
     ];
@@ -203,7 +203,7 @@ class CatalogSeeder extends Seeder
                     'contact_name' => $data['contact'],
                     'phone' => '604 '.random_int(200, 899).' '.random_int(1000, 9999),
                     'email' => Str::slug($data['name'], '.').'@proveedores.co',
-                    'address' => 'Medellin, Antioquia',
+                    'address' => 'Medellín, Antioquia',
                     'lead_time_days' => $data['lead'],
                     'delivery_days' => $data['days'],
                     'is_active' => true,

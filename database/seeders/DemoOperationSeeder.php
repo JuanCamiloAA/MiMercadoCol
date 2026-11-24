@@ -737,7 +737,7 @@ class DemoOperationSeeder extends Seeder
 
             $blocked->forceFill([
                 'credit_blocked' => true,
-                'blocked_reason' => 'Facturas vencidas hace mas de 15 dias.',
+                'blocked_reason' => 'Facturas vencidas hace más de 15 días.',
             ])->save();
         }
     }

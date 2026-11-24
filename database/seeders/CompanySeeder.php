@@ -26,7 +26,7 @@ class CompanySeeder extends Seeder
                 'legal_name' => 'La Canasta S.A.S.',
                 'email' => 'contacto@lacanasta.co',
                 'phone' => '604 444 1122',
-                'address' => 'Carrera 48 # 32-15, Medellin',
+                'address' => 'Carrera 48 # 32-15, Medellín',
                 'city' => 'Medellín',
                 // El catalogo lo siembra su migracion, antes que las empresas.
                 'business_category_id' => app(BusinessCategoryCatalog::class)->defaultId(),

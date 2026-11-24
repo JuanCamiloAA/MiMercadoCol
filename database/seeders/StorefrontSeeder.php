@@ -185,7 +185,8 @@ class StorefrontSeeder extends Seeder
         ];
 
         // Un estante por categoria, con su «Ver todo».
-        foreach (['Frutas', 'Despensa', 'Lacteos', 'Aseo'] as $start) {
+        // «Lácteos» con tilde: compara contra el nombre de la categoría, que la lleva.
+        foreach (['Frutas', 'Despensa', 'Lácteos', 'Aseo'] as $start) {
             if ($category = $byName($start)) {
                 $blocks[] = ['product_grid', ['title' => $category->name, 'source' => 'category', 'value' => (string) $category->id, 'layout' => 'carousel', 'limit' => 10]];
             }

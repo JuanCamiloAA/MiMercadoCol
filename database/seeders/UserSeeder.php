@@ -19,12 +19,12 @@ class UserSeeder extends Seeder
     /** @var list<array<string, mixed>> */
     protected const ACCOUNTS = [
         ['email' => 'admin@lacanasta.co', 'name' => 'Marcela', 'last_name' => 'Ospina', 'role' => 'admin', 'store' => 'CEN', 'job_title' => 'Administradora', 'document' => '43567123', 'position' => 'Administradora de tienda'],
-        ['email' => 'supervisor@lacanasta.co', 'name' => 'Julian', 'last_name' => 'Restrepo', 'role' => 'supervisor', 'store' => 'CEN', 'job_title' => 'Supervisor', 'document' => '71234567', 'position' => 'Supervisor de tienda'],
-        ['email' => 'cajera@lacanasta.co', 'name' => 'Diana', 'last_name' => 'Pulgarin', 'role' => 'cajero', 'store' => 'CEN', 'job_title' => 'Cajera', 'document' => '1017234567', 'pin' => '1234', 'position' => 'Cajera'],
-        ['email' => 'cajero2@lacanasta.co', 'name' => 'Andres', 'last_name' => 'Zapata', 'role' => 'cajero', 'store' => 'CEN', 'job_title' => 'Cajero', 'document' => '1018345678', 'pin' => '4321', 'position' => 'Cajero'],
-        ['email' => 'bodega@lacanasta.co', 'name' => 'Hernan', 'last_name' => 'Gomez', 'role' => 'bodega', 'store' => 'CEN', 'job_title' => 'Auxiliar de bodega', 'document' => '98765432', 'position' => 'Auxiliar de bodega'],
+        ['email' => 'supervisor@lacanasta.co', 'name' => 'Julián', 'last_name' => 'Restrepo', 'role' => 'supervisor', 'store' => 'CEN', 'job_title' => 'Supervisor', 'document' => '71234567', 'position' => 'Supervisor de tienda'],
+        ['email' => 'cajera@lacanasta.co', 'name' => 'Diana', 'last_name' => 'Pulgarín', 'role' => 'cajero', 'store' => 'CEN', 'job_title' => 'Cajera', 'document' => '1017234567', 'pin' => '1234', 'position' => 'Cajera'],
+        ['email' => 'cajero2@lacanasta.co', 'name' => 'Andrés', 'last_name' => 'Zapata', 'role' => 'cajero', 'store' => 'CEN', 'job_title' => 'Cajero', 'document' => '1018345678', 'pin' => '4321', 'position' => 'Cajero'],
+        ['email' => 'bodega@lacanasta.co', 'name' => 'Hernán', 'last_name' => 'Gómez', 'role' => 'bodega', 'store' => 'CEN', 'job_title' => 'Auxiliar de bodega', 'document' => '98765432', 'position' => 'Auxiliar de bodega'],
         ['email' => 'domicilios@lacanasta.co', 'name' => 'Camilo', 'last_name' => 'Arias', 'role' => 'domiciliario', 'store' => 'CEN', 'job_title' => 'Domiciliario', 'document' => '1020456789', 'position' => 'Domiciliario'],
-        ['email' => 'domicilios2@lacanasta.co', 'name' => 'Sebastian', 'last_name' => 'Munoz', 'role' => 'domiciliario', 'store' => 'CEN', 'job_title' => 'Domiciliario', 'document' => '1020987654', 'position' => 'Domiciliario'],
+        ['email' => 'domicilios2@lacanasta.co', 'name' => 'Sebastián', 'last_name' => 'Muñoz', 'role' => 'domiciliario', 'store' => 'CEN', 'job_title' => 'Domiciliario', 'document' => '1020987654', 'position' => 'Domiciliario'],
         ['email' => 'contable@lacanasta.co', 'name' => 'Paula', 'last_name' => 'Cardona', 'role' => 'auxiliar_contable', 'store' => 'CEN', 'job_title' => 'Auxiliar contable', 'document' => '32456789', 'position' => 'Auxiliar contable'],
     ];
 
@@ -63,7 +63,7 @@ class UserSeeder extends Seeder
                     'birth_date' => now()->subYears(random_int(24, 46))->subDays(random_int(0, 360))->toDateString(),
                     'phone' => '3'.random_int(100000000, 199999999),
                     'email' => $account['email'],
-                    'address' => 'Medellin, Antioquia',
+                    'address' => 'Medellín, Antioquia',
                     'emergency_contact_name' => 'Familiar',
                     'emergency_contact_phone' => '3'.random_int(100000000, 199999999),
                     'position' => $account['position'],
