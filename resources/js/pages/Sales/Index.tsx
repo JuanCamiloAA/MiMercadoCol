@@ -64,7 +64,7 @@ export default function SalesIndex({ sales, filters: initialFilters, metrics, re
         <AppLayout title="Ventas">
             <PageHeader
                 title="Ventas"
-                description="Lo que se cobro en el mostrador y en la tienda en linea. Los domicilios y encargos van en Pedidos."
+                description="Lo que se cobró en el mostrador y en la tienda en línea. Los domicilios y encargos van en Pedidos."
             />
 
             <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -77,7 +77,7 @@ export default function SalesIndex({ sales, filters: initialFilters, metrics, re
             <Card className="mb-4">
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <SearchInput
-                        placeholder="Numero o cliente"
+                        placeholder="Número o cliente"
                         value={filters.search}
                         onChange={(event) => update('search', event.target.value)}
                     />
@@ -86,7 +86,7 @@ export default function SalesIndex({ sales, filters: initialFilters, metrics, re
                     <Select
                         options={[
                             { value: 'paid', label: 'Pagada' },
-                            { value: 'credit', label: 'A credito' },
+                            { value: 'credit', label: 'A crédito' },
                             { value: 'refunded', label: 'Devuelta' },
                             { value: 'cancelled', label: 'Anulada' },
                         ]}
@@ -97,7 +97,7 @@ export default function SalesIndex({ sales, filters: initialFilters, metrics, re
                     <Select
                         options={[
                             { value: 'pos', label: 'Mostrador' },
-                            { value: 'online', label: 'Tienda en linea' },
+                            { value: 'online', label: 'Tienda en línea' },
                         ]}
                         placeholder="Cualquier origen"
                         value={filters.channel}
@@ -132,7 +132,7 @@ export default function SalesIndex({ sales, filters: initialFilters, metrics, re
             {sales.data.length === 0 ? (
                 <EmptyState
                     title="Ninguna venta en ese rango"
-                    description="Cambia las fechas o quita los filtros. Las ventas aparecen aqui apenas se cobran en la caja."
+                    description="Cambia las fechas o quita los filtros. Las ventas aparecen aquí apenas se cobran en la caja."
                     icon={<ReceiptIcon size={24} />}
                 />
             ) : (
@@ -144,7 +144,7 @@ export default function SalesIndex({ sales, filters: initialFilters, metrics, re
                                 <TH>Cliente</TH>
                                 <TH>Vendedor</TH>
                                 <TH>Caja</TH>
-                                <TH align="center">Articulos</TH>
+                                <TH align="center">Artículos</TH>
                                 <TH align="center">Origen</TH>
                                 <TH align="right">Total</TH>
                                 <TH align="center">Estado</TH>

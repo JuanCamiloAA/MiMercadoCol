@@ -98,7 +98,7 @@ export default function StorefrontOrderTracking({ order, returns, canRequestRetu
             <section className="rounded-[14px] border border-[var(--line)] bg-[var(--surface)] p-4 lg:col-span-2">
                 {cancelled ? (
                     <p className="rounded-[10px] bg-[var(--danger-soft)] px-3 py-2 text-[13.5px] font-medium text-[var(--danger)]">
-                        Este pedido quedo {order.status_label.toLowerCase()}.
+                        Este pedido quedó {order.status_label.toLowerCase()}.
                     </p>
                 ) : (
                     <ol className="flex flex-col gap-0">

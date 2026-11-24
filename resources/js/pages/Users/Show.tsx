@@ -86,7 +86,7 @@ export default function UserShow({ user }: UserShowProps) {
                             <dd className="font-mono text-[0.78125rem] tabular">{user.document ?? '—'}</dd>
                         </div>
                         <div className="flex items-center justify-between gap-3">
-                            <dt className="text-[var(--muted)]">Telefono</dt>
+                            <dt className="text-[var(--muted)]">Teléfono</dt>
                             <dd className="font-mono text-[0.78125rem] tabular">{user.phone ?? '—'}</dd>
                         </div>
                         <div className="flex items-center justify-between gap-3">
@@ -98,7 +98,7 @@ export default function UserShow({ user }: UserShowProps) {
                             <dd>{user.has_pin ? <Badge tone="accent">Definido</Badge> : <Badge tone="neutral">Sin PIN</Badge>}</dd>
                         </div>
                         <div className="flex items-center justify-between gap-3">
-                            <dt className="text-[var(--muted)]">Ultima conexion</dt>
+                            <dt className="text-[var(--muted)]">Última conexión</dt>
                             <dd className="text-[0.78125rem]">{user.last_login_at ? dateTime(user.last_login_at) : 'Nunca'}</dd>
                         </div>
                         <div className="flex items-center justify-between gap-3">
@@ -132,7 +132,7 @@ export default function UserShow({ user }: UserShowProps) {
                     />
 
                     {user.permissions.length === 0 ? (
-                        <p className="text-[0.8125rem] text-[var(--muted)]">Esta cuenta no tiene ningun permiso asignado.</p>
+                        <p className="text-[0.8125rem] text-[var(--muted)]">Esta cuenta no tiene ningún permiso asignado.</p>
                     ) : (
                         <div className="flex flex-wrap gap-1.5">
                             {user.permissions.map((permission) => (

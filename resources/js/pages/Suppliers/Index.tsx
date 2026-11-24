@@ -167,7 +167,7 @@ export default function SuppliersIndex({ suppliers, filters: initialFilters, del
             </Card>
 
             {suppliers.data.length === 0 ? (
-                <EmptyState title="Ningun proveedor coincide" description="Crea uno nuevo o cambia la busqueda." icon={<TruckIcon size={24} />} />
+                <EmptyState title="Ningún proveedor coincide" description="Crea uno nuevo o cambia la búsqueda." icon={<TruckIcon size={24} />} />
             ) : (
                 <>
                     <Table>
@@ -176,7 +176,7 @@ export default function SuppliersIndex({ suppliers, filters: initialFilters, del
                                 <TH>Proveedor</TH>
                                 <TH>Contacto</TH>
                                 <TH>Entrega</TH>
-                                <TH align="center">Articulos</TH>
+                                <TH align="center">Artículos</TH>
                                 <TH align="right">A favor pendiente</TH>
                                 <TH align="center">Estado</TH>
                                 <TH align="right">Acciones</TH>
@@ -195,7 +195,7 @@ export default function SuppliersIndex({ suppliers, filters: initialFilters, del
                                     </TD>
                                     <TD>
                                         <p className="text-[0.78125rem] text-[var(--muted)]">
-                                            {supplier.lead_time_days} dias de entrega{supplier.payment_term ? ` · paga a ${supplier.payment_term}` : ''}
+                                            {supplier.lead_time_days} días de entrega{supplier.payment_term ? ` · paga a ${supplier.payment_term}` : ''}
                                         </p>
                                         <div className="mt-1 flex flex-wrap gap-1">
                                             {supplier.delivery_days.map((day) => (
@@ -287,7 +287,7 @@ export default function SuppliersIndex({ suppliers, filters: initialFilters, del
                         onChange={(event) => form.setData('contact_name', event.target.value)}
                         error={form.errors.contact_name}
                     />
-                    <Input label="Telefono" value={form.data.phone} onChange={(event) => form.setData('phone', event.target.value)} error={form.errors.phone} />
+                    <Input label="Teléfono" value={form.data.phone} onChange={(event) => form.setData('phone', event.target.value)} error={form.errors.phone} />
                     <Input
                         label="Correo"
                         type="email"
@@ -296,14 +296,14 @@ export default function SuppliersIndex({ suppliers, filters: initialFilters, del
                         error={form.errors.email}
                     />
                     <Input
-                        label="Direccion"
+                        label="Dirección"
                         value={form.data.address}
                         onChange={(event) => form.setData('address', event.target.value)}
                         error={form.errors.address}
                         containerClassName="sm:col-span-2"
                     />
                     <Input
-                        label="Dias de entrega"
+                        label="Días de entrega"
                         type="number"
                         min={0}
                         required
@@ -321,7 +321,7 @@ export default function SuppliersIndex({ suppliers, filters: initialFilters, del
                         error={form.errors.payment_term_id}
                     />
                     <div className="flex flex-col gap-1.5 sm:col-span-2">
-                        <span className="text-[0.8125rem] font-medium text-[var(--text)]">Dias en que despacha</span>
+                        <span className="text-[0.8125rem] font-medium text-[var(--text)]">Días en que despacha</span>
                         <div className="flex flex-wrap gap-1.5">
                             {deliveryDays.map((day) => (
                                 <Chip key={day} active={form.data.delivery_days.includes(day)} onClick={() => toggleDay(day)}>
@@ -349,7 +349,7 @@ export default function SuppliersIndex({ suppliers, filters: initialFilters, del
                 confirmLabel="Eliminar"
                 message={
                     <>
-                        Vas a eliminar a <strong>{toDelete?.name}</strong>. Solo se puede si no tiene articulos ni ordenes de compra.
+                        Vas a eliminar a <strong>{toDelete?.name}</strong>. Solo se puede si no tiene artículos ni órdenes de compra.
                     </>
                 }
             />

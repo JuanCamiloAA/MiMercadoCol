@@ -54,7 +54,7 @@ export default function UserPermissions({ user, userPermissions }: UserPermissio
                                 )}
                             </span>
                         }
-                        description="Marca cada accion que deba poder ejecutar."
+                        description="Marca cada acción que deba poder ejecutar."
                         action={
                             <Button type="submit" loading={processing}>
                                 Guardar permisos
@@ -71,7 +71,7 @@ export default function UserPermissions({ user, userPermissions }: UserPermissio
                             footer={<PlanHiddenNote hidden={permissionMatrixHidden ?? 0} />}
                         />
                     ) : (
-                        <p className="text-[0.8125rem] text-[var(--muted)]">No se pudo cargar el catalogo de permisos.</p>
+                        <p className="text-[0.8125rem] text-[var(--muted)]">No se pudo cargar el catálogo de permisos.</p>
                     )}
                 </Card>
             </form>

@@ -56,7 +56,7 @@ export default function UserForm({ mode, user, roles, stores }: UserFormProps) {
                 title={mode === 'create' ? 'Nuevo usuario' : `Editar a ${user?.name}`}
                 description={
                     mode === 'create'
-                        ? 'Al crearla se genera una contrasena temporal que se muestra una sola vez.'
+                        ? 'Al crearla se genera una contraseña temporal que se muestra una sola vez.'
                         : 'Cambiar el rol reemplaza los permisos de la cuenta por los de la plantilla.'
                 }
                 actions={
@@ -84,7 +84,7 @@ export default function UserForm({ mode, user, roles, stores }: UserFormProps) {
                             error={errors.last_name}
                         />
                         <Input
-                            label="Correo electronico"
+                            label="Correo electrónico"
                             type="email"
                             required
                             value={data.email}
@@ -100,7 +100,7 @@ export default function UserForm({ mode, user, roles, stores }: UserFormProps) {
                             hint="Sirve para entrar con documento en vez de correo."
                         />
                         <Input
-                            label="Telefono"
+                            label="Teléfono"
                             value={data.phone}
                             onChange={(event) => setData('phone', event.target.value)}
                             error={errors.phone}

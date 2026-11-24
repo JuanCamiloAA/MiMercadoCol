@@ -98,7 +98,7 @@ export default function RegistersIndex({ registers, recentSessions, stores }: Re
         <AppLayout title="Cajas">
             <PageHeader
                 title="Cajas"
-                description="Puntos de cobro de cada sede y sus ultimos turnos."
+                description="Puntos de cobro de cada sede y sus últimos turnos."
                 actions={
                     <>
                         {can('registers.index.import') && (
@@ -122,7 +122,7 @@ export default function RegistersIndex({ registers, recentSessions, stores }: Re
 
             {registers.length === 0 ? (
                 <EmptyState
-                    title="Todavia no hay cajas"
+                    title="Todavía no hay cajas"
                     description="Crea la primera para poder abrir turno y vender."
                     icon={<CashRegisterIcon size={24} />}
                 />
@@ -172,7 +172,7 @@ export default function RegistersIndex({ registers, recentSessions, stores }: Re
 
             <Card padded={false}>
                 <div className="px-5 pt-5">
-                    <CardHeader title="Ultimos turnos cerrados" description="Con su arqueo y la diferencia que quedo." />
+                    <CardHeader title="Últimos turnos cerrados" description="Con su arqueo y la diferencia que quedó." />
                 </div>
                 <Table className="rounded-none border-x-0 border-b-0">
                     <THead>
@@ -191,7 +191,7 @@ export default function RegistersIndex({ registers, recentSessions, stores }: Re
                         {recentSessions.length === 0 && (
                             <TR>
                                 <TD colSpan={8} className="py-6 text-center text-[0.8125rem] text-[var(--muted)]">
-                                    Todavia no se ha cerrado ningun turno.
+                                    Todavía no se ha cerrado ningún turno.
                                 </TD>
                             </TR>
                         )}
@@ -270,12 +270,12 @@ export default function RegistersIndex({ registers, recentSessions, stores }: Re
                     />
                     <Input label="Nombre" required value={form.data.name} onChange={(event) => form.setData('name', event.target.value)} error={form.errors.name} />
                     <Input
-                        label="Codigo"
+                        label="Código"
                         required
                         value={form.data.code}
                         onChange={(event) => form.setData('code', event.target.value.toUpperCase())}
                         error={form.errors.code}
-                        hint="Es el prefijo del numero de tiquete. Por ejemplo C1 genera C1-000482."
+                        hint="Es el prefijo del número de tiquete. Por ejemplo C1 genera C1-000482."
                     />
                     <Checkbox label="Caja activa" checked={form.data.is_active} onChange={(event) => form.setData('is_active', event.target.checked)} />
                 </form>

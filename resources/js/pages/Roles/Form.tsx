@@ -63,7 +63,7 @@ export default function RoleForm({ mode, role, rolePermissions }: RoleFormProps)
 
             <form onSubmit={submit} className="grid gap-4 lg:grid-cols-[320px_1fr]">
                 <Card className="h-fit">
-                    <CardHeader title="Identificacion" />
+                    <CardHeader title="Identificación" />
 
                     <div className="flex flex-col gap-4">
                         <Input
@@ -77,17 +77,17 @@ export default function RoleForm({ mode, role, rolePermissions }: RoleFormProps)
 
                         {mode === 'create' && (
                             <Input
-                                label="Identificador tecnico"
+                                label="Identificador técnico"
                                 value={data.name}
                                 onChange={(event) => setData('name', event.target.value)}
                                 error={errors.name}
-                                hint="Se genera del nombre visible si lo dejas vacio."
+                                hint="Se genera del nombre visible si lo dejas vacío."
                                 placeholder="supervisor_tienda"
                             />
                         )}
 
                         <Textarea
-                            label="Descripcion"
+                            label="Descripción"
                             value={data.description}
                             onChange={(event) => setData('description', event.target.value)}
                             error={errors.description}
@@ -119,7 +119,7 @@ export default function RoleForm({ mode, role, rolePermissions }: RoleFormProps)
                 <Card>
                     <CardHeader
                         title="Permisos de la plantilla"
-                        description="Marca lo que este rol deberia poder hacer."
+                        description="Marca lo que este rol debería poder hacer."
                         action={
                             <Button type="submit" loading={processing}>
                                 {mode === 'create' ? 'Crear el rol' : 'Guardar cambios'}
@@ -136,7 +136,7 @@ export default function RoleForm({ mode, role, rolePermissions }: RoleFormProps)
                             footer={<PlanHiddenNote hidden={permissionMatrixHidden ?? 0} />}
                         />
                     ) : (
-                        <p className="text-[0.8125rem] text-[var(--muted)]">No se pudo cargar el catalogo de permisos.</p>
+                        <p className="text-[0.8125rem] text-[var(--muted)]">No se pudo cargar el catálogo de permisos.</p>
                     )}
                 </Card>
             </form>

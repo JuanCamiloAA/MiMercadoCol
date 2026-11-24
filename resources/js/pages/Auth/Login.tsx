@@ -45,7 +45,7 @@ export default function Login({ canResetPassword, status }: LoginProps) {
             footer={
                 canResetPassword ? (
                     <Link href={route('password.request')} className="font-medium text-[var(--accent)] hover:underline">
-                        Olvide mi contrasena
+                        Olvidé mi contraseña
                     </Link>
                 ) : undefined
             }
@@ -82,7 +82,7 @@ export default function Login({ canResetPassword, status }: LoginProps) {
             <form onSubmit={submit} className="flex flex-col gap-4">
                 {data.login_mode === 'email' ? (
                     <Input
-                        label="Correo electronico"
+                        label="Correo electrónico"
                         type="email"
                         autoComplete="username"
                         autoFocus
@@ -94,7 +94,7 @@ export default function Login({ canResetPassword, status }: LoginProps) {
                     />
                 ) : (
                     <Input
-                        label="Numero de documento"
+                        label="Número de documento"
                         type="text"
                         inputMode="numeric"
                         autoComplete="username"
@@ -108,7 +108,7 @@ export default function Login({ canResetPassword, status }: LoginProps) {
                 )}
 
                 <Input
-                    label="Contrasena"
+                    label="Contraseña"
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
                     required
@@ -119,7 +119,7 @@ export default function Login({ canResetPassword, status }: LoginProps) {
                         <button
                             type="button"
                             onClick={() => setShowPassword((visible) => !visible)}
-                            aria-label={showPassword ? 'Ocultar la contrasena' : 'Mostrar la contrasena'}
+                            aria-label={showPassword ? 'Ocultar la contraseña' : 'Mostrar la contraseña'}
                             className="pointer-events-auto text-[var(--muted)] transition-colors hover:text-[var(--text)]"
                         >
                             {showPassword ? <EyeSlashIcon size={18} /> : <EyeIcon size={18} />}

@@ -186,9 +186,9 @@ export default function OrderForm({ customers, products, services, slots, delive
             <form onSubmit={submit} className="grid gap-4 lg:grid-cols-[1fr_360px]">
                 <div className="flex flex-col gap-4">
                     <Card>
-                        <CardHeader title="Articulos" description="Busca y agrega lo que pidio el cliente." />
+                        <CardHeader title="Artículos" description="Busca y agrega lo que pidió el cliente." />
                         <SearchInput
-                            placeholder="Nombre o SKU del articulo"
+                            placeholder="Nombre o SKU del artículo"
                             value={search}
                             onChange={(event) => setSearch(event.target.value)}
                             containerClassName="mb-3"
@@ -223,12 +223,12 @@ export default function OrderForm({ customers, products, services, slots, delive
                         </div>
 
                         {lines.length === 0 ? (
-                            <EmptyState title="El pedido esta vacio" description="Agrega articulos desde el buscador." />
+                            <EmptyState title="El pedido está vacío" description="Agrega artículos desde el buscador." />
                         ) : (
                             <Table className="border-0">
                                 <THead>
                                     <TR>
-                                        <TH>Articulo</TH>
+                                        <TH>Artículo</TH>
                                         <TH align="right">Cantidad</TH>
                                         <TH>Si falta</TH>
                                         <TH align="right">Subtotal</TH>
@@ -307,7 +307,7 @@ export default function OrderForm({ customers, products, services, slots, delive
                                 error={errors.customer_id}
                             />
                             <Input
-                                label="Direccion de entrega"
+                                label="Dirección de entrega"
                                 required
                                 value={data.delivery_address}
                                 onChange={(event) => setData('delivery_address', event.target.value)}
@@ -352,7 +352,7 @@ export default function OrderForm({ customers, products, services, slots, delive
 
                         <div className="mt-4 rounded-control border border-[var(--line)] bg-[var(--surface-2)] p-3">
                             <div className="flex items-center justify-between text-[0.8125rem]">
-                                <span className="text-[var(--muted)]">Articulos</span>
+                                <span className="text-[var(--muted)]">Artículos</span>
                                 <span className="font-mono tabular">{number(lines.length)}</span>
                             </div>
                             <div className="mt-1 flex items-center justify-between text-[0.8125rem]">

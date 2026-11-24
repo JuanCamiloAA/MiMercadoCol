@@ -144,7 +144,7 @@ export default function CustomersIndex({ customers, filters: initialFilters, met
         <AppLayout title="Clientes">
             <PageHeader
                 title="Clientes"
-                description="Quien compra, quien tiene credito y quien pide a domicilio."
+                description="Quien compra, quien tiene crédito y quien pide a domicilio."
                 actions={
                     <>
                         {can('customers.index.import') && (
@@ -163,24 +163,24 @@ export default function CustomersIndex({ customers, filters: initialFilters, met
 
             <div className="mb-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <StatCard label="Clientes" value={number(metrics.total)} icon={<UsersIcon size={16} weight="bold" />} tone="neutral" />
-                <StatCard label="Con credito" value={number(metrics.with_credit)} />
-                <StatCard label="Credito bloqueado" value={number(metrics.blocked)} tone={metrics.blocked > 0 ? 'danger' : 'neutral'} />
-                <StatCard label="Con acceso en linea" value={number(metrics.online)} tone="neutral" />
+                <StatCard label="Con crédito" value={number(metrics.with_credit)} />
+                <StatCard label="Crédito bloqueado" value={number(metrics.blocked)} tone={metrics.blocked > 0 ? 'danger' : 'neutral'} />
+                <StatCard label="Con acceso en línea" value={number(metrics.online)} tone="neutral" />
             </div>
 
             <Card className="mb-4">
                 <div className="grid gap-3 sm:grid-cols-3">
                     <SearchInput
-                        placeholder="Nombre, documento o telefono"
+                        placeholder="Nombre, documento o teléfono"
                         value={filters.search}
                         onChange={(event) => update('search', event.target.value)}
                     />
                     <Select
                         options={[
-                            { value: 'enabled', label: 'Con credito' },
-                            { value: 'blocked', label: 'Credito bloqueado' },
+                            { value: 'enabled', label: 'Con crédito' },
+                            { value: 'blocked', label: 'Crédito bloqueado' },
                         ]}
-                        placeholder="Cualquier credito"
+                        placeholder="Cualquier crédito"
                         value={filters.credit}
                         onChange={(event) => update('credit', event.target.value)}
                     />
@@ -206,7 +206,7 @@ export default function CustomersIndex({ customers, filters: initialFilters, met
             </Card>
 
             {customers.data.length === 0 ? (
-                <EmptyState title="Ningun cliente coincide" description="Cambia los filtros o registra uno nuevo." icon={<UsersIcon size={24} />} />
+                <EmptyState title="Ningún cliente coincide" description="Cambia los filtros o registra uno nuevo." icon={<UsersIcon size={24} />} />
             ) : (
                 <>
                     <Table>
@@ -262,7 +262,7 @@ export default function CustomersIndex({ customers, filters: initialFilters, met
                                         <div className="flex flex-col items-center gap-1">
                                             {customer.is_active ? <Badge tone="accent">Activo</Badge> : <Badge tone="neutral">Inactivo</Badge>}
                                             {customer.credit_blocked && <Badge tone="danger">Bloqueado</Badge>}
-                                            {customer.is_online_user && <Badge tone="info">En linea</Badge>}
+                                            {customer.is_online_user && <Badge tone="info">En línea</Badge>}
                                         </div>
                                     </TD>
                                     <TD align="right">
@@ -319,7 +319,7 @@ export default function CustomersIndex({ customers, filters: initialFilters, met
                         error={form.errors.document_type}
                     />
                     <Input
-                        label="Numero de documento"
+                        label="Número de documento"
                         required
                         value={form.data.document_number}
                         onChange={(event) => form.setData('document_number', event.target.value)}
@@ -334,12 +334,12 @@ export default function CustomersIndex({ customers, filters: initialFilters, met
                         containerClassName="sm:col-span-2"
                     />
                     <Input
-                        label="Razon social"
+                        label="Razón social"
                         value={form.data.business_name}
                         onChange={(event) => form.setData('business_name', event.target.value)}
                         error={form.errors.business_name}
                     />
-                    <Input label="Telefono" value={form.data.phone} onChange={(event) => form.setData('phone', event.target.value)} error={form.errors.phone} />
+                    <Input label="Teléfono" value={form.data.phone} onChange={(event) => form.setData('phone', event.target.value)} error={form.errors.phone} />
                     <Input
                         label="Correo"
                         type="email"
@@ -354,7 +354,7 @@ export default function CustomersIndex({ customers, filters: initialFilters, met
                         error={form.errors.neighborhood}
                     />
                     <Input
-                        label="Direccion"
+                        label="Dirección"
                         value={form.data.address}
                         onChange={(event) => form.setData('address', event.target.value)}
                         error={form.errors.address}
@@ -370,7 +370,7 @@ export default function CustomersIndex({ customers, filters: initialFilters, met
 
                     <div className="sm:col-span-2">
                         <Checkbox
-                            label="Habilitar credito"
+                            label="Habilitar crédito"
                             checked={form.data.credit_enabled}
                             onChange={(event) => form.setData('credit_enabled', event.target.checked)}
                         />
@@ -400,7 +400,7 @@ export default function CustomersIndex({ customers, filters: initialFilters, met
 
                     <div className="sm:col-span-2">
                         <Checkbox
-                            label="Puede entrar a la tienda en linea"
+                            label="Puede entrar a la tienda en línea"
                             checked={form.data.is_online_user}
                             onChange={(event) => form.setData('is_online_user', event.target.checked)}
                         />
@@ -408,12 +408,12 @@ export default function CustomersIndex({ customers, filters: initialFilters, met
 
                     {form.data.is_online_user && (
                         <Input
-                            label={editing ? 'Nueva contrasena de la tienda' : 'Contrasena de la tienda'}
+                            label={editing ? 'Nueva contraseña de la tienda' : 'Contraseña de la tienda'}
                             type="password"
                             value={form.data.password}
                             onChange={(event) => form.setData('password', event.target.value)}
                             error={form.errors.password}
-                            hint={editing ? 'Dejala vacia para no cambiarla.' : 'Minimo 8 caracteres.'}
+                            hint={editing ? 'Déjala vacía para no cambiarla.' : 'Mínimo 8 caracteres.'}
                             containerClassName="sm:col-span-2"
                         />
                     )}
@@ -437,7 +437,7 @@ export default function CustomersIndex({ customers, filters: initialFilters, met
                 confirmLabel="Eliminar"
                 message={
                     <>
-                        Vas a eliminar a <strong>{toDelete?.name}</strong>. Solo se puede si nunca compro ni pidio a domicilio.
+                        Vas a eliminar a <strong>{toDelete?.name}</strong>. Solo se puede si nunca compro ni pidió a domicilio.
                     </>
                 }
             />

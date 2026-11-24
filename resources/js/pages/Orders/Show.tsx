@@ -201,14 +201,14 @@ export default function OrderShow({ order, couriers, collectMethods, statusLabel
                 <div className="flex flex-col gap-4">
                     <Card padded={false}>
                         <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5">
-                            <CardHeader title="Articulos" className="mb-0" />
+                            <CardHeader title="Artículos" className="mb-0" />
                             <Badge tone={STATUS_TONES[order.status] ?? 'neutral'}>{order.status_label}</Badge>
                         </div>
 
                         <Table className="mt-4 rounded-none border-x-0 border-b-0">
                             <THead>
                                 <TR>
-                                    <TH>Articulo</TH>
+                                    <TH>Artículo</TH>
                                     <TH align="right">Pedido</TH>
                                     <TH align="right">Alistado</TH>
                                     <TH>Si falta</TH>
@@ -273,7 +273,7 @@ export default function OrderShow({ order, couriers, collectMethods, statusLabel
                     </Card>
 
                     <Card>
-                        <CardHeader title="Linea de tiempo" description="Cada cambio de estado con quien lo hizo." />
+                        <CardHeader title="Línea de tiempo" description="Cada cambio de estado con quien lo hizo." />
                         <ol className="flex flex-col gap-0">
                             {order.histories.map((history, index) => (
                                 <li key={history.id} className="flex gap-3">
@@ -356,7 +356,7 @@ export default function OrderShow({ order, couriers, collectMethods, statusLabel
                     <Card>
                         <CardHeader title="Entrega" />
                         <dl className="flex flex-col gap-2.5 text-[0.8125rem]">
-                            <Row label="Direccion" value={order.delivery_address} />
+                            <Row label="Dirección" value={order.delivery_address} />
                             {order.customer.neighborhood && <Row label="Barrio" value={order.customer.neighborhood} />}
                             <Row
                                 label="Franja"
@@ -424,7 +424,7 @@ export default function OrderShow({ order, couriers, collectMethods, statusLabel
                     <Table className="border-0">
                         <THead>
                             <TR>
-                                <TH>Articulo</TH>
+                                <TH>Artículo</TH>
                                 <TH align="right">Pedido</TH>
                                 <TH align="right">Alistado</TH>
                                 <TH>Nota</TH>
@@ -540,7 +540,7 @@ export default function OrderShow({ order, couriers, collectMethods, statusLabel
                         value={cancelForm.data.note}
                         onChange={(event) => cancelForm.setData('note', event.target.value)}
                         error={cancelForm.errors.note}
-                        hint="Queda en la linea de tiempo del pedido."
+                        hint="Queda en la línea de tiempo del pedido."
                     />
                 </form>
             </Modal>

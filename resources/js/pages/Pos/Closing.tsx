@@ -95,7 +95,7 @@ export default function PosClosing({ sessions, session, summary, denominations, 
                 <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
                     <h1 className="text-[1.375rem]">No hay turnos abiertos</h1>
                     <p className="max-w-md text-[0.84375rem] text-[var(--muted)]">
-                        Todas las cajas de la sede estan cerradas. Abre una caja para empezar a vender.
+                        Todas las cajas de la sede están cerradas. Abre una caja para empezar a vender.
                     </p>
                     <Button onClick={() => router.visit(route('registers.opening.create'))}>Ir a la apertura</Button>
 
@@ -181,7 +181,7 @@ export default function PosClosing({ sessions, session, summary, denominations, 
                                 ))}
                                 <Row label="Abonos de cartera en efectivo" value={money(summary.customer_payments_cash)} />
                                 <Row label="Ingresos de efectivo" value={money(summary.cash_in)} />
-                                <Row label="Sangrias" value={`− ${money(summary.cash_out)}`} />
+                                <Row label="Sangrías" value={`− ${money(summary.cash_out)}`} />
                                 <div className="mt-1 flex items-center justify-between border-t border-[var(--line)] pt-2">
                                     <dt className="text-[0.9375rem] font-semibold">Efectivo esperado</dt>
                                     <dd className="font-mono text-[1.375rem] font-semibold tabular">{money(expected)}</dd>
@@ -193,7 +193,7 @@ export default function PosClosing({ sessions, session, summary, denominations, 
                                     Ingreso de efectivo
                                 </Button>
                                 <Button variant="secondary" icon={<MinusCircleIcon size={16} />} onClick={() => setMovementModal('out')}>
-                                    Sangria
+                                    Sangría
                                 </Button>
                             </div>
                         </section>
@@ -358,7 +358,7 @@ export default function PosClosing({ sessions, session, summary, denominations, 
             <Modal
                 open={movementModal !== null}
                 onClose={() => setMovementModal(null)}
-                title={movementModal === 'in' ? 'Ingreso de efectivo' : 'Sangria'}
+                title={movementModal === 'in' ? 'Ingreso de efectivo' : 'Sangría'}
                 size="sm"
                 footer={
                     <>
@@ -387,7 +387,7 @@ export default function PosClosing({ sessions, session, summary, denominations, 
                         type="text"
                         value={movementForm.data.reason}
                         onChange={(event) => movementForm.setData('reason', event.target.value)}
-                        placeholder={movementModal === 'in' ? 'Motivo del ingreso' : 'Motivo de la sangria'}
+                        placeholder={movementModal === 'in' ? 'Motivo del ingreso' : 'Motivo de la sangría'}
                         className="h-11 rounded-control border border-[var(--line)] bg-[var(--surface-2)] px-3 text-[0.84375rem] focus:border-[var(--accent)] focus:outline-none"
                     />
                     {movementForm.errors.reason && <p className="text-[0.78125rem] font-medium text-[var(--danger)]">{movementForm.errors.reason}</p>}

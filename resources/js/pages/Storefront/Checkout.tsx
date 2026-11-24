@@ -137,7 +137,7 @@ export default function StorefrontCheckout({
                     <section className="rounded-[14px] border border-[var(--line)] bg-[var(--surface)] p-4">
                         <h2 className="mb-3 text-[15px] font-semibold">Entrega</h2>
 
-                        <label className="mb-1 block text-[12.5px] font-medium">Direccion</label>
+                        <label className="mb-1 block text-[12.5px] font-medium">Dirección</label>
                         <input
                             type="text"
                             value={data.delivery_address}

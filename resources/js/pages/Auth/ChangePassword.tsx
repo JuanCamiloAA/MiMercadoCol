@@ -24,17 +24,17 @@ export default function ChangePassword({ forced }: ChangePasswordProps) {
 
     return (
         <AuthLayout
-            title="Cambiar la contrasena"
-            heading={forced ? 'Cambia tu contrasena temporal' : 'Cambiar mi contrasena'}
+            title="Cambiar la contraseña"
+            heading={forced ? 'Cambia tu contraseña temporal' : 'Cambiar mi contraseña'}
             subheading={
                 forced
-                    ? 'Por seguridad, define una contrasena propia antes de continuar'
-                    : 'Escribe tu contrasena actual y la nueva'
+                    ? 'Por seguridad, define una contraseña propia antes de continuar'
+                    : 'Escribe tu contraseña actual y la nueva'
             }
             footer={
                 forced ? (
                     <Link href={route('logout')} method="post" as="button" className="font-medium text-[var(--muted)] hover:underline">
-                        Cerrar sesion
+                        Cerrar sesión
                     </Link>
                 ) : (
                     <Link href={route('dashboard')} className="font-medium text-[var(--accent)] hover:underline">
@@ -45,7 +45,7 @@ export default function ChangePassword({ forced }: ChangePasswordProps) {
         >
             <form onSubmit={submit} className="flex flex-col gap-4">
                 <Input
-                    label="Contrasena actual"
+                    label="Contraseña actual"
                     type="password"
                     autoFocus
                     required
@@ -56,18 +56,18 @@ export default function ChangePassword({ forced }: ChangePasswordProps) {
                 />
 
                 <Input
-                    label="Contrasena nueva"
+                    label="Contraseña nueva"
                     type="password"
                     required
                     autoComplete="new-password"
                     value={data.password}
                     onChange={(event) => setData('password', event.target.value)}
                     error={errors.password}
-                    hint="Minimo 8 caracteres"
+                    hint="Mínimo 8 caracteres"
                 />
 
                 <Input
-                    label="Repite la contrasena nueva"
+                    label="Repite la contraseña nueva"
                     type="password"
                     required
                     autoComplete="new-password"

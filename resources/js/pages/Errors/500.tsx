@@ -11,7 +11,7 @@ export default function ServerError({ status = 500 }: ServerErrorProps) {
 
     return (
         <div className="flex min-h-screen items-center justify-center bg-[var(--bg)] px-4">
-            <Head title="Algo se rompio" />
+            <Head title="Algo se rompió" />
 
             <div className="w-full max-w-[26.25rem] rounded-card border border-[var(--line)] bg-[var(--surface)] p-7 text-center">
                 <span className="mx-auto grid size-12 place-items-center rounded-full bg-[var(--danger-soft)] text-[var(--danger)]">
@@ -19,12 +19,12 @@ export default function ServerError({ status = 500 }: ServerErrorProps) {
                 </span>
 
                 <h1 className="mt-4 text-[1.25rem] text-[var(--text)]">
-                    {status === 503 ? 'El sistema esta en mantenimiento' : 'Algo se rompio de nuestro lado'}
+                    {status === 503 ? 'El sistema está en mantenimiento' : 'Algo se rompió de nuestro lado'}
                 </h1>
                 <p className="mt-1.5 text-[0.84375rem] text-[var(--muted)]">
                     {status === 503
                         ? 'Vuelve a intentarlo en unos minutos.'
-                        : 'El error quedo registrado. Intenta de nuevo y, si sigue pasando, avisale al administrador.'}
+                        : 'El error quedó registrado. Intenta de nuevo y, si sigue pasando, avisale al administrador.'}
                 </p>
 
                 <div className="mt-5 flex justify-center gap-2">

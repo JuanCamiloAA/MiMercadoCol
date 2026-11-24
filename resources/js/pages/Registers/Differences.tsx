@@ -117,7 +117,7 @@ export default function CashDifferences({ differences, filters: initialFilters, 
             {differences.data.length === 0 ? (
                 <EmptyState
                     title={filters.status === 'pending' ? 'No hay diferencias sin revisar' : 'Ninguna diferencia en ese rango'}
-                    description="Cuando un turno cierre con descuadre, aparece aqui para que decidas que hacer."
+                    description="Cuando un turno cierre con descuadre, aparece aquí para que decidas que hacer."
                     icon={<ScalesIcon size={24} />}
                 />
             ) : (
@@ -298,7 +298,7 @@ function ResolveModal({ row, resolutions, canResolve, onClose }: ResolveModalPro
 
                     {row.closing_note && (
                         <div className="rounded-control border border-[var(--line)] px-3 py-2">
-                            <p className="text-[0.71875rem] font-semibold uppercase tracking-wide text-[var(--muted)]">Lo que anoto el cajero</p>
+                            <p className="text-[0.71875rem] font-semibold uppercase tracking-wide text-[var(--muted)]">Lo que anotó el cajero</p>
                             <p className="mt-0.5 text-[0.8125rem]">{row.closing_note}</p>
                         </div>
                     )}
@@ -317,7 +317,7 @@ function ResolveModal({ row, resolutions, canResolve, onClose }: ResolveModalPro
                                             ) : (
                                                 <TrendDownIcon size={14} className="text-[var(--warn)]" />
                                             )}
-                                            <span className="truncate">{movement.reason ?? (movement.type === 'in' ? 'Ingreso' : 'Sangria')}</span>
+                                            <span className="truncate">{movement.reason ?? (movement.type === 'in' ? 'Ingreso' : 'Sangría')}</span>
                                         </span>
                                         <span className="shrink-0 font-mono tabular">{money(movement.amount)}</span>
                                     </li>
@@ -351,7 +351,7 @@ function ResolveModal({ row, resolutions, canResolve, onClose }: ResolveModalPro
                             <Select
                                 label="Que se hizo con la diferencia"
                                 options={resolutions}
-                                placeholder="Elige una decision"
+                                placeholder="Elige una decisión"
                                 value={resolution}
                                 onChange={(event) => setResolution(event.target.value)}
                                 disabled={!canResolve}

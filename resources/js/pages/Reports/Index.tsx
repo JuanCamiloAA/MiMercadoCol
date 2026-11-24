@@ -130,7 +130,7 @@ export default function ReportsIndex({ filters: initialFilters, stores, sales, i
                                 label="Canal"
                                 options={[
                                     { value: 'pos', label: 'Punto de venta' },
-                                    { value: 'online', label: 'Tienda en linea' },
+                                    { value: 'online', label: 'Tienda en línea' },
                                 ]}
                                 placeholder="Todos los canales"
                                 value={filters.channel}
@@ -148,7 +148,7 @@ export default function ReportsIndex({ filters: initialFilters, stores, sales, i
                                 })
                             }
                         >
-                            30 dias
+                            30 días
                         </Button>
                     </div>
                 </div>
@@ -176,7 +176,7 @@ export default function ReportsIndex({ filters: initialFilters, stores, sales, i
                     </div>
 
                     <Card>
-                        <CardHeader title="Ventas por dia" description="La linea punteada es el promedio del rango." />
+                        <CardHeader title="Ventas por día" description="La línea punteada es el promedio del rango." />
                         <div className="h-[17.5rem] w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={sales.by_day} margin={{ top: 4, right: 4, bottom: 0, left: -6 }}>
@@ -209,7 +209,7 @@ export default function ReportsIndex({ filters: initialFilters, stores, sales, i
 
                     <div className="grid gap-4 lg:grid-cols-2">
                         <Card>
-                            <CardHeader title="Ventas por categoria" />
+                            <CardHeader title="Ventas por categoría" />
                             <HorizontalBars data={sales.by_category.map((row) => ({ name: row.name, value: row.total }))} />
                         </Card>
 
@@ -382,7 +382,7 @@ export default function ReportsIndex({ filters: initialFilters, stores, sales, i
                         <Card padded={false}>
                             <div className="px-5 pt-5">
                                 <CardHeader
-                                    title="Articulos mas vendidos"
+                                    title="Artículos más vendidos"
                                     action={
                                         <Checkbox
                                             label="Agrupar subartículos"
@@ -395,7 +395,7 @@ export default function ReportsIndex({ filters: initialFilters, stores, sales, i
                             <Table className="rounded-none border-x-0 border-b-0">
                                 <THead>
                                     <TR>
-                                        <TH>Articulo</TH>
+                                        <TH>Artículo</TH>
                                         <TH align="right">Unidades</TH>
                                         <TH align="right">Total</TH>
                                     </TR>
@@ -496,13 +496,13 @@ export default function ReportsIndex({ filters: initialFilters, stores, sales, i
                 <div className="flex flex-col gap-4">
                     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                         <StatCard label="Valor al costo" value={money(inventory.value)} />
-                        <StatCard label="Valor al publico" value={money(inventory.retail_value)} tone="neutral" />
-                        <StatCard label="Bajo el minimo" value={number(inventory.low)} tone={inventory.low > 0 ? 'warn' : 'neutral'} />
+                        <StatCard label="Valor al público" value={money(inventory.retail_value)} tone="neutral" />
+                        <StatCard label="Bajo el mínimo" value={number(inventory.low)} tone={inventory.low > 0 ? 'warn' : 'neutral'} />
                         <StatCard label="Agotados" value={number(inventory.out)} tone={inventory.out > 0 ? 'danger' : 'neutral'} />
                     </div>
 
                     <Card>
-                        <CardHeader title="Valor del inventario por categoria" description="Al costo, en la sede seleccionada." />
+                        <CardHeader title="Valor del inventario por categoría" description="Al costo, en la sede seleccionada." />
                         <HorizontalBars data={inventory.by_category.map((row) => ({ name: row.name, value: row.total }))} />
                     </Card>
                 </div>
@@ -513,7 +513,7 @@ export default function ReportsIndex({ filters: initialFilters, stores, sales, i
                     <StatCard label="Cartera total" value={money(credit.total)} />
                     <StatCard label="En mora" value={money(credit.overdue)} tone={credit.overdue > 0 ? 'danger' : 'neutral'} />
                     <StatCard label="Clientes con deuda" value={number(credit.customers)} tone="neutral" />
-                    <StatCard label="Credito bloqueado" value={number(credit.blocked)} tone={credit.blocked > 0 ? 'warn' : 'neutral'} />
+                    <StatCard label="Crédito bloqueado" value={number(credit.blocked)} tone={credit.blocked > 0 ? 'warn' : 'neutral'} />
                 </div>
             )}
 

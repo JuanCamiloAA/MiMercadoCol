@@ -124,7 +124,7 @@ export default function PosLayout({ title, children, current }: PosLayoutProps) 
                         href={route('logout')}
                         method="post"
                         as="button"
-                        title="Cerrar sesion"
+                        title="Cerrar sesión"
                         className="flex h-[3.25rem] w-[3.625rem] flex-col items-center justify-center gap-1 rounded-card text-[0.6875rem] font-medium text-[var(--muted)] transition-colors hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"
                     >
                         <SignOutIcon size={20} />

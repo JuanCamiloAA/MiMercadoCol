@@ -139,7 +139,7 @@ export default function AppLayout({ title, children }: AppLayoutProps) {
                     <button
                         type="button"
                         onClick={() => setMobileOpen((open) => !open)}
-                        aria-label="Abrir el menu"
+                        aria-label="Abrir el menú"
                         className="grid size-9 place-items-center rounded-control text-[var(--muted)] hover:bg-[var(--surface-2)] lg:hidden"
                     >
                         {mobileOpen ? <XIcon size={20} /> : <ListIcon size={20} />}
@@ -219,7 +219,7 @@ export default function AppLayout({ title, children }: AppLayoutProps) {
                                             href={route('password.change.show')}
                                             className="mt-1 flex h-9 items-center rounded-chip px-2.5 text-[0.8125rem] text-[var(--text)] hover:bg-[var(--surface-2)]"
                                         >
-                                            Cambiar mi contrasena
+                                            Cambiar mi contraseña
                                         </Link>
                                         <Link
                                             href={route('logout')}
@@ -228,7 +228,7 @@ export default function AppLayout({ title, children }: AppLayoutProps) {
                                             className="flex h-9 w-full items-center gap-2 rounded-chip px-2.5 text-left text-[0.8125rem] text-[var(--danger)] hover:bg-[var(--danger-soft)]"
                                         >
                                             <SignOutIcon size={16} />
-                                            Cerrar sesion
+                                            Cerrar sesión
                                         </Link>
                                     </div>
                                 </Fragment>

@@ -74,8 +74,8 @@ export default function DashboardIndex({ data, canSeeTotals }: DashboardProps) {
         return (
             <AppLayout title="Inicio">
                 <EmptyState
-                    title="Todavia no tienes una sede asignada"
-                    description="Pidele a un administrador que te habilite una sede para empezar a operar."
+                    title="Todavía no tienes una sede asignada"
+                    description="Pídele a un administrador que te habilite una sede para empezar a operar."
                 />
             </AppLayout>
         );
@@ -85,7 +85,7 @@ export default function DashboardIndex({ data, canSeeTotals }: DashboardProps) {
 
     return (
         <AppLayout title="Inicio">
-            <PageHeader title="Buen dia" description="Resumen de hoy en la sede activa" />
+            <PageHeader title="Buen día" description="Resumen de hoy en la sede activa" />
 
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {canSeeTotals && (
@@ -123,7 +123,7 @@ export default function DashboardIndex({ data, canSeeTotals }: DashboardProps) {
                             data.metrics.receivable.extra ? (
                                 <span className="text-[var(--danger)]">{money(data.metrics.receivable.extra)} en mora</span>
                             ) : (
-                                'toda al dia'
+                                'toda al día'
                             )
                         }
                         icon={<CreditCardIcon size={16} weight="bold" />}
@@ -134,7 +134,7 @@ export default function DashboardIndex({ data, canSeeTotals }: DashboardProps) {
                     <StatCard
                         label="Alertas de inventario"
                         value={number(data.stock_alerts.length)}
-                        caption="articulos bajo el minimo"
+                        caption="artículos bajo el mínimo"
                         icon={<WarningIcon size={16} weight="bold" />}
                         tone={data.stock_alerts.length > 0 ? 'warn' : 'neutral'}
                     />
@@ -179,7 +179,7 @@ export default function DashboardIndex({ data, canSeeTotals }: DashboardProps) {
                             </ResponsiveContainer>
                         </div>
                     ) : (
-                        <EmptyState title="Aun no hay ventas hoy" description="La grafica se llena a medida que se cobra en las cajas." />
+                        <EmptyState title="Aún no hay ventas hoy" description="La gráfica se llena a medida que se cobra en las cajas." />
                     )}
                 </Card>
 
@@ -227,7 +227,7 @@ export default function DashboardIndex({ data, canSeeTotals }: DashboardProps) {
             <div className="mt-4 grid gap-4 lg:grid-cols-3">
                 <Card>
                     <CardHeader
-                        title="Ultimos pedidos"
+                        title="Últimos pedidos"
                         action={
                             can('orders.index.view') ? (
                                 <Link href={route('orders.index')} className="text-[0.78125rem] font-medium text-[var(--accent)] hover:underline">
@@ -237,7 +237,7 @@ export default function DashboardIndex({ data, canSeeTotals }: DashboardProps) {
                         }
                     />
                     {data.recent_orders.length === 0 ? (
-                        <p className="text-[0.8125rem] text-[var(--muted)]">Todavia no hay pedidos.</p>
+                        <p className="text-[0.8125rem] text-[var(--muted)]">Todavía no hay pedidos.</p>
                     ) : (
                         <ul className="flex flex-col gap-2">
                             {data.recent_orders.map((order) => (
@@ -266,9 +266,9 @@ export default function DashboardIndex({ data, canSeeTotals }: DashboardProps) {
                 </Card>
 
                 <Card>
-                    <CardHeader title="Mas vendidos hoy" />
+                    <CardHeader title="Más vendidos hoy" />
                     {data.top_products.length === 0 ? (
-                        <p className="text-[0.8125rem] text-[var(--muted)]">Aun no se ha vendido nada hoy.</p>
+                        <p className="text-[0.8125rem] text-[var(--muted)]">Aún no se ha vendido nada hoy.</p>
                     ) : (
                         <ul className="flex flex-col gap-2.5">
                             {data.top_products.map((product) => (
@@ -298,7 +298,7 @@ export default function DashboardIndex({ data, canSeeTotals }: DashboardProps) {
                         }
                     />
                     {data.stock_alerts.length === 0 ? (
-                        <p className="text-[0.8125rem] text-[var(--muted)]">Ningun articulo esta bajo el minimo.</p>
+                        <p className="text-[0.8125rem] text-[var(--muted)]">Ningún artículo está bajo el mínimo.</p>
                     ) : (
                         <ul className="flex flex-col gap-2.5">
                             {data.stock_alerts.map((alert) => (

@@ -187,15 +187,15 @@ export default function PaymentDialog({
         (method: PresentedPaymentMethod): string | null => {
             if (method.kind === 'credit') {
                 if (!customer) {
-                    return 'Elige un cliente antes de vender a credito.';
+                    return 'Elige un cliente antes de vender a crédito.';
                 }
 
                 if (!customer.credit_enabled) {
-                    return 'Este cliente no tiene credito habilitado.';
+                    return 'Este cliente no tiene crédito habilitado.';
                 }
 
                 if (customer.credit_blocked) {
-                    return customer.blocked_reason ?? 'El credito de este cliente esta bloqueado.';
+                    return customer.blocked_reason ?? 'El crédito de este cliente está bloqueado.';
                 }
 
                 if (available <= 0) {
@@ -642,7 +642,7 @@ export default function PaymentDialog({
                                     ? 'Toca un medio de pago para asignarle un monto.'
                                     : activeLimit === null
                                       ? 'Sin tope: lo que exceda el total sale como cambio.'
-                                      : `Maximo ${money(activeLimit)}`}
+                                      : `Máximo ${money(activeLimit)}`}
                                 {activeMethod?.min_amount ? ` · mínimo ${money(activeMethod.min_amount)}` : ''}
                             </p>
 
@@ -743,7 +743,7 @@ export default function PaymentDialog({
                         {payments.length === 0 ? (
                             <div className="grid place-items-center rounded-card border border-dashed border-[var(--line-2)] px-4 py-7 text-center">
                                 <p className="text-[0.78125rem] text-[var(--muted)]">
-                                    Todavia no hay pagos.
+                                    Todavía no hay pagos.
                                     <br />
                                     Toca un medio y se le asigna lo que falta.
                                 </p>
@@ -843,7 +843,7 @@ export default function PaymentDialog({
                         {creditUsed > 0 && customer && (
                             <div className={cn('rounded-card border p-4', creditUsed > available ? 'border-[var(--danger)]/50 bg-[var(--danger-soft)]' : 'border-[var(--line)] bg-[var(--surface-2)]')}>
                                 <p className="mb-2 text-[0.75rem] font-semibold uppercase tracking-wide" style={{ color: creditUsed > available ? 'var(--danger)' : 'var(--muted)' }}>
-                                    {creditUsed > available ? 'Supera el cupo aprobado' : 'Credito del cliente'}
+                                    {creditUsed > available ? 'Supera el cupo aprobado' : 'Crédito del cliente'}
                                 </p>
                                 <dl className="flex flex-col gap-1.5 text-[0.78125rem]">
                                     <div className="flex justify-between">
@@ -851,7 +851,7 @@ export default function PaymentDialog({
                                         <dd className="font-mono tabular">{money(customer.balance)}</dd>
                                     </div>
                                     <div className="flex justify-between">
-                                        <dt className="text-[var(--muted)]">A credito en esta venta</dt>
+                                        <dt className="text-[var(--muted)]">A crédito en esta venta</dt>
                                         <dd className="font-mono tabular">{money(creditUsed)}</dd>
                                     </div>
                                     <div className="flex justify-between border-t border-[var(--line)] pt-1.5">
@@ -859,14 +859,14 @@ export default function PaymentDialog({
                                         <dd className="font-mono font-semibold tabular">{money(customer.balance + creditUsed)}</dd>
                                     </div>
                                     <div className="flex justify-between">
-                                        <dt className="text-[var(--muted)]">Cupo disponible despues</dt>
+                                        <dt className="text-[var(--muted)]">Cupo disponible después</dt>
                                         <dd className="font-mono tabular" style={{ color: available - creditUsed < 0 ? 'var(--danger)' : 'var(--accent)' }}>
                                             {money(Math.max(0, available - creditUsed))}
                                         </dd>
                                     </div>
                                     <div className="flex justify-between">
                                         <dt className="text-[var(--muted)]">Plazo</dt>
-                                        <dd className="font-mono tabular">{customer.credit_term_days} dias</dd>
+                                        <dd className="font-mono tabular">{customer.credit_term_days} días</dd>
                                     </div>
                                 </dl>
                             </div>
@@ -878,7 +878,7 @@ export default function PaymentDialog({
                         </p>
 
                         {needsCreditApproval && (
-                            <Button variant="warn" icon={<LockKeyIcon size={16} />} onClick={() => onRequestCreditApproval?.('Esta venta lleva credito y el cajero no tiene ese permiso.')}>
+                            <Button variant="warn" icon={<LockKeyIcon size={16} />} onClick={() => onRequestCreditApproval?.('Esta venta lleva crédito y el cajero no tiene ese permiso.')}>
                                 Autorizar con PIN de supervisor
                             </Button>
                         )}
@@ -952,7 +952,7 @@ function buildNotice(state: {
     const ok = { color: 'var(--accent)', background: 'var(--accent-soft)', icon: CheckCircleIcon };
 
     if (state.creditUsed > state.available) {
-        return { text: `El credito supera el cupo disponible (${money(state.available)}). Baja el monto o pide autorizacion.`, color: 'var(--danger)', background: 'var(--danger-soft)', icon: WarningCircleIcon };
+        return { text: `El crédito supera el cupo disponible (${money(state.available)}). Baja el monto o pide autorización.`, color: 'var(--danger)', background: 'var(--danger-soft)', icon: WarningCircleIcon };
     }
 
     if (state.payments === 0) {
@@ -968,7 +968,7 @@ function buildNotice(state: {
     }
 
     if (state.needsCreditApproval) {
-        return { ...warn, icon: LockKeyIcon, text: 'Falta la autorizacion del supervisor para dejar parte de la venta a credito.' };
+        return { ...warn, icon: LockKeyIcon, text: 'Falta la autorización del supervisor para dejar parte de la venta a crédito.' };
     }
 
     if (state.gateway) {

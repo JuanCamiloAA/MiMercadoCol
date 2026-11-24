@@ -51,8 +51,8 @@ export default function PurchasesIndex({ orders, filters: initialFilters, suppli
     return (
         <AppLayout title="Compras">
             <PageHeader
-                title="Ordenes de compra"
-                description="Lo que se le pidio a cada proveedor y lo que ya llego."
+                title="Órdenes de compra"
+                description="Lo que se le pidió a cada proveedor y lo que ya llegó."
                 actions={
                     can('purchases.index.create') ? (
                         <ButtonLink href={route('purchases.create')} icon={<PlusIcon size={16} weight="bold" />}>
@@ -70,7 +70,7 @@ export default function PurchasesIndex({ orders, filters: initialFilters, suppli
 
             <Card className="mb-4">
                 <div className="grid gap-3 sm:grid-cols-3">
-                    <SearchInput placeholder="Codigo de la orden" value={filters.search} onChange={(event) => update('search', event.target.value)} />
+                    <SearchInput placeholder="Código de la orden" value={filters.search} onChange={(event) => update('search', event.target.value)} />
                     <Select options={suppliers} placeholder="Todos los proveedores" value={filters.supplier} onChange={(event) => update('supplier', event.target.value)} />
                     <div className="flex items-start gap-2">
                         <div className="flex-1">
@@ -98,7 +98,7 @@ export default function PurchasesIndex({ orders, filters: initialFilters, suppli
             {orders.data.length === 0 ? (
                 <EmptyState
                     title="Ninguna orden coincide"
-                    description="Crea una orden nueva con los articulos bajo el minimo."
+                    description="Crea una orden nueva con los artículos bajo el mínimo."
                     icon={<ReceiptIcon size={24} />}
                     action={
                         can('purchases.index.create') ? (
@@ -116,7 +116,7 @@ export default function PurchasesIndex({ orders, filters: initialFilters, suppli
                                 <TH>Orden</TH>
                                 <TH>Proveedor</TH>
                                 <TH>Sede</TH>
-                                <TH align="center">Articulos</TH>
+                                <TH align="center">Artículos</TH>
                                 <TH>Entrega esperada</TH>
                                 <TH>Vence</TH>
                                 <TH align="right">Total</TH>

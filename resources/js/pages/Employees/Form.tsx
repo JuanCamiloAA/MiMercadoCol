@@ -37,14 +37,14 @@ interface EmployeeFormProps {
 const DAYS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'] as const;
 
 const DOCUMENT_TYPES = [
-    { value: 'CC', label: 'Cedula de ciudadania' },
-    { value: 'CE', label: 'Cedula de extranjeria' },
+    { value: 'CC', label: 'Cédula de ciudadanía' },
+    { value: 'CE', label: 'Cédula de extranjería' },
     { value: 'PA', label: 'Pasaporte' },
 ];
 
 const CONTRACT_TYPES = [
-    { value: 'indefinido', label: 'Termino indefinido' },
-    { value: 'fijo', label: 'Termino fijo' },
+    { value: 'indefinido', label: 'Término indefinido' },
+    { value: 'fijo', label: 'Término fijo' },
     { value: 'obra', label: 'Obra o labor' },
     { value: 'aprendiz', label: 'Aprendizaje' },
 ];
@@ -129,7 +129,7 @@ export default function EmployeeForm({ mode, employee, stores, roles, canCreateA
                                 error={errors.document_type}
                             />
                             <Input
-                                label="Numero de documento"
+                                label="Número de documento"
                                 required
                                 value={data.document_number}
                                 onChange={(event) => setData('document_number', event.target.value)}
@@ -142,7 +142,7 @@ export default function EmployeeForm({ mode, employee, stores, roles, canCreateA
                                 onChange={(event) => setData('birth_date', event.target.value)}
                                 error={errors.birth_date}
                             />
-                            <Input label="Telefono" value={data.phone} onChange={(event) => setData('phone', event.target.value)} error={errors.phone} />
+                            <Input label="Teléfono" value={data.phone} onChange={(event) => setData('phone', event.target.value)} error={errors.phone} />
                             <Input
                                 label="Correo personal"
                                 type="email"
@@ -152,7 +152,7 @@ export default function EmployeeForm({ mode, employee, stores, roles, canCreateA
                                 containerClassName="sm:col-span-2"
                             />
                             <Input
-                                label="Direccion"
+                                label="Dirección"
                                 value={data.address}
                                 onChange={(event) => setData('address', event.target.value)}
                                 error={errors.address}
@@ -165,7 +165,7 @@ export default function EmployeeForm({ mode, employee, stores, roles, canCreateA
                                 error={errors.emergency_contact_name}
                             />
                             <Input
-                                label="Telefono de emergencia"
+                                label="Teléfono de emergencia"
                                 value={data.emergency_contact_phone}
                                 onChange={(event) => setData('emergency_contact_phone', event.target.value)}
                                 error={errors.emergency_contact_phone}
@@ -175,7 +175,7 @@ export default function EmployeeForm({ mode, employee, stores, roles, canCreateA
 
                     <div className="flex flex-col gap-4">
                         <Card>
-                            <CardHeader title="Vinculacion" />
+                            <CardHeader title="Vinculación" />
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <Input label="Cargo" required value={data.position} onChange={(event) => setData('position', event.target.value)} error={errors.position} />
                                 <Select
@@ -206,7 +206,7 @@ export default function EmployeeForm({ mode, employee, stores, roles, canCreateA
                         </Card>
 
                         <Card>
-                            <CardHeader title="Turnos de la semana" description="Marca los dias que trabaja y su horario." />
+                            <CardHeader title="Turnos de la semana" description="Marca los días que trabaja y su horario." />
                             <div className="flex flex-col gap-2">
                                 {DAYS.map((day) => {
                                     const enabled = Boolean(data.work_schedule[day]);
@@ -249,7 +249,7 @@ export default function EmployeeForm({ mode, employee, stores, roles, canCreateA
                     <Card>
                         <CardHeader
                             title="Cuenta de acceso"
-                            description="Si la creas ahora, se genera una contrasena temporal que se muestra una sola vez."
+                            description="Si la creas ahora, se genera una contraseña temporal que se muestra una sola vez."
                         />
 
                         <Checkbox
@@ -283,7 +283,7 @@ export default function EmployeeForm({ mode, employee, stores, roles, canCreateA
                                     value={data.access_pin}
                                     onChange={(event) => setData('access_pin', event.target.value.replace(/\D/g, ''))}
                                     error={errors.access_pin}
-                                    hint="4 digitos, solo si va a abrir caja."
+                                    hint="4 dígitos, solo si va a abrir caja."
                                 />
                             </div>
                         )}

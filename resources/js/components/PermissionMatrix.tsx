@@ -251,7 +251,7 @@ export function PermissionMatrix({ modules, selected, onChange, baseline, locked
 
                 {filtered.length === 0 && (
                     <p className="rounded-card border border-dashed border-[var(--line)] px-4 py-8 text-center text-[0.8125rem] text-[var(--muted)]">
-                        Ningun permiso coincide con «{search}».
+                        Ningún permiso coincide con «{search}».
                     </p>
                 )}
             </div>

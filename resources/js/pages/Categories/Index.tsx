@@ -106,10 +106,10 @@ export default function CategoriesIndex({ categories, parents, icons }: Categori
     const modalOpen = creating || editing !== null;
 
     return (
-        <AppLayout title="Categorias">
+        <AppLayout title="Categorías">
             <PageHeader
-                title="Categorias"
-                description="Organizan el catalogo, el punto de venta y la tienda en linea."
+                title="Categorías"
+                description="Organizan el catálogo, el punto de venta y la tienda en línea."
                 actions={
                     <>
                         {can('categories.index.import') && (
@@ -119,7 +119,7 @@ export default function CategoriesIndex({ categories, parents, icons }: Categori
                         )}
                         {can('categories.index.create') && (
                             <Button onClick={openCreate} icon={<PlusIcon size={16} weight="bold" />}>
-                                Nueva categoria
+                                Nueva categoría
                             </Button>
                         )}
                     </>
@@ -128,18 +128,18 @@ export default function CategoriesIndex({ categories, parents, icons }: Categori
 
             {categories.length === 0 ? (
                 <EmptyState
-                    title="Todavia no hay categorias"
-                    description="Crea la primera para poder registrar articulos."
+                    title="Todavía no hay categorías"
+                    description="Crea la primera para poder registrar artículos."
                     icon={<SquaresFourIcon size={24} />}
                 />
             ) : (
                 <Table>
                     <THead>
                         <TR>
-                            <TH>Categoria</TH>
+                            <TH>Categoría</TH>
                             <TH>Depende de</TH>
                             <TH align="center">Orden</TH>
-                            <TH align="center">Articulos</TH>
+                            <TH align="center">Artículos</TH>
                             <TH align="center">Estado</TH>
                             <TH align="right">Acciones</TH>
                         </TR>
@@ -190,7 +190,7 @@ export default function CategoriesIndex({ categories, parents, icons }: Categori
                     setCreating(false);
                     setEditing(null);
                 }}
-                title={editing ? 'Editar la categoria' : 'Nueva categoria'}
+                title={editing ? 'Editar la categoría' : 'Nueva categoría'}
                 size="sm"
                 footer={
                     <>
@@ -221,7 +221,7 @@ export default function CategoriesIndex({ categories, parents, icons }: Categori
                     <Select
                         label="Depende de"
                         options={parents.filter((parent) => parent.value !== editing?.id)}
-                        placeholder="Categoria principal"
+                        placeholder="Categoría principal"
                         value={form.data.parent_id}
                         onChange={(event) => form.setData('parent_id', event.target.value)}
                         error={form.errors.parent_id}
@@ -278,7 +278,7 @@ export default function CategoriesIndex({ categories, parents, icons }: Categori
                     </div>
 
                     <Checkbox
-                        label="Categoria activa"
+                        label="Categoría activa"
                         checked={form.data.is_active}
                         onChange={(event) => form.setData('is_active', event.target.checked)}
                     />
@@ -290,11 +290,11 @@ export default function CategoriesIndex({ categories, parents, icons }: Categori
                 onClose={() => setToDelete(null)}
                 onConfirm={confirmDelete}
                 loading={busy}
-                title="Eliminar la categoria"
+                title="Eliminar la categoría"
                 confirmLabel="Eliminar"
                 message={
                     <>
-                        Vas a eliminar <strong>{toDelete?.name}</strong>. Solo se puede si no tiene articulos ni subcategorias.
+                        Vas a eliminar <strong>{toDelete?.name}</strong>. Solo se puede si no tiene artículos ni subcategorías.
                     </>
                 }
             />

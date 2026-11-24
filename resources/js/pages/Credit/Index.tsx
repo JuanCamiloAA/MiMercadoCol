@@ -176,7 +176,7 @@ export default function CreditIndex({ customers, filters: initialFilters, metric
                                     <Select
                                         options={[
                                             { value: 'overdue', label: 'En mora' },
-                                            { value: 'current', label: 'Al dia con saldo' },
+                                            { value: 'current', label: 'Al día con saldo' },
                                             { value: 'blocked', label: 'Bloqueados' },
                                         ]}
                                         placeholder="Toda la cartera"
@@ -194,7 +194,7 @@ export default function CreditIndex({ customers, filters: initialFilters, metric
                     </Card>
 
                     {customers.data.length === 0 ? (
-                        <EmptyState title="Ningun cliente coincide" description="Cambia los filtros para ver otra parte de la cartera." />
+                        <EmptyState title="Ningún cliente coincide" description="Cambia los filtros para ver otra parte de la cartera." />
                     ) : (
                         <>
                             <Table>
@@ -226,7 +226,7 @@ export default function CreditIndex({ customers, filters: initialFilters, metric
                                             </TD>
                                             <TD align="center">
                                                 {row.days_overdue > 0 ? (
-                                                    <Badge tone="danger">{row.days_overdue} dias</Badge>
+                                                    <Badge tone="danger">{row.days_overdue} días</Badge>
                                                 ) : (
                                                     <span className="text-[var(--muted)]">—</span>
                                                 )}
@@ -237,7 +237,7 @@ export default function CreditIndex({ customers, filters: initialFilters, metric
                                                 ) : row.overdue_balance > 0 ? (
                                                     <Badge tone="warn">En mora</Badge>
                                                 ) : (
-                                                    <Badge tone="accent">Al dia</Badge>
+                                                    <Badge tone="accent">Al día</Badge>
                                                 )}
                                             </TD>
                                         </TR>
@@ -294,9 +294,9 @@ export default function CreditIndex({ customers, filters: initialFilters, metric
                             </Card>
 
                             <Card>
-                                <CardHeader title="Facturas pendientes" description="Los abonos se aplican de la mas antigua a la mas nueva." />
+                                <CardHeader title="Facturas pendientes" description="Los abonos se aplican de la más antigua a la más nueva." />
                                 {selected.pending_sales.length === 0 ? (
-                                    <p className="text-[0.8125rem] text-[var(--muted)]">Este cliente esta al dia.</p>
+                                    <p className="text-[0.8125rem] text-[var(--muted)]">Este cliente está al día.</p>
                                 ) : (
                                     <ul className="flex flex-col gap-2">
                                         {selected.pending_sales.map((sale) => (
@@ -456,7 +456,7 @@ export default function CreditIndex({ customers, filters: initialFilters, metric
                         error={limitForm.errors.payment_term_id}
                     />
                     <Checkbox
-                        label="Credito habilitado"
+                        label="Crédito habilitado"
                         checked={limitForm.data.credit_enabled}
                         onChange={(event) => limitForm.setData('credit_enabled', event.target.checked)}
                     />
@@ -466,7 +466,7 @@ export default function CreditIndex({ customers, filters: initialFilters, metric
             <Modal
                 open={modal === 'block'}
                 onClose={() => setModal(null)}
-                title="Bloquear el credito"
+                title="Bloquear el crédito"
                 description={selected?.name}
                 size="sm"
                 footer={
@@ -487,7 +487,7 @@ export default function CreditIndex({ customers, filters: initialFilters, metric
                         value={blockForm.data.reason}
                         onChange={(event) => blockForm.setData('reason', event.target.value)}
                         error={blockForm.errors.reason}
-                        hint="Se muestra en el punto de venta cuando se intente cobrar a credito."
+                        hint="Se muestra en el punto de venta cuando se intente cobrar a crédito."
                     />
                 </form>
             </Modal>

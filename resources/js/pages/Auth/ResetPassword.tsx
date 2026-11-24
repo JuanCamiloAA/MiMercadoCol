@@ -23,10 +23,10 @@ export default function ResetPassword({ email, token }: ResetPasswordProps) {
     };
 
     return (
-        <AuthLayout title="Nueva contrasena" heading="Definir una contrasena nueva" subheading="Debe tener al menos 8 caracteres">
+        <AuthLayout title="Nueva contraseña" heading="Definir una contraseña nueva" subheading="Debe tener al menos 8 caracteres">
             <form onSubmit={submit} className="flex flex-col gap-4">
                 <Input
-                    label="Correo electronico"
+                    label="Correo electrónico"
                     type="email"
                     required
                     value={data.email}
@@ -35,7 +35,7 @@ export default function ResetPassword({ email, token }: ResetPasswordProps) {
                 />
 
                 <Input
-                    label="Contrasena nueva"
+                    label="Contraseña nueva"
                     type="password"
                     autoFocus
                     required
@@ -46,7 +46,7 @@ export default function ResetPassword({ email, token }: ResetPasswordProps) {
                 />
 
                 <Input
-                    label="Repite la contrasena"
+                    label="Repite la contraseña"
                     type="password"
                     required
                     autoComplete="new-password"
@@ -56,7 +56,7 @@ export default function ResetPassword({ email, token }: ResetPasswordProps) {
                 />
 
                 <Button type="submit" size="lg" block loading={processing}>
-                    Guardar la contrasena
+                    Guardar la contraseña
                 </Button>
             </form>
         </AuthLayout>

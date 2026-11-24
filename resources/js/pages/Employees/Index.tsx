@@ -47,7 +47,7 @@ export default function EmployeesIndex({ employees, filters: initialFilters, met
 
     useEffect(() => {
         if (flash?.temporary_password) {
-            toast.success(`Contrasena temporal: ${flash.temporary_password}`, {
+            toast.success(`Contraseña temporal: ${flash.temporary_password}`, {
                 duration: 20000,
                 description: 'Copiala ahora: no se vuelve a mostrar.',
             });
@@ -122,7 +122,7 @@ export default function EmployeesIndex({ employees, filters: initialFilters, met
             </Card>
 
             {employees.data.length === 0 ? (
-                <EmptyState title="Ningun empleado coincide" description="Cambia los filtros o registra una ficha nueva." />
+                <EmptyState title="Ningún empleado coincide" description="Cambia los filtros o registra una ficha nueva." />
             ) : (
                 <>
                     <Table>

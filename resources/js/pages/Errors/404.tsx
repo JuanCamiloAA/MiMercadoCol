@@ -14,7 +14,7 @@ export default function NotFound() {
                     <MagnifyingGlassIcon size={24} />
                 </span>
 
-                <h1 className="mt-4 text-[1.25rem] text-[var(--text)]">No encontramos esa pagina</h1>
+                <h1 className="mt-4 text-[1.25rem] text-[var(--text)]">No encontramos esa página</h1>
                 <p className="mt-1.5 text-[0.84375rem] text-[var(--muted)]">
                     Es posible que el registro se haya eliminado o que el enlace este mal escrito.
                 </p>

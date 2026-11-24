@@ -266,7 +266,7 @@ function missingFor(line: CartLine): string {
     if (promotion.needs && promotion.needs > 0) {
         const missing = promotion.needs - (Math.floor(line.quantity) % promotion.needs);
 
-        return `Lleva ${number(missing)} mas para el ${promotion.badge}`;
+        return `Lleva ${number(missing)} más para el ${promotion.badge}`;
     }
 
     return 'Falta completar el combo';
@@ -567,8 +567,8 @@ export default function PosSale({
             // Decir donde esta ahorra el viaje a la bodega para averiguarlo.
             toast.error(
                 product.other_stock > 0
-                    ? `${product.name} se agoto en el punto de venta. Hay ${number(product.other_stock)} en otra bodega.`
-                    : `${product.name} esta agotado en esta sede.`,
+                    ? `${product.name} se agotó en el punto de venta. Hay ${number(product.other_stock)} en otra bodega.`
+                    : `${product.name} está agotado en esta sede.`,
             );
 
             return;
@@ -576,7 +576,7 @@ export default function PosSale({
 
         // Que el cajero se entere en el momento, no al final del tiquete.
         if (product.promotion) {
-            toast.info(`${product.name}: ${product.promotion.hint}`, { description: 'Puedes quitarsela desde el tiquete.' });
+            toast.info(`${product.name}: ${product.promotion.hint}`, { description: 'Puedes quitársela desde el tiquete.' });
         }
 
         setCart((current) => {
@@ -1056,10 +1056,10 @@ export default function PosSale({
                 playErrorSound();
             }
 
-            toast.error(`No hay ningun articulo con el codigo ${code}.`);
+            toast.error(`No hay ningún artículo con el código ${code}.`);
         } else {
             setSearch(code);
-            toast.info('Varios articulos coinciden: eligelo en la cuadricula.');
+            toast.info('Varios artículos coinciden: elígelo en la cuadrícula.');
         }
     };
 
@@ -1323,7 +1323,7 @@ export default function PosSale({
                         ref={barcodeRef}
                         autoFocus
                         type="text"
-                        placeholder="Codigo de barras"
+                        placeholder="Código de barras"
                         onKeyDown={handleBarcode}
                         className="h-11 w-full rounded-control border border-[var(--line)] bg-[var(--surface-2)] pl-10 pr-3 font-mono text-[0.875rem] tabular focus:border-[var(--accent)] focus:outline-none"
                     />
@@ -1337,7 +1337,7 @@ export default function PosSale({
                     )}
                     {permissions.suspend && <ShortcutButton label="Recuperar" hint={posLayout.shortcuts.resume} onClick={() => setModal('resume')} />}
                     {(permissions.cancel || permissions.refund) && (
-                        <ShortcutButton label="Devolucion" hint={posLayout.shortcuts.recent} onClick={() => setModal('recent')} />
+                        <ShortcutButton label="Devolución" hint={posLayout.shortcuts.recent} onClick={() => setModal('recent')} />
                     )}
                 </div>
             </header>
@@ -1349,7 +1349,7 @@ export default function PosSale({
                             type="search"
                             value={search}
                             onChange={(event) => setSearch(event.target.value)}
-                            placeholder="Buscar articulo por nombre o SKU"
+                            placeholder="Buscar artículo por nombre o SKU"
                             className="h-11 flex-1 rounded-control border border-[var(--line)] bg-[var(--surface-2)] px-3 text-[0.875rem] focus:border-[var(--accent)] focus:outline-none"
                         />
                     </div>
@@ -1407,7 +1407,7 @@ export default function PosSale({
                         {products.length === 0 && services.length === 0 && (
                             <div className="col-span-full grid place-items-center gap-2 py-16 text-center text-[var(--muted)]">
                                 <PackageIcon size={32} />
-                                <p className="text-[0.84375rem]">Ningun articulo coincide con la busqueda.</p>
+                                <p className="text-[0.84375rem]">Ningún artículo coincide con la búsqueda.</p>
                             </div>
                         )}
                     </div>
@@ -1425,7 +1425,7 @@ export default function PosSale({
                         <div className="min-w-0">
                             <p className="text-[0.8125rem] font-semibold">Tiquete en curso</p>
                             <p className="text-[0.71875rem] text-[var(--muted)]">
-                                {cart.length} {cart.length === 1 ? 'articulo' : 'articulos'}
+                                {cart.length} {cart.length === 1 ? 'artículo' : 'artículos'}
                             </p>
                         </div>
                         {cart.length > 0 && (
@@ -1498,7 +1498,7 @@ export default function PosSale({
                         {cart.length === 0 ? (
                             <div className="grid h-full place-items-center gap-2 px-6 text-center text-[var(--muted)]">
                                 <BarcodeIcon size={34} />
-                                <p className="text-[0.84375rem]">Escanea un codigo o toca un articulo para empezar.</p>
+                                <p className="text-[0.84375rem]">Escanea un código o toca un artículo para empezar.</p>
                             </div>
                         ) : (
                             <ul className="divide-y divide-[var(--line)]">
@@ -2276,7 +2276,7 @@ function CatalogList({
             {products.length === 0 && services.length === 0 && (
                 <li className="grid place-items-center gap-2 py-16 text-center text-[var(--muted)]">
                     <PackageIcon size={32} />
-                    <p className="text-[0.84375rem]">Ningun articulo coincide con la busqueda.</p>
+                    <p className="text-[0.84375rem]">Ningún artículo coincide con la búsqueda.</p>
                 </li>
             )}
         </ul>
@@ -2388,7 +2388,7 @@ function SupervisorPinModal({
         <Modal
             open
             onClose={onClose}
-            title="Autorizacion del supervisor"
+            title="Autorización del supervisor"
             description={prompt.message}
             size="sm"
             footer={
@@ -2555,7 +2555,7 @@ function LastSaleModal({ sale, onClose }: { sale: LastSale | null; onClose: () =
 
                 {sale.due_total > 0 && (
                     <p className="rounded-control bg-[var(--surface-2)] px-3 py-2 text-center text-[0.8125rem] text-[var(--muted)]">
-                        Quedaron <span className="font-mono tabular">{money(sale.due_total)}</span> a credito.
+                        Quedaron <span className="font-mono tabular">{money(sale.due_total)}</span> a crédito.
                     </p>
                 )}
 
@@ -2607,7 +2607,7 @@ function CustomerModal({
     }, [search, open]);
 
     return (
-        <Modal open={open} onClose={onClose} title="Cliente del tiquete" description="Buscalo por nombre, documento o telefono.">
+        <Modal open={open} onClose={onClose} title="Cliente del tiquete" description="Búscalo por nombre, documento o teléfono.">
             <input
                 autoFocus
                 type="search"
@@ -2631,7 +2631,7 @@ function CustomerModal({
 
             <ul className="flex max-h-[23.75rem] flex-col gap-1.5 overflow-y-auto">
                 {loading && <li className="py-4 text-center text-[0.8125rem] text-[var(--muted)]">Buscando…</li>}
-                {!loading && results.length === 0 && <li className="py-4 text-center text-[0.8125rem] text-[var(--muted)]">Ningun cliente coincide.</li>}
+                {!loading && results.length === 0 && <li className="py-4 text-center text-[0.8125rem] text-[var(--muted)]">Ningún cliente coincide.</li>}
                 {results.map((item) => (
                     <li key={item.id}>
                         <button
@@ -2718,7 +2718,7 @@ function DiscountModal({
             open={open}
             onClose={onClose}
             title="Descuento del tiquete"
-            description={`Maximo permitido: ${maxPercent} %`}
+            description={`Máximo permitido: ${maxPercent} %`}
             size="sm"
             footer={
                 <>
@@ -2780,7 +2780,7 @@ function DiscountModal({
                         </button>
                     ))}
                 </div>
-                <p className="text-[0.78125rem] text-[var(--muted)]">El descuento se reparte proporcionalmente entre todas las lineas del tiquete.</p>
+                <p className="text-[0.78125rem] text-[var(--muted)]">El descuento se reparte proporcionalmente entre todas las líneas del tiquete.</p>
             </div>
         </Modal>
     );
@@ -2861,7 +2861,7 @@ function HoldModal({
                 className="h-11 w-full rounded-control border border-[var(--line)] bg-[var(--surface-2)] px-3 text-[0.875rem] focus:border-[var(--accent)] focus:outline-none"
             />
             <p className="mt-2 text-[0.78125rem] text-[var(--muted)]">
-                Se guardan {cart.length} articulos por {money(total)}
+                Se guardan {cart.length} artículos por {money(total)}
                 {customer ? (
                     <>
                         {' '}
@@ -2926,7 +2926,7 @@ function ResumeModal({ open, onClose, onResume }: { open: boolean; onClose: () =
                         >
                             <span className="block truncate text-[0.84375rem] font-medium">{ticket.label}</span>
                             <span className="block truncate text-[0.71875rem] text-[var(--muted)]">
-                                {ticket.customer_name ?? 'Consumidor final'} · {ticket.payload.items.length} articulos
+                                {ticket.customer_name ?? 'Consumidor final'} · {ticket.payload.items.length} artículos
                             </span>
                         </button>
                         <span className="font-mono text-[0.875rem] font-semibold tabular">{money(ticket.total)}</span>
@@ -3074,7 +3074,7 @@ function RecentSalesModal({
                 </div>
             )}
             {loading && <p className="py-4 text-center text-[0.8125rem] text-[var(--muted)]">Cargando…</p>}
-            {!loading && sales.length === 0 && <p className="py-4 text-center text-[0.8125rem] text-[var(--muted)]">Todavia no hay ventas en este turno.</p>}
+            {!loading && sales.length === 0 && <p className="py-4 text-center text-[0.8125rem] text-[var(--muted)]">Todavía no hay ventas en este turno.</p>}
 
             <ul className="flex max-h-[22.5rem] flex-col gap-1.5 overflow-y-auto">
                 {sales.map((sale) => (
@@ -3126,7 +3126,7 @@ function RecentSalesModal({
                         type="text"
                         value={reason}
                         onChange={(event) => setReason(event.target.value)}
-                        placeholder="Motivo de la anulacion"
+                        placeholder="Motivo de la anulación"
                         className="mt-2 h-11 w-full rounded-control border border-[var(--line)] bg-[var(--surface)] px-3 text-[0.84375rem] focus:border-[var(--danger)] focus:outline-none"
                     />
                     <div className="mt-2 flex justify-end gap-2">

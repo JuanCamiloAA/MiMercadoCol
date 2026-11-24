@@ -25,7 +25,7 @@ interface OpeningProps {
 
 const CHECKS = [
     { key: 'printer', label: 'La impresora tiene papel y responde' },
-    { key: 'datafono', label: 'El datafono esta encendido y conectado' },
+    { key: 'datafono', label: 'El datáfono está encendido y conectado' },
     { key: 'previous', label: 'Revise la diferencia del cierre anterior' },
 ];
 
@@ -104,7 +104,7 @@ export default function PosOpening({ store, registers, cashiers, denominations, 
                                     </button>
                                 ))}
                                 {cashiers.length === 0 && (
-                                    <p className="text-[0.8125rem] text-[var(--muted)]">Ningun usuario de esta sede puede abrir caja.</p>
+                                    <p className="text-[0.8125rem] text-[var(--muted)]">Ningún usuario de esta sede puede abrir caja.</p>
                                 )}
                             </div>
                             {errors.user_id && <p className="mt-2 text-[0.78125rem] font-medium text-[var(--danger)]">{errors.user_id}</p>}
@@ -193,7 +193,7 @@ export default function PosOpening({ store, registers, cashiers, denominations, 
                         </section>
 
                         <section className="rounded-card border border-[var(--line)] bg-[var(--surface)] p-5">
-                            <h2 className="mb-3 text-[0.9375rem] font-semibold">3. Verificacion previa</h2>
+                            <h2 className="mb-3 text-[0.9375rem] font-semibold">3. Verificación previa</h2>
                             <div className="flex flex-col gap-2">
                                 {CHECKS.map((check) => (
                                     <button
@@ -216,7 +216,7 @@ export default function PosOpening({ store, registers, cashiers, denominations, 
                                 <div className="mt-3 flex items-start gap-2 rounded-control border border-[var(--line)] px-3 py-2.5 text-[0.78125rem] text-[var(--muted)]">
                                     <WarningCircleIcon size={16} className="mt-0.5 shrink-0" />
                                     <span className="min-w-0">
-                                        Ultimo cierre en {lastClosing.register}: diferencia de{' '}
+                                        Último cierre en {lastClosing.register}: diferencia de{' '}
                                         <span
                                             className="font-mono tabular"
                                             style={{ color: (lastClosing.difference ?? 0) === 0 ? 'var(--accent)' : 'var(--danger)' }}

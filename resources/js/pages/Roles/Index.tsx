@@ -58,7 +58,7 @@ export default function RolesIndex({ roles }: RolesIndexProps) {
             />
 
             {roles.length === 0 ? (
-                <EmptyState title="Todavia no hay roles" description="Crea el primero para repartir permisos." icon={<ShieldCheckIcon size={24} />} />
+                <EmptyState title="Todavía no hay roles" description="Crea el primero para repartir permisos." icon={<ShieldCheckIcon size={24} />} />
             ) : (
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {roles.map((role) => (
@@ -80,7 +80,7 @@ export default function RolesIndex({ roles }: RolesIndexProps) {
                             </div>
 
                             <p className="mt-2 min-h-[2.25rem] text-[0.8125rem] leading-snug text-[var(--muted)]">
-                                {role.description ?? 'Sin descripcion.'}
+                                {role.description ?? 'Sin descripción.'}
                             </p>
 
                             <div className="mt-3 flex items-center gap-4 text-[0.78125rem] text-[var(--muted)]">

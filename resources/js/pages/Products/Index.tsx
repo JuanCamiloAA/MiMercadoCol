@@ -190,7 +190,7 @@ export default function ProductsIndex({ products, filters: initialFilters, categ
                 {product.is_active ? <Badge tone="accent">Activo</Badge> : <Badge tone="neutral">Inactivo</Badge>}
                 {product.is_online_visible && (
                     <span className="mt-1 block">
-                        <Badge tone="info">En linea</Badge>
+                        <Badge tone="info">En línea</Badge>
                     </span>
                 )}
             </TD>
@@ -250,7 +250,7 @@ export default function ProductsIndex({ products, filters: initialFilters, categ
                         {row.is_active ? <Badge tone="accent">Activo</Badge> : <Badge tone="neutral">Inactivo</Badge>}
                         {row.is_online_visible && (
                             <span className="mt-1 block">
-                                <Badge tone="info">En linea</Badge>
+                                <Badge tone="info">En línea</Badge>
                             </span>
                         )}
                     </TD>
@@ -264,10 +264,10 @@ export default function ProductsIndex({ products, filters: initialFilters, categ
     };
 
     return (
-        <AppLayout title="Articulos">
+        <AppLayout title="Artículos">
             <PageHeader
-                title="Articulos"
-                description="Catalogo de la empresa con existencias de la sede activa."
+                title="Artículos"
+                description="Catálogo de la empresa con existencias de la sede activa."
                 actions={
                     <>
                         {can('products.index.import') && (
@@ -286,7 +286,7 @@ export default function ProductsIndex({ products, filters: initialFilters, categ
                         )}
                         {can('products.index.create') && (
                             <ButtonLink href={route('products.create')} icon={<PlusIcon size={16} weight="bold" />}>
-                                Nuevo articulo
+                                Nuevo artículo
                             </ButtonLink>
                         )}
                     </>
@@ -295,7 +295,7 @@ export default function ProductsIndex({ products, filters: initialFilters, categ
 
             <Card className="mb-4">
                 <div className="grid gap-3 lg:grid-cols-4">
-                    <SearchInput placeholder="Nombre, SKU o codigo de barras" value={filters.search} onChange={(event) => update('search', event.target.value)} />
+                    <SearchInput placeholder="Nombre, SKU o código de barras" value={filters.search} onChange={(event) => update('search', event.target.value)} />
                     <Select options={suppliers} placeholder="Todos los proveedores" value={filters.supplier} onChange={(event) => update('supplier', event.target.value)} />
                     <Select
                         options={[
@@ -310,7 +310,7 @@ export default function ProductsIndex({ products, filters: initialFilters, categ
                         <div className="flex-1">
                             <Select
                                 options={[
-                                    { value: 'low', label: 'Bajo el minimo' },
+                                    { value: 'low', label: 'Bajo el mínimo' },
                                     { value: 'out', label: 'Agotados' },
                                 ]}
                                 placeholder="Cualquier existencia"
@@ -361,7 +361,7 @@ export default function ProductsIndex({ products, filters: initialFilters, categ
             {selected.length > 0 && (
                 <div className="mb-3 flex flex-wrap items-center gap-2 rounded-card border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-4 py-2.5">
                     <span className="text-[0.8125rem] font-medium text-[var(--accent)]">
-                        {selected.length} {selected.length === 1 ? 'articulo seleccionado' : 'articulos seleccionados'}
+                        {selected.length} {selected.length === 1 ? 'artículo seleccionado' : 'artículos seleccionados'}
                     </span>
                     <div className="ml-auto flex flex-wrap gap-2">
                         {can('products.show.edit_price') && (
@@ -372,7 +372,7 @@ export default function ProductsIndex({ products, filters: initialFilters, categ
                         {can('products.index.edit') && (
                             <>
                                 <Button size="sm" variant="secondary" onClick={() => setBulkModal('category')}>
-                                    Cambiar categoria
+                                    Cambiar categoría
                                 </Button>
                                 <Button size="sm" variant="secondary" onClick={() => runBulk({ action: 'deactivate' })} loading={busy}>
                                     Desactivar
@@ -398,7 +398,7 @@ export default function ProductsIndex({ products, filters: initialFilters, categ
                             </Button>
                         )}
                         <Button size="sm" variant="ghost" onClick={() => setSelected([])}>
-                            Quitar seleccion
+                            Quitar selección
                         </Button>
                     </div>
                 </div>
@@ -406,13 +406,13 @@ export default function ProductsIndex({ products, filters: initialFilters, categ
 
             {products.data.length === 0 ? (
                 <EmptyState
-                    title="Ningun articulo coincide"
+                    title="Ningún artículo coincide"
                     description="Cambia los filtros o crea uno nuevo."
                     icon={<PackageIcon size={24} />}
                     action={
                         can('products.index.create') ? (
                             <ButtonLink href={route('products.create')} icon={<PlusIcon size={16} weight="bold" />}>
-                                Nuevo articulo
+                                Nuevo artículo
                             </ButtonLink>
                         ) : undefined
                     }
@@ -425,8 +425,8 @@ export default function ProductsIndex({ products, filters: initialFilters, categ
                                 <TH className="w-10">
                                     <Checkbox label="" checked={allSelected} onChange={toggleAll} />
                                 </TH>
-                                <TH>Articulo</TH>
-                                <TH>Categoria</TH>
+                                <TH>Artículo</TH>
+                                <TH>Categoría</TH>
                                 <TH align="right">Precio</TH>
                                 {canViewCost && <TH align="right">Costo</TH>}
                                 {canViewCost && <TH align="right">Margen</TH>}
@@ -446,7 +446,7 @@ export default function ProductsIndex({ products, filters: initialFilters, categ
                 open={bulkModal === 'price'}
                 onClose={() => setBulkModal(null)}
                 title="Cambiar el precio en lote"
-                description="Se aplica el porcentaje sobre el precio actual de cada articulo."
+                description="Se aplica el porcentaje sobre el precio actual de cada artículo."
                 size="sm"
                 footer={
                     <>
@@ -473,7 +473,7 @@ export default function ProductsIndex({ products, filters: initialFilters, categ
             <Modal
                 open={bulkModal === 'category'}
                 onClose={() => setBulkModal(null)}
-                title="Cambiar la categoria en lote"
+                title="Cambiar la categoría en lote"
                 description="A un subartículo se le cambia en su artículo principal: la categoría es de todos."
                 size="sm"
                 footer={
@@ -487,7 +487,7 @@ export default function ProductsIndex({ products, filters: initialFilters, categ
                     </>
                 }
             >
-                <Select label="Categoria destino" options={categories} placeholder="Elige una categoria" value={categoryValue} onChange={(event) => setCategoryValue(event.target.value)} />
+                <Select label="Categoría destino" options={categories} placeholder="Elige una categoría" value={categoryValue} onChange={(event) => setCategoryValue(event.target.value)} />
             </Modal>
         </AppLayout>
     );

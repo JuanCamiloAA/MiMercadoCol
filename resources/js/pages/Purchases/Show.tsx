@@ -224,7 +224,7 @@ export default function PurchaseShow({ order, paymentTerms }: PurchaseShowProps)
                         )}
                         {canReceive && (
                             <Button icon={<CheckCircleIcon size={16} weight="bold" />} onClick={() => setReceiveOpen(true)}>
-                                {order.status === 'partial' ? 'Recibir lo que falta' : 'Recibir mercancia'}
+                                {order.status === 'partial' ? 'Recibir lo que falta' : 'Recibir mercancía'}
                             </Button>
                         )}
                     </>
@@ -438,12 +438,12 @@ export default function PurchaseShow({ order, paymentTerms }: PurchaseShowProps)
 
                     <Card padded={false}>
                         <div className="px-5 pt-5">
-                            <CardHeader title="Articulos" />
+                            <CardHeader title="Artículos" />
                         </div>
                         <Table className="rounded-none border-x-0 border-b-0">
                             <THead>
                                 <TR>
-                                    <TH>Articulo</TH>
+                                    <TH>Artículo</TH>
                                     <TH align="right">Pedido</TH>
                                     <TH align="right">Recibido</TH>
                                     <TH align="right">Falta</TH>
@@ -497,7 +497,7 @@ export default function PurchaseShow({ order, paymentTerms }: PurchaseShowProps)
                                                     {/* La foto del momento: explica por que se pidio esto. */}
                                                     {item.min_at_order > 0 && (
                                                         <span className="block text-[0.6875rem] font-normal text-[var(--muted)]">
-                                                            habia {number(item.stock_at_order)} · mín {number(item.min_at_order)}
+                                                            había {number(item.stock_at_order)} · mín {number(item.min_at_order)}
                                                         </span>
                                                     )}
                                                 </TD>
@@ -551,7 +551,7 @@ export default function PurchaseShow({ order, paymentTerms }: PurchaseShowProps)
             <Modal
                 open={receiveOpen}
                 onClose={() => setReceiveOpen(false)}
-                title="Recibir mercancia"
+                title="Recibir mercancía"
                 description="Escribe lo que llega en esta remesa, no el total del pedido. Si llega de a poco, la orden queda abierta hasta que entre todo."
                 size="lg"
                 footer={
@@ -560,7 +560,7 @@ export default function PurchaseShow({ order, paymentTerms }: PurchaseShowProps)
                             Cancelar
                         </Button>
                         <Button onClick={submitReceive} loading={receiveForm.processing}>
-                            Confirmar recepcion
+                            Confirmar recepción
                         </Button>
                     </>
                 }
@@ -569,7 +569,7 @@ export default function PurchaseShow({ order, paymentTerms }: PurchaseShowProps)
                     <Table className="border-0">
                         <THead>
                             <TR>
-                                <TH>Articulo</TH>
+                                <TH>Artículo</TH>
                                 <TH align="right">Pedido</TH>
                                 <TH align="right">Ya llegó</TH>
                                 <TH align="right">Llega ahora</TH>

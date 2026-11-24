@@ -106,12 +106,12 @@ export default function CustomerShow({ customer, sales, orders, storeCredit, ret
                 <Card>
                     <CardHeader title="Datos del cliente" />
                     <dl className="flex flex-col gap-2.5 text-[0.8125rem]">
-                        <Row label="Razon social" value={customer.business_name} />
-                        <Row label="Telefono" value={customer.phone} mono />
+                        <Row label="Razón social" value={customer.business_name} />
+                        <Row label="Teléfono" value={customer.phone} mono />
                         <Row label="Correo" value={customer.email} />
-                        <Row label="Direccion" value={customer.address} />
+                        <Row label="Dirección" value={customer.address} />
                         <Row label="Barrio" value={customer.neighborhood} />
-                        <Row label="Plazo de credito" value={customer.credit_enabled ? `${customer.credit_term_days} dias` : 'Sin credito'} />
+                        <Row label="Plazo de crédito" value={customer.credit_enabled ? `${customer.credit_term_days} dias` : 'Sin credito'} />
                     </dl>
 
                     {customer.delivery_notes && (
@@ -120,9 +120,9 @@ export default function CustomerShow({ customer, sales, orders, storeCredit, ret
 
                     <div className="mt-4 flex flex-wrap gap-1.5 border-t border-[var(--line)] pt-4">
                         {customer.is_active ? <Badge tone="accent">Activo</Badge> : <Badge tone="neutral">Inactivo</Badge>}
-                        {customer.credit_enabled && <Badge tone="info">Con credito</Badge>}
-                        {customer.credit_blocked && <Badge tone="danger">Credito bloqueado</Badge>}
-                        {customer.is_online_user && <Badge tone="neutral">Tienda en linea</Badge>}
+                        {customer.credit_enabled && <Badge tone="info">Con crédito</Badge>}
+                        {customer.credit_blocked && <Badge tone="danger">Crédito bloqueado</Badge>}
+                        {customer.is_online_user && <Badge tone="neutral">Tienda en línea</Badge>}
                     </div>
 
                     {customer.credit_blocked && customer.blocked_reason && (
@@ -133,7 +133,7 @@ export default function CustomerShow({ customer, sales, orders, storeCredit, ret
                 <div className="flex flex-col gap-4">
                     <Card padded={false}>
                         <div className="px-5 pt-5">
-                            <CardHeader title="Ultimas compras" />
+                            <CardHeader title="Últimas compras" />
                         </div>
                         <Table className="rounded-none border-x-0 border-b-0">
                             <THead>
@@ -150,7 +150,7 @@ export default function CustomerShow({ customer, sales, orders, storeCredit, ret
                                 {sales.length === 0 && (
                                     <TR>
                                         <TD colSpan={6} className="py-6 text-center text-[0.8125rem] text-[var(--muted)]">
-                                            Este cliente todavia no ha comprado.
+                                            Este cliente todavía no ha comprado.
                                         </TD>
                                     </TR>
                                 )}

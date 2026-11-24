@@ -44,7 +44,7 @@ export default function UsersIndex({ users, filters: initialFilters, roles, stor
     // La contrasena temporal se muestra una sola vez: despues ya no se puede volver a leer.
     useEffect(() => {
         if (flash?.temporary_password) {
-            toast.success(`Contrasena temporal: ${flash.temporary_password}`, {
+            toast.success(`Contraseña temporal: ${flash.temporary_password}`, {
                 duration: 20000,
                 description: 'Copiala ahora: no se vuelve a mostrar.',
             });
@@ -122,7 +122,7 @@ export default function UsersIndex({ users, filters: initialFilters, roles, stor
 
             {users.data.length === 0 ? (
                 <EmptyState
-                    title="Ningun usuario coincide"
+                    title="Ningún usuario coincide"
                     description="Cambia los filtros o crea una cuenta nueva."
                     icon={<UserGearIcon size={24} />}
                 />
@@ -134,7 +134,7 @@ export default function UsersIndex({ users, filters: initialFilters, roles, stor
                                 <TH>Usuario</TH>
                                 <TH>Rol</TH>
                                 <TH>Sedes</TH>
-                                <TH>Ultima conexion</TH>
+                                <TH>Última conexión</TH>
                                 <TH align="center">Estado</TH>
                                 <TH align="right">Acciones</TH>
                             </TR>

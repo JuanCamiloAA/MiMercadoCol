@@ -126,10 +126,10 @@ export default function ProductForm({ mode, product, categories, suppliers, stor
     };
 
     return (
-        <AppLayout title={mode === 'create' ? 'Nuevo articulo' : 'Editar articulo'}>
+        <AppLayout title={mode === 'create' ? 'Nuevo artículo' : 'Editar artículo'}>
             <PageHeader
-                title={mode === 'create' ? 'Nuevo articulo' : `Editar «${product?.name}»`}
-                description="Los precios se guardan con IVA incluido; la base se calcula hacia atras."
+                title={mode === 'create' ? 'Nuevo artículo' : `Editar «${product?.name}»`}
+                description="Los precios se guardan con IVA incluido; la base se calcula hacia atrás."
                 actions={
                     <ButtonLink href={route('products.index')} variant="secondary" icon={<ArrowLeftIcon size={16} />}>
                         Volver
@@ -164,7 +164,7 @@ export default function ProductForm({ mode, product, categories, suppliers, stor
             <form onSubmit={submit} className="flex flex-col gap-4">
                 <div className="grid gap-4 lg:grid-cols-2">
                     <Card>
-                        <CardHeader title="Identificacion" />
+                        <CardHeader title="Identificación" />
                         <div className="grid gap-4 sm:grid-cols-2">
                             <Input
                                 label="Nombre"
@@ -177,14 +177,14 @@ export default function ProductForm({ mode, product, categories, suppliers, stor
                             />
                             <Input label="SKU" required value={data.sku} onChange={(event) => setData('sku', event.target.value)} error={errors.sku} />
                             <Input
-                                label="Codigo de barras"
+                                label="Código de barras"
                                 value={data.barcode}
                                 onChange={(event) => setData('barcode', event.target.value)}
                                 error={errors.barcode}
                             />
                             <Input label="Marca" value={data.brand} disabled={Boolean(family)} onChange={(event) => setData('brand', event.target.value)} error={errors.brand} />
                             <Select
-                                label="Categoria"
+                                label="Categoría"
                                 required
                                 disabled={Boolean(family)}
                                 options={categories}
@@ -218,7 +218,7 @@ export default function ProductForm({ mode, product, categories, suppliers, stor
                                 />
                             </div>
                             <Textarea
-                                label="Descripcion"
+                                label="Descripción"
                                 value={data.description}
                                 onChange={(event) => setData('description', event.target.value)}
                                 error={errors.description}
@@ -242,7 +242,7 @@ export default function ProductForm({ mode, product, categories, suppliers, stor
                                     prefix="$"
                                 />
                                 <Input
-                                    label="Precio al publico"
+                                    label="Precio al público"
                                     type="number"
                                     min={0}
                                     required
@@ -261,7 +261,7 @@ export default function ProductForm({ mode, product, categories, suppliers, stor
                                     error={errors.tax_rate}
                                 />
                                 <Input
-                                    label="Existencia minima"
+                                    label="Existencia mínima"
                                     type="number"
                                     min={0}
                                     required
@@ -279,7 +279,7 @@ export default function ProductForm({ mode, product, categories, suppliers, stor
                                     prefix="$"
                                 />
                                 <Input
-                                    label="Precio en linea"
+                                    label="Precio en línea"
                                     type="number"
                                     min={0}
                                     value={data.online_price}
@@ -314,7 +314,7 @@ export default function ProductForm({ mode, product, categories, suppliers, stor
                             <CardHeader title="Inventario y tienda" />
                             <div className="flex flex-col gap-3">
                                 <Checkbox
-                                    label="Articulo activo"
+                                    label="Artículo activo"
                                     checked={data.is_active}
                                     onChange={(event) => setData('is_active', event.target.checked)}
                                 />
@@ -325,12 +325,12 @@ export default function ProductForm({ mode, product, categories, suppliers, stor
                                 />
                                 <Checkbox
                                     label="Permitir existencias negativas"
-                                    hint="Solo para articulos a granel que se pesan al final del dia."
+                                    hint="Solo para artículos a granel que se pesan al final del día."
                                     checked={data.allow_negative_stock}
                                     onChange={(event) => setData('allow_negative_stock', event.target.checked)}
                                 />
                                 <Checkbox
-                                    label="Visible en la tienda en linea"
+                                    label="Visible en la tienda en línea"
                                     checked={data.is_online_visible}
                                     onChange={(event) => setData('is_online_visible', event.target.checked)}
                                 />
@@ -405,7 +405,7 @@ export default function ProductForm({ mode, product, categories, suppliers, stor
 
                 <div>
                     <Button type="submit" size="lg" loading={processing}>
-                        {mode === 'create' ? 'Crear el articulo' : 'Guardar cambios'}
+                        {mode === 'create' ? 'Crear el artículo' : 'Guardar cambios'}
                     </Button>
                 </div>
             </form>

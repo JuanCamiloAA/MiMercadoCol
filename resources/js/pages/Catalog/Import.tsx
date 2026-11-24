@@ -477,7 +477,7 @@ export default function CatalogImport({ categories, segments, running, history, 
 
                     <div className="flex flex-col gap-4">
                         <Card>
-                            <CardHeader title="O sube un archivo" description="La salida del volcado filtrado, con columnas ean, nombre, marca, presentacion, categoria e imagen." />
+                            <CardHeader title="O sube un archivo" description="La salida del volcado filtrado, con columnas ean, nombre, marca, presentación, categoría e imagen." />
 
                             <input
                                 type="file"

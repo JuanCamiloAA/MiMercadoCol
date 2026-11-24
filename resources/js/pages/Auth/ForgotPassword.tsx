@@ -18,8 +18,8 @@ export default function ForgotPassword({ status }: ForgotPasswordProps) {
 
     return (
         <AuthLayout
-            title="Recuperar la contrasena"
-            heading="Recuperar la contrasena"
+            title="Recuperar la contraseña"
+            heading="Recuperar la contraseña"
             subheading="Te enviamos un enlace al correo de tu cuenta"
             footer={
                 <Link href={route('login')} className="font-medium text-[var(--accent)] hover:underline">
@@ -35,7 +35,7 @@ export default function ForgotPassword({ status }: ForgotPasswordProps) {
 
             <form onSubmit={submit} className="flex flex-col gap-4">
                 <Input
-                    label="Correo electronico"
+                    label="Correo electrónico"
                     type="email"
                     autoFocus
                     required

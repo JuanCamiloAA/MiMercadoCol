@@ -38,7 +38,7 @@ export default function StorefrontOrders({ orders }: OrdersProps) {
             {orders.data.length === 0 ? (
                 <div className="flex flex-col items-center gap-3 py-16 text-center">
                     <ClipboardTextIcon size={36} className="text-[var(--muted)]" />
-                    <p className="text-[14px] text-[var(--muted)]">Todavia no has hecho ningun pedido.</p>
+                    <p className="text-[14px] text-[var(--muted)]">Todavía no has hecho ningún pedido.</p>
                     <Link
                         href={route('storefront.home')}
                         className="flex h-11 items-center rounded-[12px] bg-[var(--accent)] px-5 text-[14px] font-semibold text-[var(--accent-ink)]"

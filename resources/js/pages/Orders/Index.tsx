@@ -58,7 +58,7 @@ export default function OrdersIndex({ orders, filters: initialFilters, statusCou
         <AppLayout title="Pedidos">
             <PageHeader
                 title="Pedidos"
-                description="Pedidos de la tienda en linea, WhatsApp y mostrador de la sede activa."
+                description="Pedidos de la tienda en línea, WhatsApp y mostrador de la sede activa."
                 actions={
                     can('orders.index.create') ? (
                         <ButtonLink href={route('orders.create')} icon={<PlusIcon size={16} weight="bold" />}>
@@ -70,7 +70,7 @@ export default function OrdersIndex({ orders, filters: initialFilters, statusCou
 
             {can('sales.index.view') && (
                 <p className="mb-4 rounded-control border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2 text-[0.78125rem] text-[var(--muted)]">
-                    Aqui van los encargos y domicilios, que se alistan y se entregan. Lo que se cobro en la caja esta en{' '}
+                    Aquí van los encargos y domicilios, que se alistan y se entregan. Lo que se cobró en la caja está en{' '}
                     <Link href={route('sales.index')} className="font-medium text-[var(--accent)] hover:underline">
                         Ventas
                     </Link>
@@ -79,7 +79,7 @@ export default function OrdersIndex({ orders, filters: initialFilters, statusCou
             )}
 
             <div className="mb-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <StatCard label="Pedidos (30 dias)" value={number(fulfillment.total)} tone="neutral" icon={<ClipboardTextIcon size={16} weight="bold" />} />
+                <StatCard label="Pedidos (30 días)" value={number(fulfillment.total)} tone="neutral" icon={<ClipboardTextIcon size={16} weight="bold" />} />
                 <StatCard label="Entregados" value={number(fulfillment.delivered)} />
                 <StatCard label="Cancelados" value={number(fulfillment.cancelled)} tone={fulfillment.cancelled > 0 ? 'warn' : 'neutral'} />
                 <StatCard label="Cumplimiento" value={percent(fulfillment.rate)} />
@@ -119,7 +119,7 @@ export default function OrdersIndex({ orders, filters: initialFilters, statusCou
                     <Card className="mb-4">
                         <div className="grid gap-3 sm:grid-cols-2">
                             <SearchInput
-                                placeholder="Numero de pedido o cliente"
+                                placeholder="Número de pedido o cliente"
                                 value={filters.search}
                                 onChange={(event) => update('search', event.target.value)}
                             />
@@ -127,7 +127,7 @@ export default function OrdersIndex({ orders, filters: initialFilters, statusCou
                                 <div className="flex-1">
                                     <Select
                                         options={[
-                                            { value: 'app', label: 'Tienda en linea' },
+                                            { value: 'app', label: 'Tienda en línea' },
                                             { value: 'whatsapp', label: 'WhatsApp' },
                                             { value: 'counter', label: 'Mostrador' },
                                         ]}
@@ -146,7 +146,7 @@ export default function OrdersIndex({ orders, filters: initialFilters, statusCou
                     </Card>
 
                     {orders.data.length === 0 ? (
-                        <EmptyState title="Ningun pedido coincide" description="Cambia los filtros o crea uno desde el mostrador." icon={<ClipboardTextIcon size={24} />} />
+                        <EmptyState title="Ningún pedido coincide" description="Cambia los filtros o crea uno desde el mostrador." icon={<ClipboardTextIcon size={24} />} />
                     ) : (
                         <>
                             <Table>
@@ -176,7 +176,7 @@ export default function OrdersIndex({ orders, filters: initialFilters, statusCou
                                                     <span className="font-mono text-[0.84375rem] font-medium">#{order.number}</span>
                                                 )}
                                                 <p className="text-[0.71875rem] text-[var(--muted)]">
-                                                    {order.channel_label} · {order.items_count} articulos
+                                                    {order.channel_label} · {order.items_count} artículos
                                                 </p>
                                             </TD>
                                             <TD>

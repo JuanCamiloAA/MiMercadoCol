@@ -202,7 +202,7 @@ export default function InventoryIndex({
                 <StatCard label="Referencias" value={number(metrics.items)} icon={<StackIcon size={16} weight="bold" />} tone="neutral" />
                 <StatCard label="Valor al costo" value={money(metrics.value)} />
                 <StatCard
-                    label="Bajo el minimo"
+                    label="Bajo el mínimo"
                     value={number(metrics.low)}
                     tone={metrics.low > 0 ? 'warn' : 'neutral'}
                     icon={<WarningIcon size={16} weight="bold" />}
@@ -234,13 +234,13 @@ export default function InventoryIndex({
                                 />
                             )}
                             <SearchInput
-                                placeholder="Nombre, SKU o codigo"
+                                placeholder="Nombre, SKU o código"
                                 value={filters.search}
                                 onChange={(event) => update('search', event.target.value)}
                             />
                             <Select
                                 options={categories}
-                                placeholder="Todas las categorias"
+                                placeholder="Todas las categorías"
                                 value={filters.category}
                                 onChange={(event) => update('category', event.target.value)}
                             />
@@ -256,7 +256,7 @@ export default function InventoryIndex({
                                 <div className="flex-1">
                                     <Select
                                         options={[
-                                            { value: 'low', label: 'Bajo el minimo' },
+                                            { value: 'low', label: 'Bajo el mínimo' },
                                             { value: 'out', label: 'Agotados' },
                                             { value: 'over', label: 'Con sobrestock' },
                                         ]}
@@ -275,14 +275,14 @@ export default function InventoryIndex({
                     </Card>
 
                     {stocks.data.length === 0 ? (
-                        <EmptyState title="Ninguna existencia coincide" description="Cambia los filtros para ver otros articulos." />
+                        <EmptyState title="Ninguna existencia coincide" description="Cambia los filtros para ver otros artículos." />
                     ) : (
                         <>
                             <Table>
                                 <THead>
                                     <TR>
-                                        <TH>Articulo</TH>
-                                        <TH>Categoria</TH>
+                                        <TH>Artículo</TH>
+                                        <TH>Categoría</TH>
                                         <TH>Existencia</TH>
                                         <TH align="right">Reservado</TH>
                                         <TH align="right">Sugerido a pedir</TH>
@@ -378,25 +378,25 @@ export default function InventoryIndex({
                     <div className="px-5 pt-5">
                         <CardHeader
                             title="Lotes por vencer"
-                            description="Los proximos 20 dias. Las ventas descuentan primero el lote que vence antes."
+                            description="Los próximos 20 días. Las ventas descuentan primero el lote que vence antes."
                         />
                     </div>
 
                     {expiringLots.length === 0 ? (
                         <EmptyState
                             title="Nada por vencer"
-                            description="Ningun lote de esta sede vence en los proximos 20 dias."
+                            description="Ningún lote de esta sede vence en los próximos 20 días."
                             icon={<ClockIcon size={24} />}
                         />
                     ) : (
                         <Table className="rounded-none border-x-0 border-b-0">
                             <THead>
                                 <TR>
-                                    <TH>Articulo</TH>
+                                    <TH>Artículo</TH>
                                     <TH>Lote</TH>
                                     <TH align="right">Cantidad</TH>
                                     <TH>Vence</TH>
-                                    <TH align="center">Dias</TH>
+                                    <TH align="center">Días</TH>
                                     <TH align="right">Acciones</TH>
                                 </TR>
                             </THead>
@@ -421,9 +421,9 @@ export default function InventoryIndex({
                                             ) : lot.days_left < 0 ? (
                                                 <Badge tone="danger">vencido</Badge>
                                             ) : lot.days_left <= 7 ? (
-                                                <Badge tone="danger">{lot.days_left} dias</Badge>
+                                                <Badge tone="danger">{lot.days_left} días</Badge>
                                             ) : (
-                                                <Badge tone="warn">{lot.days_left} dias</Badge>
+                                                <Badge tone="warn">{lot.days_left} días</Badge>
                                             )}
                                         </TD>
                                         <TD align="right">
@@ -442,13 +442,13 @@ export default function InventoryIndex({
             ) : (
                 <Card padded={false}>
                     <div className="px-5 pt-5">
-                        <CardHeader title="Movimientos recientes" description="Ultimos 15 movimientos registrados en esta sede." />
+                        <CardHeader title="Movimientos recientes" description="Últimos 15 movimientos registrados en esta sede." />
                     </div>
                     <Table className="rounded-none border-x-0 border-b-0">
                         <THead>
                             <TR>
                                 <TH>Fecha</TH>
-                                <TH>Articulo</TH>
+                                <TH>Artículo</TH>
                                 <TH>Tipo</TH>
                                 <TH align="right">Cantidad</TH>
                                 <TH align="right">Saldo</TH>
@@ -529,7 +529,7 @@ export default function InventoryIndex({
                         label="Tipo de movimiento"
                         options={[
                             { value: 'adjustment', label: 'Ajuste de inventario' },
-                            { value: 'waste', label: 'Averia o perdida' },
+                            { value: 'waste', label: 'Avería o pérdida' },
                         ]}
                         value={adjustForm.data.type}
                         onChange={(event) => adjustForm.setData('type', event.target.value)}
@@ -545,7 +545,7 @@ export default function InventoryIndex({
                         error={adjustForm.errors.quantity}
                         hint={
                             adjustForm.data.type === 'waste'
-                                ? 'La averia siempre resta, sin importar el signo.'
+                                ? 'La avería siempre resta, sin importar el signo.'
                                 : 'Positiva para sumar, negativa para restar.'
                         }
                     />
@@ -555,12 +555,12 @@ export default function InventoryIndex({
                         value={adjustForm.data.note}
                         onChange={(event) => adjustForm.setData('note', event.target.value)}
                         error={adjustForm.errors.note}
-                        placeholder="Conteo fisico, producto vencido, rotura..."
+                        placeholder="Conteo físico, producto vencido, rotura..."
                     />
                     {target && (
                         <p className="rounded-control bg-[var(--surface-2)] px-3 py-2 text-[0.78125rem] text-[var(--muted)]">
                             Existencia actual: <span className="font-mono tabular">{number(target.quantity)}</span> ·
-                            {' '}Quedaria en{' '}
+                            {' '}Quedaría en{' '}
                             <span className="font-mono tabular">
                                 {number(target.quantity + (adjustForm.data.type === 'waste' ? -Math.abs(adjustForm.data.quantity) : adjustForm.data.quantity))}
                             </span>

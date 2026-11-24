@@ -170,11 +170,11 @@ export default function SalesShow({ sale, refunds, openReturns, canRegisterRetur
             <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
                 <div className="flex flex-col gap-4">
                     <Card padded={false}>
-                        <CardHeader title="Articulos" className="px-4 pt-4" />
+                        <CardHeader title="Artículos" className="px-4 pt-4" />
                         <Table>
                             <THead>
                                 <TR>
-                                    <TH>Articulo</TH>
+                                    <TH>Artículo</TH>
                                     <TH align="center">Cantidad</TH>
                                     <TH align="right">Precio</TH>
                                     <TH align="right">Descuento</TH>
@@ -258,7 +258,7 @@ export default function SalesShow({ sale, refunds, openReturns, canRegisterRetur
                         <Card>
                             <CardHeader
                                 title="Devoluciones"
-                                description="Cada devolucion es una venta en negativo, fechada el dia en que el cliente la trajo."
+                                description="Cada devolución es una venta en negativo, fechada el día en que el cliente la trajo."
                             />
                             <ul className="mt-2 flex flex-col gap-2">
                                 {refunds.map((refund) => (

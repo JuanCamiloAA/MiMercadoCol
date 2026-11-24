@@ -54,7 +54,7 @@ export default function EmployeeShow({ employee, performance, roles }: EmployeeS
 
     useEffect(() => {
         if (flash?.temporary_password) {
-            toast.success(`Contrasena temporal: ${flash.temporary_password}`, {
+            toast.success(`Contraseña temporal: ${flash.temporary_password}`, {
                 duration: 20000,
                 description: 'Copiala ahora: no se vuelve a mostrar.',
             });
@@ -140,9 +140,9 @@ export default function EmployeeShow({ employee, performance, roles }: EmployeeS
                         </div>
 
                         <dl className="mt-4 flex flex-col gap-2.5 border-t border-[var(--line)] pt-4 text-[0.8125rem]">
-                            <Row label="Telefono" value={employee.phone} mono />
+                            <Row label="Teléfono" value={employee.phone} mono />
                             <Row label="Correo" value={employee.email} />
-                            <Row label="Direccion" value={employee.address} />
+                            <Row label="Dirección" value={employee.address} />
                             <Row label="Nacimiento" value={employee.birth_date ? date(employee.birth_date) : null} />
                             <Row label="Contrato" value={employee.contract_type} />
                             <Row label="Ingreso" value={employee.hired_at ? date(employee.hired_at) : null} />
@@ -209,7 +209,7 @@ export default function EmployeeShow({ employee, performance, roles }: EmployeeS
 
                         {!employee.user ? (
                             <p className="text-[0.8125rem] text-[var(--muted)]">
-                                Este empleado todavia no puede entrar al sistema. Crearle la cuenta le genera una contrasena temporal.
+                                Este empleado todavía no puede entrar al sistema. Crearle la cuenta le genera una contraseña temporal.
                             </p>
                         ) : (
                             <div className="flex flex-col gap-4">
@@ -259,7 +259,7 @@ export default function EmployeeShow({ employee, performance, roles }: EmployeeS
                                             icon={<KeyIcon size={15} />}
                                             onClick={() => router.post(route('employees.access.reset_password', employee.id), {}, { preserveScroll: true })}
                                         >
-                                            Restablecer contrasena
+                                            Restablecer contraseña
                                         </Button>
                                     )}
                                     {can('employees.access.reset_pin') && (
@@ -290,7 +290,7 @@ export default function EmployeeShow({ employee, performance, roles }: EmployeeS
                 open={modal === 'access'}
                 onClose={() => setModal(null)}
                 title="Crear la cuenta de acceso"
-                description="Se genera una contrasena temporal que se muestra una sola vez."
+                description="Se genera una contraseña temporal que se muestra una sola vez."
                 footer={
                     <>
                         <Button variant="secondary" onClick={() => setModal(null)}>
@@ -326,7 +326,7 @@ export default function EmployeeShow({ employee, performance, roles }: EmployeeS
                         value={accessForm.data.pin}
                         onChange={(event) => accessForm.setData('pin', event.target.value.replace(/\D/g, ''))}
                         error={accessForm.errors.pin}
-                        hint="4 digitos, solo si va a abrir caja."
+                        hint="4 dígitos, solo si va a abrir caja."
                     />
                 </form>
             </Modal>
@@ -383,7 +383,7 @@ export default function EmployeeShow({ employee, performance, roles }: EmployeeS
                         value={pinForm.data.pin}
                         onChange={(event) => pinForm.setData('pin', event.target.value.replace(/\D/g, ''))}
                         error={pinForm.errors.pin}
-                        hint="4 digitos."
+                        hint="4 dígitos."
                     />
                 </form>
             </Modal>

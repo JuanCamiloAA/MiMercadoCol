@@ -32,7 +32,7 @@ export default function RoleShow({ role, rolePermissions, users }: RoleShowProps
         <AppLayout title={role.display_name}>
             <PageHeader
                 title={role.display_name}
-                description={role.description ?? 'Sin descripcion.'}
+                description={role.description ?? 'Sin descripción.'}
                 breadcrumb={
                     <Link href={route('roles.index')} className="hover:text-[var(--accent)]">
                         Roles
@@ -87,7 +87,7 @@ export default function RoleShow({ role, rolePermissions, users }: RoleShowProps
                     <Card>
                         <CardHeader title="Usuarios con el rol" />
                         {users.length === 0 ? (
-                            <p className="text-[0.8125rem] text-[var(--muted)]">Todavia nadie tiene este rol.</p>
+                            <p className="text-[0.8125rem] text-[var(--muted)]">Todavía nadie tiene este rol.</p>
                         ) : (
                             <ul className="flex flex-col gap-2">
                                 {users.map((user) => (
@@ -150,7 +150,7 @@ export default function RoleShow({ role, rolePermissions, users }: RoleShowProps
                             })}
                         </div>
                     ) : (
-                        <p className="text-[0.8125rem] text-[var(--muted)]">No se pudo cargar el catalogo de permisos.</p>
+                        <p className="text-[0.8125rem] text-[var(--muted)]">No se pudo cargar el catálogo de permisos.</p>
                     )}
                 </Card>
             </div>

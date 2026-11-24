@@ -213,11 +213,11 @@ export default function PromotionsIndex({ promotions, filters: initialFilters, m
         <AppLayout title="Promociones">
             <PageHeader
                 title="Promociones"
-                description="Precios especiales, descuentos por categoria, 3x2 y combos, con su vigencia y su canal."
+                description="Precios especiales, descuentos por categoría, 3x2 y combos, con su vigencia y su canal."
                 actions={
                     can('promotions.index.create') ? (
                         <Button onClick={openCreate} icon={<PlusIcon size={16} weight="bold" />}>
-                            Nueva promocion
+                            Nueva promoción
                         </Button>
                     ) : undefined
                 }
@@ -232,7 +232,7 @@ export default function PromotionsIndex({ promotions, filters: initialFilters, m
             <Card className="mb-4">
                 <div className="grid gap-3 sm:grid-cols-3">
                     <SearchInput
-                        placeholder="Nombre de la promocion"
+                        placeholder="Nombre de la promoción"
                         value={filters.search}
                         onChange={(event) => update('search', event.target.value)}
                     />
@@ -266,13 +266,13 @@ export default function PromotionsIndex({ promotions, filters: initialFilters, m
 
             {promotions.data.length === 0 ? (
                 <EmptyState
-                    title="Todavia no hay promociones"
-                    description="Crea la primera y aparecera en la tienda apenas empiece su vigencia."
+                    title="Todavía no hay promociones"
+                    description="Crea la primera y aparecerá en la tienda apenas empiece su vigencia."
                     icon={<TagIcon size={24} />}
                     action={
                         can('promotions.index.create') ? (
                             <Button onClick={openCreate} icon={<PlusIcon size={16} weight="bold" />}>
-                                Nueva promocion
+                                Nueva promoción
                             </Button>
                         ) : undefined
                     }
@@ -282,7 +282,7 @@ export default function PromotionsIndex({ promotions, filters: initialFilters, m
                     <Table>
                         <THead>
                             <TR>
-                                <TH>Promocion</TH>
+                                <TH>Promoción</TH>
                                 <TH>Tipo</TH>
                                 <TH>Aplica en</TH>
                                 <TH>Vigencia</TH>
@@ -367,8 +367,8 @@ export default function PromotionsIndex({ promotions, filters: initialFilters, m
             <Modal
                 open={open}
                 onClose={() => setOpen(false)}
-                title={editing ? 'Editar la promocion' : 'Nueva promocion'}
-                description="El cliente ve la etiqueta sobre el articulo y el precio anterior tachado."
+                title={editing ? 'Editar la promoción' : 'Nueva promoción'}
+                description="El cliente ve la etiqueta sobre el artículo y el precio anterior tachado."
                 size="xl"
                 footer={
                     <>
@@ -376,7 +376,7 @@ export default function PromotionsIndex({ promotions, filters: initialFilters, m
                             Cancelar
                         </Button>
                         <Button onClick={submit} loading={processing}>
-                            {editing ? 'Guardar' : 'Crear la promocion'}
+                            {editing ? 'Guardar' : 'Crear la promoción'}
                         </Button>
                     </>
                 }
@@ -446,7 +446,7 @@ export default function PromotionsIndex({ promotions, filters: initialFilters, m
                                 value={data.bundle_price}
                                 onChange={(event) => setData('bundle_price', event.target.value)}
                                 error={errors.bundle_price}
-                                hint="Lo que paga el cliente por llevarse todos los articulos juntos."
+                                hint="Lo que paga el cliente por llevarse todos los artículos juntos."
                             />
                         )}
 
@@ -457,7 +457,7 @@ export default function PromotionsIndex({ promotions, filters: initialFilters, m
                                 value={data.starts_at}
                                 onChange={(event) => setData('starts_at', event.target.value)}
                                 error={errors.starts_at}
-                                hint="Vacio: desde ya."
+                                hint="Vacío: desde ya."
                             />
                             <Input
                                 label="Hasta"
@@ -465,7 +465,7 @@ export default function PromotionsIndex({ promotions, filters: initialFilters, m
                                 value={data.ends_at}
                                 onChange={(event) => setData('ends_at', event.target.value)}
                                 error={errors.ends_at}
-                                hint="Vacio: sin fin."
+                                hint="Vacío: sin fin."
                             />
                         </div>
 
@@ -475,7 +475,7 @@ export default function PromotionsIndex({ promotions, filters: initialFilters, m
                                 value={data.label}
                                 onChange={(event) => setData('label', event.target.value)}
                                 error={errors.label}
-                                hint="Vacio: se arma sola."
+                                hint="Vacío: se arma sola."
                                 placeholder="-20%"
                             />
                             <Input
@@ -485,7 +485,7 @@ export default function PromotionsIndex({ promotions, filters: initialFilters, m
                                 value={data.priority}
                                 onChange={(event) => setData('priority', event.target.value)}
                                 error={errors.priority}
-                                hint="Manda la mas alta."
+                                hint="Manda la más alta."
                             />
                         </div>
 
@@ -493,7 +493,7 @@ export default function PromotionsIndex({ promotions, filters: initialFilters, m
                             <p className="mb-2 text-[0.75rem] font-semibold tracking-wide text-[var(--muted)] uppercase">Donde aplica</p>
                             <div className="flex flex-col gap-2">
                                 <Checkbox
-                                    label="Tienda en linea"
+                                    label="Tienda en línea"
                                     checked={data.applies_online}
                                     onChange={(event) => setData('applies_online', event.target.checked)}
                                 />
@@ -534,7 +534,7 @@ export default function PromotionsIndex({ promotions, filters: initialFilters, m
                     }
                     setRemoving(null);
                 }}
-                title="Eliminar la promocion"
+                title="Eliminar la promoción"
                 message={`«${removing?.name}» dejara de aplicar de inmediato. Las ventas ya hechas no cambian.`}
                 confirmLabel="Eliminar"
                 tone="danger"
@@ -592,13 +592,13 @@ function TargetPicker({ type, targets, categories, error, onAdd, onRemove, onVal
         <div className="flex flex-col gap-3">
             <div>
                 <p className="mb-1.5 text-[0.75rem] font-semibold tracking-wide text-[var(--muted)] uppercase">
-                    {allowsCategories ? 'Articulos o categorias' : 'Articulos'}
+                    {allowsCategories ? 'Artículos o categorías' : 'Artículos'}
                 </p>
 
                 {allowsCategories && (
                     <Select
                         options={categories}
-                        placeholder="Agregar una categoria entera"
+                        placeholder="Agregar una categoría entera"
                         value=""
                         onChange={(event) => {
                             const id = Number(event.target.value);
@@ -625,7 +625,7 @@ function TargetPicker({ type, targets, categories, error, onAdd, onRemove, onVal
                         type="text"
                         value={search}
                         onChange={(event) => setSearch(event.target.value)}
-                        placeholder="Buscar un articulo por nombre o SKU"
+                        placeholder="Buscar un artículo por nombre o SKU"
                         className="rounded-control h-10 w-full border border-[var(--line)] bg-[var(--surface-2)] pr-3 pl-9 text-[0.84375rem] focus:border-[var(--accent)] focus:outline-none"
                     />
                 </div>
@@ -633,7 +633,7 @@ function TargetPicker({ type, targets, categories, error, onAdd, onRemove, onVal
                 <ul className="rounded-control mt-1.5 max-h-[10.5rem] overflow-y-auto border border-[var(--line)]">
                     {searching && <li className="px-3 py-2 text-[0.78125rem] text-[var(--muted)]">Buscando…</li>}
                     {!searching && hits.length === 0 && (
-                        <li className="px-3 py-2 text-[0.78125rem] text-[var(--muted)]">Ningun articulo coincide.</li>
+                        <li className="px-3 py-2 text-[0.78125rem] text-[var(--muted)]">Ningún artículo coincide.</li>
                     )}
                     {hits
                         // Un combo se arma con artículos puntuales, no con todas las tallas de uno.
@@ -682,7 +682,7 @@ function TargetPicker({ type, targets, categories, error, onAdd, onRemove, onVal
 
                 {targets.length === 0 ? (
                     <p className="rounded-control border border-dashed border-[var(--line-2)] px-3 py-5 text-center text-[0.78125rem] text-[var(--muted)]">
-                        Todavia no has elegido nada.
+                        Todavía no has elegido nada.
                     </p>
                 ) : (
                     <ul className="flex max-h-[16.25rem] flex-col gap-1.5 overflow-y-auto">
@@ -700,12 +700,12 @@ function TargetPicker({ type, targets, categories, error, onAdd, onRemove, onVal
                                     <span className="block truncate text-[0.8125rem] text-[var(--text)]">{target.label}</span>
                                     <span className="block text-[0.6875rem] text-[var(--muted)]">
                                         {target.target_type === 'category'
-                                            ? 'Categoria completa'
+                                            ? 'Categoría completa'
                                             : target.target_type === 'family'
                                               ? 'Todos sus subartículos: sus unidades cuentan juntas'
                                               : target.price
                                                 ? `Antes ${money(target.price)}`
-                                                : 'Articulo'}
+                                                : 'Artículo'}
                                     </span>
                                 </span>
 
@@ -749,7 +749,7 @@ function TargetPicker({ type, targets, categories, error, onAdd, onRemove, onVal
 
                 {type === 'bundle' && targets.length > 0 && (
                     <p className="rounded-chip mt-2 bg-[var(--surface-2)] px-2.5 py-1.5 text-[0.75rem] text-[var(--muted)]">
-                        Por separado costarian{' '}
+                        Por separado costarían{' '}
                         <span className="tabular font-mono">
                             {money(targets.reduce((sum, target) => sum + (target.price ?? 0) * target.quantity, 0))}
                         </span>
@@ -761,10 +761,10 @@ function TargetPicker({ type, targets, categories, error, onAdd, onRemove, onVal
             {PRODUCT_ONLY.includes(type) && (
                 <p className="text-[0.71875rem] text-[var(--muted)]">
                     {type === 'special_price'
-                        ? 'Escribe el precio promocional de cada articulo.'
+                        ? 'Escribe el precio promocional de cada artículo.'
                         : type === 'bundle'
-                          ? 'El combo se arma cuando el cliente lleva todos los articulos en las cantidades indicadas.'
-                          : 'Las unidades que se regalan son las mas baratas del grupo.'}
+                          ? 'El combo se arma cuando el cliente lleva todos los artículos en las cantidades indicadas.'
+                          : 'Las unidades que se regalan son las más baratas del grupo.'}
                 </p>
             )}
         </div>

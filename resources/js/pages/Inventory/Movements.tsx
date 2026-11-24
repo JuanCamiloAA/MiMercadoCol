@@ -69,13 +69,13 @@ export default function InventoryMovements({ product, movements, filters: initia
                         placeholder="Todas las bodegas"
                         value={filters.warehouse}
                         onChange={(event) => update('warehouse', event.target.value)}
-                        hint="El saldo de cada renglon es el de su bodega."
+                        hint="El saldo de cada renglón es el de su bodega."
                     />
                 </div>
             </Card>
 
             {movements.data.length === 0 ? (
-                <EmptyState title="Sin movimientos" description="Este articulo todavia no registra entradas ni salidas." />
+                <EmptyState title="Sin movimientos" description="Este artículo todavía no registra entradas ni salidas." />
             ) : (
                 <>
                     <Table>

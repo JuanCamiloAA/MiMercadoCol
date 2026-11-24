@@ -24,7 +24,7 @@ export default function Forbidden({ permission, message }: ForbiddenProps) {
 
                 <h1 className="mt-4 text-[1.25rem] text-[var(--text)]">Sin permiso</h1>
                 <p className="mt-1.5 text-[0.84375rem] text-[var(--muted)]">
-                    {message ?? 'No tienes permiso para abrir esta pagina.'}
+                    {message ?? 'No tienes permiso para abrir esta página.'}
                 </p>
 
                 {/* Con que cuenta se entro: casi siempre el 403 es que quedo abierta otra sesion. */}

@@ -113,7 +113,7 @@ export default function ImportForm({
                             <span className="text-[0.84375rem] font-medium text-[var(--text)]">
                                 {chosen ?? 'Elegir el archivo CSV'}
                             </span>
-                            <span className="text-[0.75rem] text-[var(--muted)]">Maximo 2 MB</span>
+                            <span className="text-[0.75rem] text-[var(--muted)]">Máximo 2 MB</span>
                             <input
                                 type="file"
                                 accept=".csv,text/csv"
@@ -152,7 +152,7 @@ export default function ImportForm({
                 </Card>
 
                 <Card>
-                    <CardHeader title="Columnas" description="La primera fila son los nombres, en minusculas y en este orden." />
+                    <CardHeader title="Columnas" description="La primera fila son los nombres, en minúsculas y en este orden." />
                     <pre className="overflow-x-auto rounded-control bg-[var(--surface-2)] p-3 font-mono text-[0.75rem] leading-relaxed text-[var(--text)]">
                         {sample}
                     </pre>

@@ -93,7 +93,7 @@ export default function ProductShow({ product, stocks, salesTrend, movements, ca
                 description={`${product.sku}${product.brand ? ` · ${product.brand}` : ''}`}
                 breadcrumb={
                     <Link href={route('products.index')} className="hover:text-[var(--accent)]">
-                        Articulos
+                        Artículos
                     </Link>
                 }
                 actions={
@@ -160,13 +160,13 @@ export default function ProductShow({ product, stocks, salesTrend, movements, ca
                     </Card>
 
                     <Card>
-                        <CardHeader title="Identificacion" />
+                        <CardHeader title="Identificación" />
                         <dl className="flex flex-col gap-2.5 text-[0.8125rem]">
                             <Row label="SKU" value={product.sku} mono />
-                            <Row label="Codigo de barras" value={product.barcode} mono />
-                            <Row label="Categoria" value={product.category?.name} />
+                            <Row label="Código de barras" value={product.barcode} mono />
+                            <Row label="Categoría" value={product.category?.name} />
                             <Row label="Unidad" value={UNIT_LABELS[product.unit] ?? product.unit} />
-                            <Row label="Existencia minima" value={String(product.min_stock)} mono />
+                            <Row label="Existencia mínima" value={String(product.min_stock)} mono />
                         </dl>
                     </Card>
 
@@ -184,10 +184,10 @@ export default function ProductShow({ product, stocks, salesTrend, movements, ca
                     <Card>
                         <CardHeader title="Precios y tributos" />
                         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                            <PriceBox label="Precio al publico" value={money(product.price)} highlight />
+                            <PriceBox label="Precio al público" value={money(product.price)} highlight />
                             <PriceBox label={`Base gravable (IVA ${product.tax_rate}%)`} value={money(taxBase)} />
                             <PriceBox label="Precio mayorista" value={product.wholesale_price ? money(product.wholesale_price) : '—'} />
-                            <PriceBox label="Precio en linea" value={product.online_price ? money(product.online_price) : '—'} />
+                            <PriceBox label="Precio en línea" value={product.online_price ? money(product.online_price) : '—'} />
                             {canViewCost && <PriceBox label="Costo" value={money(product.cost ?? 0)} />}
                             {canViewCost && <PriceBox label="Margen" value={percent(product.margin ?? 0)} />}
                         </div>
@@ -201,7 +201,7 @@ export default function ProductShow({ product, stocks, salesTrend, movements, ca
                                     <TH>Sede</TH>
                                     <TH>Disponible</TH>
                                     <TH align="right">Reservado</TH>
-                                    <TH align="right">Ubicacion</TH>
+                                    <TH align="right">Ubicación</TH>
                                 </TR>
                             </THead>
                             <TBody>
@@ -245,7 +245,7 @@ export default function ProductShow({ product, stocks, salesTrend, movements, ca
                     </Card>
 
                     <Card>
-                        <CardHeader title="Ventas de los ultimos 14 dias" />
+                        <CardHeader title="Ventas de los últimos 14 días" />
                         {hasTrend ? (
                             <div className="h-[12.5rem] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
@@ -274,13 +274,13 @@ export default function ProductShow({ product, stocks, salesTrend, movements, ca
                                 </ResponsiveContainer>
                             </div>
                         ) : (
-                            <p className="text-[0.8125rem] text-[var(--muted)]">Este articulo no se ha vendido en los ultimos 14 dias.</p>
+                            <p className="text-[0.8125rem] text-[var(--muted)]">Este artículo no se ha vendido en los últimos 14 días.</p>
                         )}
                     </Card>
 
                     <Card padded={false}>
                         <div className="px-5 pt-5">
-                            <CardHeader title="Movimientos recientes" description="Ultimos 12 registros del kardex." />
+                            <CardHeader title="Movimientos recientes" description="Últimos 12 registros del kardex." />
                         </div>
                         <Table className="rounded-none border-x-0 border-b-0">
                             <THead>
@@ -347,7 +347,7 @@ export default function ProductShow({ product, stocks, salesTrend, movements, ca
             >
                 <form onSubmit={submitPrice} className="flex flex-col gap-4">
                     <Input
-                        label="Precio al publico"
+                        label="Precio al público"
                         type="number"
                         min={0}
                         required
@@ -366,7 +366,7 @@ export default function ProductShow({ product, stocks, salesTrend, movements, ca
                         prefix="$"
                     />
                     <Input
-                        label="Precio en linea"
+                        label="Precio en línea"
                         type="number"
                         min={0}
                         value={priceForm.data.online_price}

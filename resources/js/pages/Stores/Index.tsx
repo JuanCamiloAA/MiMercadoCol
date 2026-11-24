@@ -171,7 +171,7 @@ export default function StoresIndex({ stores, map }: StoresIndexProps) {
             />
 
             {stores.length === 0 ? (
-                <EmptyState title="Todavia no hay sedes" description="Crea la primera para empezar a operar." icon={<BuildingsIcon size={24} />} />
+                <EmptyState title="Todavía no hay sedes" description="Crea la primera para empezar a operar." icon={<BuildingsIcon size={24} />} />
             ) : (
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {stores.map((store) => (
@@ -185,9 +185,9 @@ export default function StoresIndex({ stores, map }: StoresIndexProps) {
                             </div>
 
                             <dl className="mt-3 flex flex-col gap-1.5 text-[0.78125rem]">
-                                <Row label="Direccion" value={[store.address, store.city].filter(Boolean).join(', ') || null} />
+                                <Row label="Dirección" value={[store.address, store.city].filter(Boolean).join(', ') || null} />
                                 <Row label="Buscador" value={store.latitude !== null ? 'Con ubicación' : 'Sin ubicación'} />
-                                <Row label="Telefono" value={store.phone} mono />
+                                <Row label="Teléfono" value={store.phone} mono />
                                 <Row label="Horario" value={`${store.opens_at} – ${store.closes_at}`} mono />
                                 <Row label="Base sugerida" value={money(store.suggested_cash_base)} mono />
                                 <Row label="Cajas" value={number(store.registers_count)} mono />
@@ -250,21 +250,21 @@ export default function StoresIndex({ stores, map }: StoresIndexProps) {
                 <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
                     <Input label="Nombre" required value={form.data.name} onChange={(event) => form.setData('name', event.target.value)} error={form.errors.name} />
                     <Input
-                        label="Codigo"
+                        label="Código"
                         required
                         value={form.data.code}
                         onChange={(event) => form.setData('code', event.target.value.toUpperCase())}
                         error={form.errors.code}
                     />
                     <Input
-                        label="Direccion"
+                        label="Dirección"
                         value={form.data.address}
                         onChange={(event) => form.setData('address', event.target.value)}
                         error={form.errors.address}
                         containerClassName="sm:col-span-2"
                     />
                     <Input label="Ciudad" value={form.data.city} onChange={(event) => form.setData('city', event.target.value)} error={form.errors.city} />
-                    <Input label="Telefono" value={form.data.phone} onChange={(event) => form.setData('phone', event.target.value)} error={form.errors.phone} />
+                    <Input label="Teléfono" value={form.data.phone} onChange={(event) => form.setData('phone', event.target.value)} error={form.errors.phone} />
                     <div className="flex flex-col gap-2 rounded-control border border-[var(--line)] bg-[var(--surface-2)] p-3 sm:col-span-2">
                         <p className="text-[0.8125rem] font-medium">Ubicación para el buscador de la landing</p>
                         <LocationPicker

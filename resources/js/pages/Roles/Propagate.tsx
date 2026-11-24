@@ -52,10 +52,10 @@ export default function RolePropagate({ role, diff, users }: PropagateProps) {
         <AppLayout title="Aplicar el cambio del rol">
             <PageHeader
                 title={`Cambios en «${role.display_name}»`}
-                description="El rol ya quedo guardado. Elige a quien le aplicas la diferencia; a quien no marques no se le cambia nada."
+                description="El rol ya quedó guardado. Elige a quien le aplicas la diferencia; a quien no marques no se le cambia nada."
                 actions={
                     <ButtonLink href={route('roles.index')} variant="secondary">
-                        Dejarlo asi
+                        Dejarlo así
                     </ButtonLink>
                 }
             />
@@ -106,7 +106,7 @@ export default function RolePropagate({ role, diff, users }: PropagateProps) {
                     </div>
 
                     {users.length === 0 ? (
-                        <EmptyState title="Nadie tiene este rol" description="El cambio quedo guardado en la plantilla." />
+                        <EmptyState title="Nadie tiene este rol" description="El cambio quedó guardado en la plantilla." />
                     ) : (
                         <form onSubmit={submit}>
                             <Table className="rounded-none border-x-0 border-b-0">
@@ -152,7 +152,7 @@ export default function RolePropagate({ role, diff, users }: PropagateProps) {
 
                             <div className="flex items-center justify-between gap-3 border-t border-[var(--line)] px-5 py-3.5">
                                 <p className="text-[0.78125rem] text-[var(--muted)]">
-                                    Se aplicara a <span className="font-mono tabular">{data.user_ids.length}</span> de {users.length} usuarios.
+                                    Se aplicará a <span className="font-mono tabular">{data.user_ids.length}</span> de {users.length} usuarios.
                                 </p>
                                 <Button type="submit" loading={processing} iconRight={<ArrowRightIcon size={15} weight="bold" />}>
                                     Aplicar el cambio
