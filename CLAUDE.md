@@ -150,6 +150,10 @@ leyendo el código.
 - **Totales del POS**: las promociones de cantidad no se pueden calcular en el navegador sin
   repetir la aritmetica del servidor. El tiquete usa `POST /pos/cotizar`; si agregas un tipo de
   promocion nuevo, no lo calcules en el `.tsx`.
+- **Deshacer en la caja**: «Vaciar» y «Cancelar cambio» pasan por `offerUndo` (aviso de 8 s y Ctrl+Z).
+  `clearTicket` queda para después de cobrar o suspender, sin aviso. Si agregas otra acción manual que
+  borre el tiquete, pásala también por `offerUndo`. Deshacer nunca pisa un tiquete nuevo: el aviso se
+  va en cuanto se escanea, se elige cliente o se abre otro cambio.
 - **Precio de un articulo**: nunca lo leas de `products.price` para cobrar. `PromotionService`
   es el unico que sabe cuanto vale hoy, y depende del canal. Si agregas una pantalla que
   muestre precios y otra que cobre, las dos tienen que preguntarle al mismo servicio o el

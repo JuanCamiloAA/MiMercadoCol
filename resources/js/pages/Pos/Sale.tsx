@@ -309,6 +309,9 @@ function lineAmount(line: CartLine): number {
     return gross - Math.min(line.discount + line.promo_discount, gross);
 }
 
+/** Cuánto dura la oportunidad de deshacer «Vaciar» o «Cancelar cambio». */
+const UNDO_MS = 8000;
+
 export default function PosSale({
     session,
     openSessions,
@@ -359,6 +362,8 @@ export default function PosSale({
     const [gatewayPayment, setGatewayPayment] = useState<GatewayPaymentState | null>(null);
 
     const barcodeRef = useRef<HTMLInputElement>(null);
+    // Lo último que se vació a mano, mientras su aviso de «Deshacer» siga en pantalla.
+    const undoRef = useRef<{ kind: 'ticket' | 'exchange'; toastId: string; restore: () => void } | null>(null);
 
     // Al volver del cobro, el POS muestra el cambio y ofrece imprimir sin buscar la venta.
     useEffect(() => {
@@ -916,6 +921,67 @@ export default function PosSale({
         setLeftoverMethod('cash');
     };
 
+    /** Ofrece deshacer durante UNDO_MS. Solo hay un deshacer a la vez: el nuevo reemplaza al anterior. */
+    const offerUndo = (kind: 'ticket' | 'exchange', title: string, description: string, apply: () => void) => {
+        const toastId = `deshacer-${Date.now()}`;
+        const restore = () => {
+            undoRef.current = null;
+            toast.dismiss(toastId);
+            apply();
+            barcodeRef.current?.focus();
+        };
+        const forget = () => {
+            if (undoRef.current?.toastId === toastId) {
+                undoRef.current = null;
+            }
+        };
+
+        if (undoRef.current) {
+            toast.dismiss(undoRef.current.toastId);
+        }
+
+        undoRef.current = { kind, toastId, restore };
+        toast(title, {
+            id: toastId,
+            description,
+            duration: UNDO_MS,
+            action: { label: 'Deshacer', onClick: restore },
+            onAutoClose: forget,
+            onDismiss: forget,
+        });
+    };
+
+    /** «Vaciar» a mano: un toque errado no puede costar el tiquete entero. */
+    const emptyTicket = () => {
+        const before = { cart, customer, approvals, exchange, leftoverMethod };
+        const lines = cart.length;
+
+        clearTicket();
+        barcodeRef.current?.focus();
+        offerUndo('ticket', 'Tiquete vaciado', `${lines} ${lines === 1 ? 'artículo' : 'artículos'} · ${money(totals.total)}`, () => {
+            setCart(before.cart);
+            setCustomer(before.customer);
+            setApprovals(before.approvals);
+            setExchange(before.exchange);
+            setLeftoverMethod(before.leftoverMethod);
+        });
+    };
+
+    /** «Cancelar cambio» también se deshace: lo devuelto vuelve a pagar el tiquete. */
+    const cancelExchange = () => {
+        if (!exchange) {
+            return;
+        }
+
+        const before = { exchange, leftoverMethod };
+
+        setExchange(null);
+        offerUndo('exchange', 'Cambio cancelado', `Venta ${before.exchange.sale_number} · ${money(before.exchange.value)}`, () => {
+            setExchange(before.exchange);
+            setLeftoverMethod(before.leftoverMethod);
+        });
+    };
+
     // --- Codigo de barras --------------------------------------------------
 
     const handleBarcode = async (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -1030,6 +1096,44 @@ export default function PosSale({
 
         return () => window.removeEventListener('keydown', onKeyDown);
     }, [cart.length, permissions, posLayout.shortcuts]);
+
+    // Ctrl+Z deshace «Vaciar» o «Cancelar cambio» mientras su aviso siga visible. Con texto escrito
+    // en un campo, Ctrl+Z sigue siendo el de siempre.
+    useEffect(() => {
+        const onUndoKey = (event: KeyboardEvent) => {
+            if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'z' || !undoRef.current) {
+                return;
+            }
+
+            const field = event.target;
+            const typing = (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) && field.value !== '';
+
+            if (!typing) {
+                event.preventDefault();
+                undoRef.current.restore();
+            }
+        };
+
+        window.addEventListener('keydown', onUndoKey);
+
+        return () => window.removeEventListener('keydown', onUndoKey);
+    }, []);
+
+    // Si ya empezó otro tiquete (o abrió otro cambio), deshacer pisaría lo nuevo: el aviso se va.
+    useEffect(() => {
+        const pending = undoRef.current;
+
+        if (!pending) {
+            return;
+        }
+
+        const startedAgain = pending.kind === 'ticket' ? cart.length > 0 || customer !== null || exchange !== null : exchange !== null;
+
+        if (startedAgain) {
+            toast.dismiss(pending.toastId);
+            undoRef.current = null;
+        }
+    }, [cart.length, customer, exchange]);
 
     useEffect(() => {
         if (modal === null) {
@@ -1325,7 +1429,7 @@ export default function PosSale({
                             </p>
                         </div>
                         {cart.length > 0 && (
-                            <Button size="sm" variant="ghost" icon={<TrashIcon size={15} />} onClick={clearTicket}>
+                            <Button size="sm" variant="ghost" icon={<TrashIcon size={15} />} onClick={emptyTicket}>
                                 Vaciar
                             </Button>
                         )}
@@ -1342,7 +1446,7 @@ export default function PosSale({
                                 </p>
                                 <button
                                     type="button"
-                                    onClick={() => setExchange(null)}
+                                    onClick={cancelExchange}
                                     className="shrink-0 text-[0.71875rem] font-medium text-[var(--danger)] hover:underline"
                                 >
                                     Cancelar cambio
