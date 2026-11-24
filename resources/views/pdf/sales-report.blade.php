@@ -63,9 +63,9 @@
     </tbody>
 </table>
 
-<h2>Ventas por categoria</h2>
+<h2>Ventas por categoría</h2>
 <table>
-    <thead><tr><th>Categoria</th><th class="right">Unidades</th><th class="right">Total</th></tr></thead>
+    <thead><tr><th>Categoría</th><th class="right">Unidades</th><th class="right">Total</th></tr></thead>
     <tbody>
     @foreach ($data['by_category'] as $row)
         <tr>
@@ -91,9 +91,9 @@
     </tbody>
 </table>
 
-<h2>Articulos mas vendidos</h2>
+<h2>Artículos más vendidos</h2>
 <table>
-    <thead><tr><th>Articulo</th><th class="right">Unidades</th><th class="right">Total</th></tr></thead>
+    <thead><tr><th>Artículo</th><th class="right">Unidades</th><th class="right">Total</th></tr></thead>
     <tbody>
     @foreach ($data['top_products'] as $row)
         <tr>

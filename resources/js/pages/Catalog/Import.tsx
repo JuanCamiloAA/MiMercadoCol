@@ -46,7 +46,16 @@ interface Criteria {
     category_id: string;
 }
 
-const COUNTRIES = ['Colombia', 'Mexico', 'Peru', 'Chile', 'Argentina', 'Ecuador', 'Spain'];
+// El valor viaja tal cual a la fuente externa (por eso «Spain»); la etiqueta es la que se lee.
+const COUNTRIES = [
+    { value: 'Colombia', label: 'Colombia' },
+    { value: 'Mexico', label: 'México' },
+    { value: 'Peru', label: 'Perú' },
+    { value: 'Chile', label: 'Chile' },
+    { value: 'Argentina', label: 'Argentina' },
+    { value: 'Ecuador', label: 'Ecuador' },
+    { value: 'Spain', label: 'España' },
+];
 
 const STATUS_TONES: Record<string, BadgeTone> = {
     new: 'accent',
@@ -397,7 +406,7 @@ export default function CatalogImport({ categories, segments, running, history, 
                             <Select
                                 label="País"
                                 required
-                                options={COUNTRIES.map((country) => ({ value: country, label: country }))}
+                                options={COUNTRIES}
                                 value={criteria.country}
                                 onChange={(event) => set('country', event.target.value)}
                                 error={errors.country}

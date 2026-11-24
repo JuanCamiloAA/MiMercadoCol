@@ -41,7 +41,7 @@ export default function InventoryMovements({ product, movements, filters: initia
         <AppLayout title={`Kardex de ${product.name}`}>
             <PageHeader
                 title={`Kardex · ${product.name}`}
-                description={`${product.sku} · cada movimiento con el saldo que dejo`}
+                description={`${product.sku} · cada movimiento con el saldo que dejó`}
                 breadcrumb={
                     <Link href={route('inventory.index')} className="hover:text-[var(--accent)]">
                         Inventario

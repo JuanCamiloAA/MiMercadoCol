@@ -155,6 +155,9 @@ leyendo el código.
   `clearTicket` queda para después de cobrar o suspender, sin aviso. Si agregas otra acción manual que
   borre el tiquete, pásala también por `offerUndo`. Deshacer nunca pisa un tiquete nuevo: el aviso se
   va en cuanto se escanea, se elige cliente o se abre otro cambio.
+- **Claves que se ven**: si una clave se guarda o viaja al servidor (`work_schedule.miercoles`, el país de
+  la importación), no se le pone tilde; se separa la etiqueta (`DAY_LABELS` en `lib/work-days.ts`,
+  `{ value, label }`).
 - **Precio de un articulo**: nunca lo leas de `products.price` para cobrar. `PromotionService`
   es el unico que sabe cuanto vale hoy, y depende del canal. Si agregas una pantalla que
   muestre precios y otra que cobre, las dos tienen que preguntarle al mismo servicio o el

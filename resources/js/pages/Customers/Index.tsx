@@ -437,7 +437,7 @@ export default function CustomersIndex({ customers, filters: initialFilters, met
                 confirmLabel="Eliminar"
                 message={
                     <>
-                        Vas a eliminar a <strong>{toDelete?.name}</strong>. Solo se puede si nunca compro ni pidió a domicilio.
+                        Vas a eliminar a <strong>{toDelete?.name}</strong>. Solo se puede si nunca compró ni pidió a domicilio.
                     </>
                 }
             />

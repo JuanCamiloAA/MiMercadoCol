@@ -118,7 +118,7 @@
 @if ($sale->due_total > 0)
     <hr>
     <table>
-        <tr><td class="bold">Queda a credito</td><td class="right bold">{{ number_format($sale->due_total, 0, ',', '.') }}</td></tr>
+        <tr><td class="bold">Queda a crédito</td><td class="right bold">{{ number_format($sale->due_total, 0, ',', '.') }}</td></tr>
         <tr><td>Vence</td><td class="right">{{ $sale->due_date?->format('d/m/Y') }}</td></tr>
     </table>
 @endif

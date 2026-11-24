@@ -6,6 +6,7 @@ import { Card, CardHeader } from '@/components/ui/Card';
 import { Checkbox, Input, Select } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/Misc';
 import AppLayout from '@/layouts/AppLayout';
+import { DAY_LABELS, DAYS } from '@/lib/work-days';
 
 type Schedule = Record<string, { start: string; end: string }>;
 
@@ -33,8 +34,6 @@ interface EmployeeFormProps {
     roles: { value: string; label: string; color: string }[];
     canCreateAccess: boolean;
 }
-
-const DAYS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'] as const;
 
 const DOCUMENT_TYPES = [
     { value: 'CC', label: 'Cédula de ciudadanía' },
@@ -215,7 +214,7 @@ export default function EmployeeForm({ mode, employee, stores, roles, canCreateA
                                         <div key={day} className="flex flex-wrap items-center gap-3">
                                             <div className="w-32">
                                                 <Checkbox
-                                                    label={<span className="capitalize">{day}</span>}
+                                                    label={DAY_LABELS[day]}
                                                     checked={enabled}
                                                     onChange={(event) => toggleDay(day, event.target.checked)}
                                                 />

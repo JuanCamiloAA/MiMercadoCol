@@ -358,7 +358,7 @@ export default function SalesShow({ sale, refunds, openReturns, canRegisterRetur
                             />
                             <Fact label="Caja" value={sale.register ?? '—'} />
                             <Fact label="Sede" value={sale.store ?? '—'} />
-                            {sale.authorized_by && <Fact label="Autorizo" value={sale.authorized_by} />}
+                            {sale.authorized_by && <Fact label="Autorizó" value={sale.authorized_by} />}
                         </div>
                         {sale.note && <p className="mt-3 text-[0.78125rem] text-[var(--muted)]">{sale.note}</p>}
                     </Card>

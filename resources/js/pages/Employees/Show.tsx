@@ -10,6 +10,7 @@ import { Avatar, Badge, PageHeader } from '@/components/ui/Misc';
 import AppLayout from '@/layouts/AppLayout';
 import { date, money, number } from '@/lib/format';
 import { usePermission } from '@/lib/permissions';
+import { dayLabel } from '@/lib/work-days';
 import type { PageProps } from '@/types';
 
 interface EmployeeShowProps {
@@ -182,7 +183,7 @@ export default function EmployeeShow({ employee, performance, roles }: EmployeeS
                             <ul className="flex flex-col gap-1.5 text-[0.8125rem]">
                                 {scheduleDays.map(([day, hours]) => (
                                     <li key={day} className="flex items-center justify-between">
-                                        <span className="capitalize text-[var(--muted)]">{day}</span>
+                                        <span className="capitalize text-[var(--muted)]">{dayLabel(day)}</span>
                                         <span className="font-mono tabular">
                                             {hours.start} – {hours.end}
                                         </span>

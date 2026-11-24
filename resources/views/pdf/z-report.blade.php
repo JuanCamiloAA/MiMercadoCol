@@ -64,7 +64,7 @@
             <td class="right num">$ {{ number_format($summary['cash_in'], 0, ',', '.') }}</td>
         </tr>
         <tr>
-            <td>Sangrias</td>
+            <td>Sangrías</td>
             <td class="right num">− $ {{ number_format($summary['cash_out'], 0, ',', '.') }}</td>
         </tr>
     </table>

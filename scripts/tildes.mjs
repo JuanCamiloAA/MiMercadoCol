@@ -89,7 +89,7 @@ const PHRASES = [
 
 /** Cadenas enteras que son código aunque parezcan texto. */
 const ALLOW = new Set([
-    'miercoles', 'sabado', // Employees/Form: claves de work_schedule (la etiqueta sale de DAY_LABELS)
+    'miercoles', 'sabado', // lib/work-days: claves de work_schedule (la etiqueta sale de DAY_LABELS)
     'ALMACEN', // Stores/Warehouses: ejemplo de código de bodega; los códigos van sin tilde, como DEPOSITO
 ]);
 

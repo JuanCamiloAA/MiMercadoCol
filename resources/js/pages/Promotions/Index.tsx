@@ -499,7 +499,7 @@ export default function PromotionsIndex({ promotions, filters: initialFilters, m
                                 />
                                 <Checkbox
                                     label="Mostrador (punto de venta)"
-                                    hint="El cajero cobrara el precio promocional."
+                                    hint="El cajero cobrará el precio promocional."
                                     checked={data.applies_pos}
                                     onChange={(event) => setData('applies_pos', event.target.checked)}
                                 />
@@ -535,7 +535,7 @@ export default function PromotionsIndex({ promotions, filters: initialFilters, m
                     setRemoving(null);
                 }}
                 title="Eliminar la promoción"
-                message={`«${removing?.name}» dejara de aplicar de inmediato. Las ventas ya hechas no cambian.`}
+                message={`«${removing?.name}» dejará de aplicar de inmediato. Las ventas ya hechas no cambian.`}
                 confirmLabel="Eliminar"
                 tone="danger"
             />
