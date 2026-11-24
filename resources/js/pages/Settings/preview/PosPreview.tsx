@@ -2,12 +2,13 @@ import { BarcodeIcon, CashRegisterIcon, LockKeyIcon, MagnifyingGlassIcon, Shoppi
 import { BrandMark } from '@/components/brand/BrandMark';
 import { cn } from '@/lib/cn';
 import { money } from '@/lib/format';
+import { TilePhoto } from '@/pages/Pos/components/TilePhoto';
 import type { Option, PosSample, PreviewTokens, RailKey, SettingsValues, ShortcutAction } from '../types';
 import { layoutVars, themeVars } from './vars';
 
 type PosDraft = Pick<
     SettingsValues,
-    'pos.ticket_side' | 'pos.catalog_view' | 'pos.tile_size' | 'pos.total_size' | 'pos.rail' | 'pos.shortcuts' | 'pos.ui_scale'
+    'pos.ticket_side' | 'pos.catalog_view' | 'pos.tile_size' | 'pos.tile_style' | 'pos.total_size' | 'pos.rail' | 'pos.shortcuts' | 'pos.ui_scale'
 >;
 
 interface PosPreviewProps {
@@ -31,6 +32,15 @@ const RAIL_ICONS: Record<RailKey, Icon> = {
 /** Columnas de la cuadricula segun el tamano de las teclas, igual que en `Pos/Sale`. */
 const GRID_COLUMNS = { sm: 'grid-cols-4', md: 'grid-cols-3', lg: 'grid-cols-2' } as const;
 
+/** Cuantas teclas caben en la vista previa segun su tamano. */
+const GRID_COUNT = { sm: 8, md: 6, lg: 4 } as const;
+
+/**
+ * Con foto grande, una sola fila que llena el alto. La miniatura es ancha y bajita: una tecla
+ * cuadrada mas su pie no cabe entera, y la fila de abajo asomaria cortada.
+ */
+const PHOTO_COUNT = { sm: 4, md: 3, lg: 2 } as const;
+
 /**
  * La caja en miniatura con la disposicion del borrador: de que lado va el tiquete, como se ve
  * el catalogo, el tamano del total, el orden del riel y las teclas de cada atajo.
@@ -42,6 +52,7 @@ export function PosPreview({ draft, theme, brand, mark, tokens, sample, railLabe
     const lines = products.slice(0, 2);
     const total = lines.reduce((sum, product) => sum + product.price, 0);
     const shortcuts: ShortcutAction[] = ['customer', 'discount', 'hold', 'resume'];
+    const tileStyle = draft['pos.tile_style'];
 
     const ticket = (
         <div className="flex w-[40%] shrink-0 flex-col border-[var(--line)] bg-[var(--surface)]" style={{ [draft['pos.ticket_side'] === 'left' ? 'borderRight' : 'borderLeft']: '1px solid var(--line)' }}>
@@ -76,7 +87,7 @@ export function PosPreview({ draft, theme, brand, mark, tokens, sample, railLabe
 
     const catalog = (
         <div className="flex min-w-0 flex-1 flex-col p-2.5">
-            <div className="mb-2 flex h-7 items-center gap-1.5 rounded-[var(--r-control)] border border-[var(--line)] bg-[var(--surface-2)] px-2 text-[0.59375rem] text-[var(--muted)]">
+            <div className="mb-2 flex h-7 shrink-0 items-center gap-1.5 rounded-[var(--r-control)] border border-[var(--line)] bg-[var(--surface-2)] px-2 text-[0.59375rem] text-[var(--muted)]">
                 <MagnifyingGlassIcon size={11} />
                 Buscar artículo por nombre o SKU
             </div>
@@ -90,7 +101,7 @@ export function PosPreview({ draft, theme, brand, mark, tokens, sample, railLabe
                 </div>
             ) : (
                 <>
-                    <div className="mb-2 flex gap-1 overflow-hidden">
+                    <div className="mb-2 flex shrink-0 gap-1 overflow-hidden">
                         {['Todas', ...sample.categories.slice(0, 3)].map((category, index) => (
                             <span
                                 key={category}
@@ -114,19 +125,44 @@ export function PosPreview({ draft, theme, brand, mark, tokens, sample, railLabe
                             ))}
                         </ul>
                     ) : (
-                        <div className={cn('grid gap-1.5 overflow-hidden', GRID_COLUMNS[draft['pos.tile_size']])}>
-                            {products.slice(0, draft['pos.tile_size'] === 'lg' ? 4 : draft['pos.tile_size'] === 'md' ? 6 : 8).map((product) => (
-                                <div
-                                    key={product.name}
-                                    className={cn(
-                                        'flex flex-col justify-between rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface)] p-1.5',
-                                        draft['pos.tile_size'] === 'lg' ? 'min-h-16' : draft['pos.tile_size'] === 'md' ? 'min-h-12' : 'min-h-10',
-                                    )}
-                                >
-                                    <span className="line-clamp-2 text-[0.53125rem] leading-tight font-medium">{product.name}</span>
-                                    <span className="font-mono text-[0.59375rem] font-semibold text-[var(--accent)] tabular">{money(product.price)}</span>
-                                </div>
-                            ))}
+                        <div
+                            className={cn(
+                                'grid min-h-0 flex-1 gap-1.5 overflow-hidden',
+                                GRID_COLUMNS[draft['pos.tile_size']],
+                                tileStyle === 'compact' ? 'auto-rows-min content-start' : 'grid-rows-[minmax(0,1fr)]',
+                            )}
+                        >
+                            {products.slice(0, (tileStyle === 'compact' ? GRID_COUNT : PHOTO_COUNT)[draft['pos.tile_size']]).map((product) =>
+                                tileStyle === 'compact' ? (
+                                    <div
+                                        key={product.name}
+                                        className={cn(
+                                            'flex flex-col justify-between rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface)] p-1.5',
+                                            draft['pos.tile_size'] === 'lg' ? 'min-h-16' : draft['pos.tile_size'] === 'md' ? 'min-h-12' : 'min-h-10',
+                                        )}
+                                    >
+                                        <span className="flex items-start gap-1">
+                                            {product.thumb_url && <img src={product.thumb_url} alt="" className="size-4 shrink-0 rounded-[var(--r-chip)] object-cover" />}
+                                            <span className="line-clamp-2 text-[0.53125rem] leading-tight font-medium">{product.name}</span>
+                                        </span>
+                                        <span className="font-mono text-[0.59375rem] font-semibold text-[var(--accent)] tabular">{money(product.price)}</span>
+                                    </div>
+                                ) : (
+                                    <div key={product.name} className="flex flex-col overflow-hidden rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface)]">
+                                        <TilePhoto
+                                            src={product.thumb_url}
+                                            name={product.name}
+                                            mode={tileStyle}
+                                            nameClassName="text-[0.6875rem]"
+                                            className="aspect-auto min-h-0 flex-1"
+                                        />
+                                        <span className="flex flex-col gap-0.5 px-1.5 py-1">
+                                            {product.thumb_url && <span className="truncate text-[0.53125rem] leading-tight font-medium">{product.name}</span>}
+                                            <span className="font-mono text-[0.59375rem] font-semibold text-[var(--accent)] tabular">{money(product.price)}</span>
+                                        </span>
+                                    </div>
+                                ),
+                            )}
                         </div>
                     )}
                 </>

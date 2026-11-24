@@ -25,6 +25,7 @@ import GatewayWaitDialog, { type GatewayPaymentState } from '@/pages/Pos/compone
 import PaymentDialog, { type GatewayRequest, type PaymentPayload } from '@/pages/Pos/components/PaymentDialog';
 import ReturnDialog, { type ExchangeDraft } from '@/pages/Pos/components/ReturnDialog';
 import ServiceLineCard from '@/pages/Pos/components/ServiceLineCard';
+import { TilePhoto, type TileStyle } from '@/pages/Pos/components/TilePhoto';
 import {
     componentsFromMaster,
     componentTotal,
@@ -172,17 +173,29 @@ interface PosLayoutSettings {
     ticket_side: 'right' | 'left';
     catalog_view: 'grid' | 'list' | 'search';
     tile_size: 'sm' | 'md' | 'lg';
+    tile_style: TileStyle;
     total_size: 'normal' | 'large';
     rail: ('sale' | 'opening' | 'closing')[];
     shortcuts: Record<ShortcutAction, string>;
     sounds: boolean;
 }
 
+interface TileSize {
+    grid: string;
+    tile: string;
+    name: string;
+    price: string;
+    /** El relleno del pie cuando la foto va grande: la foto llega hasta el borde. */
+    pad: string;
+    /** El nombre en el cuadro de la foto cuando el articulo no tiene. */
+    placeholder: string;
+}
+
 /** Columnas y alto de cada tecla del catalogo segun su tamano. `md` es el de siempre. */
-const TILE_GRID: Record<PosLayoutSettings['tile_size'], { grid: string; tile: string; name: string; price: string }> = {
-    sm: { grid: 'grid-cols-3 sm:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6', tile: 'min-h-[5.5rem] p-2.5', name: 'text-[0.75rem]', price: 'text-[0.875rem]' },
-    md: { grid: 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5', tile: 'min-h-[6.75rem] p-3', name: 'text-[0.8125rem]', price: 'text-[1rem]' },
-    lg: { grid: 'grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4', tile: 'min-h-[8.5rem] p-3.5', name: 'text-[0.9375rem]', price: 'text-[1.1875rem]' },
+const TILE_GRID: Record<PosLayoutSettings['tile_size'], TileSize> = {
+    sm: { grid: 'grid-cols-3 sm:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6', tile: 'min-h-[5.5rem] p-2.5', name: 'text-[0.75rem]', price: 'text-[0.875rem]', pad: 'p-2', placeholder: 'text-[0.9375rem]' },
+    md: { grid: 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5', tile: 'min-h-[6.75rem] p-3', name: 'text-[0.8125rem]', price: 'text-[1rem]', pad: 'p-2.5', placeholder: 'text-[1.125rem]' },
+    lg: { grid: 'grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4', tile: 'min-h-[8.5rem] p-3.5', name: 'text-[0.9375rem]', price: 'text-[1.1875rem]', pad: 'p-3', placeholder: 'text-[1.375rem]' },
 };
 
 /** A quien se le puede atribuir una venta. */
@@ -1269,81 +1282,23 @@ export default function PosSale({
                     ) : (
                     <div className={cn('grid min-h-0 flex-1 auto-rows-min gap-2 overflow-y-auto pr-1', TILE_GRID[posLayout.tile_size].grid)}>
                         {services.map((service) => (
-                            <ServiceTile key={`s-${service.id}`} service={service} tile={TILE_GRID[posLayout.tile_size]} onPick={() => addService(service)} />
+                            <ServiceTile
+                                key={`s-${service.id}`}
+                                service={service}
+                                tile={TILE_GRID[posLayout.tile_size]}
+                                mode={posLayout.tile_style}
+                                onPick={() => addService(service)}
+                            />
                         ))}
-                        {products.map((product) => {
-                            const out = product.stock <= 0 && !product.allow_negative_stock;
-                            const tile = TILE_GRID[posLayout.tile_size];
-
-                            return (
-                                <button
-                                    key={product.id}
-                                    type="button"
-                                    disabled={out}
-                                    onClick={() => addProduct(product)}
-                                    className={cn(
-                                        'relative flex flex-col justify-between rounded-card border text-left transition-colors',
-                                        tile.tile,
-                                        out
-                                            ? 'cursor-not-allowed border-[var(--line)] bg-[var(--surface)] opacity-45'
-                                            : product.promotion
-                                              ? 'border-[var(--warn)] bg-[var(--surface)] hover:bg-[var(--surface-2)]'
-                                              : 'border-[var(--line)] bg-[var(--surface)] hover:border-[var(--accent)] hover:bg-[var(--surface-2)]',
-                                    )}
-                                >
-                                    {product.promotion && (
-                                        <span
-                                            title={product.promotion.hint}
-                                            className="absolute right-2 top-2 rounded-chip bg-[var(--warn)] px-1.5 py-0.5 font-mono text-[0.65625rem] font-bold text-[var(--bg)]"
-                                        >
-                                            {product.promotion.badge}
-                                        </span>
-                                    )}
-
-                                    <span className="flex items-start gap-2 pr-10">
-                                        {product.thumb_url && (
-                                            <img
-                                                src={product.thumb_url}
-                                                alt=""
-                                                loading="lazy"
-                                                className="size-10 shrink-0 rounded-chip object-cover"
-                                            />
-                                        )}
-                                        <span className="min-w-0">
-                                            <span className={cn('line-clamp-2 font-medium leading-snug', tile.name)}>{product.name}</span>
-                                            {product.variant_label && (
-                                                <span className="mt-1 inline-block rounded-chip bg-[var(--accent-soft)] px-1.5 py-0.5 text-[0.6875rem] font-semibold text-[var(--accent)]">
-                                                    {product.variant_label}
-                                                </span>
-                                            )}
-                                        </span>
-                                    </span>
-                                    <span>
-                                        <span className="flex items-baseline gap-1.5">
-                                            <span className={cn('font-mono font-semibold text-[var(--accent)] tabular', tile.price)}>
-                                                {money(product.price)}
-                                            </span>
-                                            {product.promotion?.compare_at && product.promotion.compare_at > product.price && (
-                                                <span className="font-mono text-[0.6875rem] text-[var(--muted)] line-through tabular">
-                                                    {money(product.promotion.compare_at)}
-                                                </span>
-                                            )}
-                                        </span>
-                                        <span
-                                            className="block font-mono text-[0.6875rem] tabular"
-                                            style={{ color: out ? 'var(--danger)' : product.stock < 5 ? 'var(--warn)' : 'var(--muted)' }}
-                                        >
-                                            {out ? 'Agotado' : `${number(product.stock)} ${UNIT_SHORT[product.unit] ?? ''}`}
-                                        </span>
-                                        {product.other_stock > 0 && (
-                                            <span className="block font-mono text-[0.65625rem] text-[var(--warn)] tabular">
-                                                +{number(product.other_stock)} en bodega
-                                            </span>
-                                        )}
-                                    </span>
-                                </button>
-                            );
-                        })}
+                        {products.map((product) => (
+                            <ProductTile
+                                key={product.id}
+                                product={product}
+                                tile={TILE_GRID[posLayout.tile_size]}
+                                mode={posLayout.tile_style}
+                                onPick={() => addProduct(product)}
+                            />
+                        ))}
 
                         {products.length === 0 && services.length === 0 && (
                             <div className="col-span-full grid place-items-center gap-2 py-16 text-center text-[var(--muted)]">
@@ -1853,17 +1808,129 @@ function VariantChooser({ family, onClose, onPick }: { family: PosFamily | null;
     );
 }
 
+/**
+ * Una tecla de articulo en la cuadricula, con la foto como la eligio la empresa en Ajustes > Caja:
+ * pequena al lado del nombre, o grande ocupando casi toda la tecla con el nombre y el precio debajo.
+ */
+function ProductTile({ product, tile, mode, onPick }: { product: PosProduct; tile: TileSize; mode: TileStyle; onPick: () => void }) {
+    const out = product.stock <= 0 && !product.allow_negative_stock;
+
+    const badge = product.promotion && (
+        <span
+            title={product.promotion.hint}
+            className="absolute right-2 top-2 rounded-chip bg-[var(--warn)] px-1.5 py-0.5 font-mono text-[0.65625rem] font-bold text-[var(--bg)]"
+        >
+            {product.promotion.badge}
+        </span>
+    );
+
+    const price = (
+        <span className="flex items-baseline gap-1.5">
+            <span className={cn('font-mono font-semibold text-[var(--accent)] tabular', tile.price)}>{money(product.price)}</span>
+            {product.promotion?.compare_at && product.promotion.compare_at > product.price && (
+                <span className="font-mono text-[0.6875rem] text-[var(--muted)] line-through tabular">{money(product.promotion.compare_at)}</span>
+            )}
+        </span>
+    );
+
+    const stock = (
+        <span className="block font-mono text-[0.6875rem] tabular" style={{ color: out ? 'var(--danger)' : product.stock < 5 ? 'var(--warn)' : 'var(--muted)' }}>
+            {out ? 'Agotado' : `${number(product.stock)} ${UNIT_SHORT[product.unit] ?? ''}`}
+        </span>
+    );
+
+    const otherStock = product.other_stock > 0 && (
+        <span className="block font-mono text-[0.65625rem] text-[var(--warn)] tabular">+{number(product.other_stock)} en bodega</span>
+    );
+
+    return (
+        <button
+            type="button"
+            disabled={out}
+            onClick={onPick}
+            className={cn(
+                'relative flex flex-col rounded-card border text-left transition-colors',
+                mode === 'compact' ? cn('justify-between', tile.tile) : 'overflow-hidden',
+                out
+                    ? 'cursor-not-allowed border-[var(--line)] bg-[var(--surface)] opacity-45'
+                    : product.promotion
+                      ? 'border-[var(--warn)] bg-[var(--surface)] hover:bg-[var(--surface-2)]'
+                      : 'border-[var(--line)] bg-[var(--surface)] hover:border-[var(--accent)] hover:bg-[var(--surface-2)]',
+            )}
+        >
+            {mode === 'compact' ? (
+                <>
+                    {badge}
+                    <span className="flex items-start gap-2 pr-10">
+                        {product.thumb_url && <img src={product.thumb_url} alt="" loading="lazy" className="size-10 shrink-0 rounded-chip object-cover" />}
+                        <span className="min-w-0">
+                            <span className={cn('line-clamp-2 font-medium leading-snug', tile.name)}>{product.name}</span>
+                            {product.variant_label && (
+                                <span className="mt-1 inline-block rounded-chip bg-[var(--accent-soft)] px-1.5 py-0.5 text-[0.6875rem] font-semibold text-[var(--accent)]">
+                                    {product.variant_label}
+                                </span>
+                            )}
+                        </span>
+                    </span>
+                    <span>
+                        {price}
+                        {stock}
+                        {otherStock}
+                    </span>
+                </>
+            ) : (
+                <>
+                    {/* Las presentaciones de un mismo articulo suelen compartir foto: la etiqueta va encima para distinguirlas. */}
+                    <TilePhoto src={product.thumb_url} name={product.name} mode={mode} nameClassName={tile.placeholder}>
+                        {badge}
+                        {product.variant_label && (
+                            <span className="absolute bottom-2 left-2 max-w-[calc(100%-1rem)] truncate rounded-chip bg-[var(--surface)] px-1.5 py-0.5 text-[0.6875rem] font-semibold text-[var(--accent)] shadow-sm">
+                                {product.variant_label}
+                            </span>
+                        )}
+                    </TilePhoto>
+                    <span className={cn('flex flex-1 flex-col gap-1', tile.pad)}>
+                        {/* Sin foto el nombre ya va en grande en el cuadro. */}
+                        {product.thumb_url && <span className={cn('line-clamp-2 font-medium', tile.name, 'leading-snug')}>{product.name}</span>}
+                        <span className="mt-auto">
+                            <span className="flex flex-wrap items-baseline justify-between gap-x-2">
+                                {price}
+                                {stock}
+                            </span>
+                            {otherStock}
+                        </span>
+                    </span>
+                </>
+            )}
+        </button>
+    );
+}
+
 /** Una tecla de servicio en la cuadrícula. Un servicio que no se puede cobrar sale marcado «Revisar». */
-function ServiceTile({
-    service,
-    tile,
-    onPick,
-}: {
-    service: PosService;
-    tile: { tile: string; name: string; price: string };
-    onPick: () => void;
-}) {
+function ServiceTile({ service, tile, mode, onPick }: { service: PosService; tile: TileSize; mode: TileStyle; onPick: () => void }) {
     const blocked = service.blocked.length > 0;
+
+    const badge = (
+        <span
+            className={cn(
+                'absolute right-2 top-2 rounded-chip px-1.5 py-0.5 text-[0.65625rem] font-bold',
+                blocked ? 'bg-[var(--danger)] text-white' : 'bg-[var(--accent-soft)] text-[var(--accent)]',
+            )}
+        >
+            {blocked ? 'Revisar' : 'Servicio'}
+        </span>
+    );
+
+    const price = (
+        <span>
+            <span className={cn('font-mono font-semibold text-[var(--accent)] tabular', tile.price)}>{service.open_price ? 'Valor abierto' : money(service.total)}</span>
+            <span className="block text-[0.6875rem] text-[var(--muted)]">
+                {service.components.length === 0
+                    ? 'Solo valor'
+                    : `${service.components.length} ${service.components.length === 1 ? 'artículo' : 'artículos'}${service.pricing_mode === 'itemized' ? ' aparte' : ' incluidos'}`}
+            </span>
+        </span>
+    );
 
     return (
         <button
@@ -1871,37 +1938,35 @@ function ServiceTile({
             onClick={onPick}
             title={blocked ? `No se puede cobrar: ${service.blocked.join(', ')}` : undefined}
             className={cn(
-                'relative flex flex-col justify-between rounded-card border border-dashed text-left transition-colors',
-                tile.tile,
+                'relative flex flex-col rounded-card border border-dashed text-left transition-colors',
+                mode === 'compact' ? cn('justify-between', tile.tile) : 'overflow-hidden',
                 blocked ? 'border-[var(--danger)] bg-[var(--surface)] opacity-70' : 'border-[var(--accent)]/60 bg-[var(--surface)] hover:bg-[var(--surface-2)]',
             )}
         >
-            <span
-                className={cn(
-                    'absolute right-2 top-2 rounded-chip px-1.5 py-0.5 text-[0.65625rem] font-bold',
-                    blocked ? 'bg-[var(--danger)] text-white' : 'bg-[var(--accent-soft)] text-[var(--accent)]',
-                )}
-            >
-                {blocked ? 'Revisar' : 'Servicio'}
-            </span>
-            <span className="flex items-start gap-2 pr-16">
-                {service.thumb_url ? (
-                    <img src={service.thumb_url} alt="" loading="lazy" className="size-10 shrink-0 rounded-chip object-cover" />
-                ) : (
-                    <WrenchIcon size={18} className="mt-0.5 shrink-0 text-[var(--accent)]" />
-                )}
-                <span className={cn('line-clamp-2 font-medium leading-snug', tile.name)}>{service.name}</span>
-            </span>
-            <span>
-                <span className={cn('font-mono font-semibold text-[var(--accent)] tabular', tile.price)}>
-                    {service.open_price ? 'Valor abierto' : money(service.total)}
-                </span>
-                <span className="block text-[0.6875rem] text-[var(--muted)]">
-                    {service.components.length === 0
-                        ? 'Solo valor'
-                        : `${service.components.length} ${service.components.length === 1 ? 'artículo' : 'artículos'}${service.pricing_mode === 'itemized' ? ' aparte' : ' incluidos'}`}
-                </span>
-            </span>
+            {mode === 'compact' ? (
+                <>
+                    {badge}
+                    <span className="flex items-start gap-2 pr-16">
+                        {service.thumb_url ? (
+                            <img src={service.thumb_url} alt="" loading="lazy" className="size-10 shrink-0 rounded-chip object-cover" />
+                        ) : (
+                            <WrenchIcon size={18} className="mt-0.5 shrink-0 text-[var(--accent)]" />
+                        )}
+                        <span className={cn('line-clamp-2 font-medium leading-snug', tile.name)}>{service.name}</span>
+                    </span>
+                    {price}
+                </>
+            ) : (
+                <>
+                    <TilePhoto src={service.thumb_url} name={service.name} mode={mode} nameClassName={tile.placeholder}>
+                        {badge}
+                    </TilePhoto>
+                    <span className={cn('flex flex-1 flex-col gap-1', tile.pad)}>
+                        {service.thumb_url && <span className={cn('line-clamp-2 font-medium', tile.name, 'leading-snug')}>{service.name}</span>}
+                        <span className="mt-auto">{price}</span>
+                    </span>
+                </>
+            )}
         </button>
     );
 }

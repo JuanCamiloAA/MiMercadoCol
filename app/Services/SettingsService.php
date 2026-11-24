@@ -55,6 +55,7 @@ class SettingsService
         'pos.ticket_side' => 'right',
         'pos.catalog_view' => 'grid',
         'pos.tile_size' => 'md',
+        'pos.tile_style' => 'compact',
         'pos.total_size' => 'normal',
         'pos.rail' => ['sale', 'opening', 'closing'],
         'pos.shortcuts' => [

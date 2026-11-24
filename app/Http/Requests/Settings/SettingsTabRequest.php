@@ -90,6 +90,7 @@ abstract class SettingsTabRequest extends FormRequest
             'pos.ticket_side' => 'el lado del tiquete',
             'pos.catalog_view' => 'la vista del catálogo',
             'pos.tile_size' => 'el tamaño de las teclas',
+            'pos.tile_style' => 'la foto de las teclas',
             'pos.total_size' => 'el tamaño del total',
             'pos.rail' => 'el orden del riel',
             'pos.shortcuts' => 'los atajos de teclado',

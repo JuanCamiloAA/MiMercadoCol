@@ -13,6 +13,7 @@ export const POS_KEYS = [
     'pos.ticket_side',
     'pos.catalog_view',
     'pos.tile_size',
+    'pos.tile_style',
     'pos.total_size',
     'pos.rail',
     'pos.shortcuts',
@@ -53,7 +54,9 @@ export function PosTab({ settings, defaults, readOnly, onDirtyChange, options, b
         Object.values(shortcuts).filter((key, index, all) => all.indexOf(key) !== index),
     );
 
-    const viewHint: Record<string, string> = Object.fromEntries((options['pos.catalog_view'] ?? []).map((option) => [option.value, option.hint ?? '']));
+    const hints = (key: SettingKey): Record<string, string> => Object.fromEntries((options[key] ?? []).map((option) => [option.value, option.hint ?? '']));
+    const viewHint = hints('pos.catalog_view');
+    const styleHint = hints('pos.tile_style');
 
     return (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,27rem)_minmax(0,1fr)]">
@@ -84,9 +87,15 @@ export function PosTab({ settings, defaults, readOnly, onDirtyChange, options, b
                 </FieldBlock>
 
                 {data['pos.catalog_view'] === 'grid' && (
-                    <FieldBlock label="Tamaño de las teclas" error={errors['pos.tile_size']}>
-                        {segmented('pos.tile_size', 'Tamaño de las teclas')}
-                    </FieldBlock>
+                    <>
+                        <FieldBlock label="Tamaño de las teclas" error={errors['pos.tile_size']}>
+                            {segmented('pos.tile_size', 'Tamaño de las teclas')}
+                        </FieldBlock>
+
+                        <FieldBlock label="Foto en las teclas" error={errors['pos.tile_style']} hint={styleHint[data['pos.tile_style']] || undefined}>
+                            {segmented('pos.tile_style', 'Foto en las teclas')}
+                        </FieldBlock>
+                    </>
                 )}
 
                 <FieldBlock label="Tamaño del total" error={errors['pos.total_size']}>

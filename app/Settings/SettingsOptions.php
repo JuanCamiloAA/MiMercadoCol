@@ -86,6 +86,11 @@ final class SettingsOptions
                 ['value' => 'md', 'label' => 'Medianas'],
                 ['value' => 'lg', 'label' => 'Grandes'],
             ],
+            'pos.tile_style' => [
+                ['value' => 'compact', 'label' => 'Foto pequeña', 'hint' => 'La foto al lado del nombre, como siempre: caben más teclas en la pantalla.'],
+                ['value' => 'photo_fill', 'label' => 'Foto grande', 'hint' => 'La foto ocupa casi toda la tecla y se recorta para llenarla. Lo que no tiene foto muestra sus iniciales.'],
+                ['value' => 'photo_fit', 'label' => 'Foto entera', 'hint' => 'La foto grande y sin recortar, sobre fondo blanco: va mejor con empaques fotografiados sobre blanco.'],
+            ],
             'pos.total_size' => [
                 ['value' => 'normal', 'label' => 'Normal'],
                 ['value' => 'large', 'label' => 'Grande'],

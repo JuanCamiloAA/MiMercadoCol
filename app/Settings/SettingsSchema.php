@@ -57,6 +57,9 @@ final class SettingsSchema
 
     public const TILE_SIZES = ['sm', 'md', 'lg'];
 
+    /** Como se ve la foto en la tecla: pequena junto al nombre, o grande llenando o entera. */
+    public const TILE_STYLES = ['compact', 'photo_fill', 'photo_fit'];
+
     public const TOTAL_SIZES = ['normal', 'large'];
 
     /** Lo que se ve en el riel de la caja. */
@@ -137,6 +140,7 @@ final class SettingsSchema
             'pos.ticket_side' => ['tab' => self::TAB_POS, 'scope' => self::SCOPE_COMPANY, 'rules' => ['required', $in(self::TICKET_SIDES)]],
             'pos.catalog_view' => ['tab' => self::TAB_POS, 'scope' => self::SCOPE_COMPANY, 'rules' => ['required', $in(self::CATALOG_VIEWS)]],
             'pos.tile_size' => ['tab' => self::TAB_POS, 'scope' => self::SCOPE_COMPANY, 'rules' => ['required', $in(self::TILE_SIZES)]],
+            'pos.tile_style' => ['tab' => self::TAB_POS, 'scope' => self::SCOPE_COMPANY, 'rules' => ['required', $in(self::TILE_STYLES)]],
             'pos.total_size' => ['tab' => self::TAB_POS, 'scope' => self::SCOPE_COMPANY, 'rules' => ['required', $in(self::TOTAL_SIZES)]],
             'pos.rail' => ['tab' => self::TAB_POS, 'scope' => self::SCOPE_COMPANY, 'rules' => ['required', 'array']],
             'pos.shortcuts' => ['tab' => self::TAB_POS, 'scope' => self::SCOPE_COMPANY, 'rules' => ['required', 'array']],

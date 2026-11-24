@@ -10,6 +10,9 @@ export type RailKey = 'sale' | 'opening' | 'closing';
 
 export type ShortcutAction = 'scan' | 'customer' | 'discount' | 'hold' | 'resume' | 'recent' | 'pay' | 'pay_alt';
 
+/** La foto en la tecla de la caja: pequena junto al nombre, grande llenando, o grande y entera. */
+export type PosTileStyle = 'compact' | 'photo_fill' | 'photo_fit';
+
 /** Los ajustes editables, con la misma clave que en el servidor. */
 export interface SettingsValues {
     'brand.display_name': string;
@@ -39,6 +42,7 @@ export interface SettingsValues {
     'pos.ticket_side': 'right' | 'left';
     'pos.catalog_view': 'grid' | 'list' | 'search';
     'pos.tile_size': 'sm' | 'md' | 'lg';
+    'pos.tile_style': PosTileStyle;
     'pos.total_size': 'normal' | 'large';
     'pos.rail': RailKey[];
     'pos.shortcuts': Record<ShortcutAction, string>;
@@ -146,7 +150,7 @@ export interface ReceiptSample {
 }
 
 export interface PosSample {
-    products: { name: string; price: number; badge: string | null }[];
+    products: { name: string; price: number; badge: string | null; thumb_url: string | null }[];
     categories: string[];
 }
 

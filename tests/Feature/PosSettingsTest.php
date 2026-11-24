@@ -36,6 +36,7 @@ class PosSettingsTest extends TestCase
             'ticket_side' => 'left',
             'catalog_view' => 'list',
             'tile_size' => 'lg',
+            'tile_style' => 'photo_fill',
             'total_size' => 'large',
             'rail' => ['opening', 'sale', 'closing'],
             'shortcuts' => [
@@ -68,6 +69,7 @@ class PosSettingsTest extends TestCase
                 ->component('Pos/Sale')
                 ->where('posLayout.ticket_side', 'left')
                 ->where('posLayout.catalog_view', 'list')
+                ->where('posLayout.tile_style', 'photo_fill')
                 ->where('posLayout.total_size', 'large')
                 // F3 reasignado a cobrar: el boton lo muestra porque la tecla viaja en la prop.
                 ->where('posLayout.shortcuts.pay', 'F3')
@@ -103,7 +105,16 @@ class PosSettingsTest extends TestCase
                 ->where('posLayout.shortcuts', SettingsService::DEFAULTS['pos.shortcuts'])
                 ->where('posLayout.ticket_side', 'right')
                 ->where('posLayout.catalog_view', 'grid')
+                // La foto pequena es la de siempre: una empresa que no toca el ajuste no ve cambio.
+                ->where('posLayout.tile_style', 'compact')
                 ->where('posRail', ['sale', 'opening', 'closing']));
+    }
+
+    public function test_un_estilo_de_tecla_fuera_de_la_lista_se_rechaza(): void
+    {
+        $this->actingAs($this->admin)
+            ->put(route('settings.pos.update'), $this->pos(['tile_style' => 'mosaic']))
+            ->assertSessionHasErrors(['pos.tile_style' => 'La foto de las teclas no es una de las opciones.']);
     }
 
     public function test_un_atajo_repetido_se_rechaza_con_el_mensaje(): void

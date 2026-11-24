@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SalePayment;
+use App\Support\Uploads;
 use Illuminate\Support\Carbon;
 
 /**
@@ -55,16 +56,18 @@ class SettingsPreviewService
     /**
      * Unos articulos de la empresa, con el precio que cobraria la caja hoy.
      *
-     * @return array{products: list<array{name: string, price: int, badge: string|null}>, categories: list<string>}
+     * @return array{products: list<array{name: string, price: int, badge: string|null, thumb_url: string|null}>, categories: list<string>}
      */
     public function posSample(int $companyId): array
     {
+        // Primero los que tienen foto: si no, elegir «Foto grande» no se notaria en la vista previa.
         $rows = Product::query()
             ->where('company_id', $companyId)
             ->where('is_active', true)
+            ->orderByRaw('COALESCE(thumb_path, image_path) IS NULL')
             ->orderBy('name')
             ->limit(8)
-            ->get(['id', 'name', 'price', 'tax_rate', 'category_id']);
+            ->get(['id', 'name', 'price', 'tax_rate', 'category_id', 'thumb_path', 'image_path']);
 
         // El precio lo dice `PromotionService`, igual que en la caja: si esta vista mostrara el
         // de lista, diria otra cosa que la pantalla que imita.
@@ -75,6 +78,7 @@ class SettingsPreviewService
                 'name' => $product->name,
                 'price' => (int) ($promos[(int) $product->id]['price'] ?? $product->price),
                 'badge' => $promos[(int) $product->id]['badge'] ?? null,
+                'thumb_url' => Uploads::url($product->thumb_path ?: $product->image_path),
             ])->values()->all(),
             'categories' => Category::query()
                 ->where('company_id', $companyId)

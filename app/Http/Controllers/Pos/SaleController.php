@@ -153,6 +153,7 @@ class SaleController extends Controller
             'ticket_side' => $pick('pos.ticket_side', SettingsSchema::TICKET_SIDES),
             'catalog_view' => $pick('pos.catalog_view', SettingsSchema::CATALOG_VIEWS),
             'tile_size' => $pick('pos.tile_size', SettingsSchema::TILE_SIZES),
+            'tile_style' => $pick('pos.tile_style', SettingsSchema::TILE_STYLES),
             'total_size' => $pick('pos.total_size', SettingsSchema::TOTAL_SIZES),
             'rail' => $settings['pos.rail'] ?? $defaults['pos.rail'],
             'shortcuts' => $shortcuts,
