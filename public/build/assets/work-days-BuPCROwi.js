@@ -1,0 +1,1 @@
+const o=["lunes","martes","miercoles","jueves","viernes","sabado","domingo"],s={lunes:"Lunes",martes:"Martes",miercoles:"Miércoles",jueves:"Jueves",viernes:"Viernes",sabado:"Sábado",domingo:"Domingo"},a=e=>s[e]??e;export{o as D,s as a,a as d};
